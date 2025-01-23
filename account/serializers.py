@@ -1,6 +1,9 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
+from rest_framework import serializers
 
 
 class RegistrationSerializer(serializers.ModelSerializer):
@@ -103,3 +106,8 @@ class ResetPasswordSerializer(serializers.Serializer):
                 'password': "Password must be 6 character long"
             })
         return super().validate(attrs)
+
+
+class VerifyOtpSerializer(serializers.Serializer):
+    otp = serializers.IntegerField()
+    email = serializers.EmailField()
