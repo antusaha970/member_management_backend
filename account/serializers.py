@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
+from django.contrib.auth import authenticate
 
 
 class RegistrationSerializer(serializers.ModelSerializer):
@@ -46,3 +47,27 @@ class RegistrationSerializer(serializers.ModelSerializer):
         user = User.objects.create_user(
             username=username, password=password, email=email, first_name=name)
         return user
+
+
+class LoginSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    password = serializers.CharField()
+
+    def validate(self, attrs):
+        username = attrs.get('username')
+        password = attrs.get('password')
+        user = User.objects.filter(username=username).exists()
+
+        if not user:
+            raise serializers.ValidationError({
+                'username': f"user {username} doesn't exist"
+            })
+
+        else:
+            user = authenticate(username=username, password=password)
+            if not user:
+                raise serializers.ValidationError({
+                    'password': f"password didn't matched"
+                })
+
+        return super().validate(attrs)
