@@ -8,9 +8,6 @@ from rest_framework import status
 from .serializers import RegistrationSerializer, LoginSerializer, ForgetPasswordSerializer, ResetPasswordSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
-<< << << < HEAD
-== == == =
->>>>>> > 65d31bbcdb52de10c02fa72bc36eb381d529623f
 
 
 class AccountRegistrationView(APIView):
