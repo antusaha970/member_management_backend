@@ -7,4 +7,5 @@ urlpatterns = [
          name="account_login"),
     path('v1/forget_password/', views.ForgetPasswordView.as_view(),
          name="account_forget_password"),
+    path('v1/verify_otp/',views.VerifyOtpView.as_view(),name="verify_otp")
 ]

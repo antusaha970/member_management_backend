@@ -1,6 +1,6 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .serializers import RegistrationSerializer, LoginSerializer, ForgetPasswordSerializer
+from .serializers import RegistrationSerializer, LoginSerializer, ForgetPasswordSerializer,VerifyOtpSerializer
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import User
@@ -84,3 +84,58 @@ class ForgetPasswordView(APIView):
                 "status": "failed",
                 "errors": serializer.errors
             }, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+class VerifyOtpView(APIView):
+    def post(self, request):
+        email = request.data.get("email")
+        otp = request.data.get("OTP")
+        
+        try:
+            email_record = OTP.objects.get(user__email=email)
+            otp_record = OTP.objects.get(otp=otp)
+            
+            serializer = VerifyOtpSerializer(data={
+                "email": email_record.user.email,
+                "otp": otp_record.otp
+            })
+            
+            if serializer.is_valid():
+                email=serializer.validated_data["email"]
+                otp_object=OTP.objects.get(user__email=email)
+                otp_object.delete()
+                return Response(
+                    {
+                        "status": "success",
+                        "can_change_pass": True,
+                        "details": None
+                    }
+                )
+            else:
+                return Response(
+                    {
+                        "status": "failed",
+                        "can_change_pass": False,
+                        "details": serializer.errors
+                    },
+                    status=400
+                )
+        except OTP.DoesNotExist:
+            return Response(
+                {
+                    "status": "failed",
+                    "can_change_pass": False,
+                    "details": "Invalid email or OTP."
+                },
+                status=404
+            )
+        except Exception as e:
+            return Response(
+                {
+                    "status": "error",
+                    "can_change_pass": False,
+                    "details": str(e)
+                },
+                status=500
+            )
