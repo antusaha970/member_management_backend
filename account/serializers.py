@@ -71,3 +71,16 @@ class LoginSerializer(serializers.Serializer):
                 })
 
         return super().validate(attrs)
+
+
+class ForgetPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate(self, attrs):
+        email = attrs.get("email")
+        is_user_exist_with_email = User.objects.filter(email=email).exists()
+        if not is_user_exist_with_email:
+            raise serializers.ValidationError({
+                'email': f"No user exist with {email}"
+            })
+        return super().validate(attrs)

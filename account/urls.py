@@ -5,4 +5,6 @@ urlpatterns = [
          name="account_registration"),
     path('v1/login/', views.AccountLoginView.as_view(),
          name="account_login"),
+    path('v1/forget_password/', views.ForgetPasswordView.as_view(),
+         name="account_forget_password"),
 ]
