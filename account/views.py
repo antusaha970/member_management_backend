@@ -65,19 +65,22 @@ class ForgetPasswordView(APIView):
             Set OTP to the OTP model if user with email exist
         """
         data = request.data
-        serializer = ForgetPasswordSerializer(data=data)
+        serializer = ForgetPasswordSerializer(
+            data=data)  # Validate the data and email
         if serializer.is_valid():
             user = User.objects.get(email=serializer.validated_data['email'])
-            otp = randint(1000, 9999)
+            otp = randint(1000, 9999)  # Generate OTP
+            # Checking if a user with OTP Exist
             is_exist = OTP.objects.filter(user=user).exists()
             if is_exist:
                 otp_model = OTP.objects.get(user=user)
-                otp_model.otp = otp
+                otp_model.otp = otp  # If exist update the OTP
                 otp_model.save()
             else:
+                # If new user Create OTP Model
                 OTP.objects.create(user=user, otp=otp)
             send_mail("OTP for changing password",
-                      f"Your OTP is {otp}", "ahmedsalauddin677785@gmail.com", [user.email])
+                      f"Your OTP is {otp}", "ahmedsalauddin677785@gmail.com", [user.email])  # Send mail
             return Response({
                 "status": "success",
                 "details": "OTP send successful"
