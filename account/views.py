@@ -1,6 +1,6 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .serializers import RegistrationSerializer, LoginSerializer, ForgetPasswordSerializer
+from .serializers import RegistrationSerializer, LoginSerializer, ForgetPasswordSerializer, ResetPasswordSerializer
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import User
@@ -89,4 +89,34 @@ class ForgetPasswordView(APIView):
             return Response({
                 "status": "failed",
                 "errors": serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ResetPasswordView(APIView):
+    def post(self, request):
+        """
+            Reset password for valid user with valid email address
+        """
+        data = request.data
+        serializer = ResetPasswordSerializer(data=data)  # validate the request
+        if serializer.is_valid():
+            email = serializer.validated_data['email']
+            password = serializer.validated_data['password']
+            user = User.objects.get(email=email)
+            user.set_password(password)  # Change password
+            user.save()
+            token_exist = Token.objects.filter(user=user).exists()
+            if token_exist:  # Delete previous token if exist
+                token = Token.objects.get(user=user)
+                token.delete()
+            # Create new token and return
+            token = Token.objects.create(user=user)
+            return Response({
+                "status": "success",
+                "token": str(token)
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({
+                'status': "failed",
+                'errors': serializer.errors
             }, status=status.HTTP_400_BAD_REQUEST)

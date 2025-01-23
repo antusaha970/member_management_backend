@@ -84,3 +84,22 @@ class ForgetPasswordSerializer(serializers.Serializer):
                 'email': f"No user exist with {email}"
             })
         return super().validate(attrs)
+
+
+class ResetPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField()
+
+    def validate(self, attrs):
+        email = attrs.get("email")
+        password = attrs.get("password")
+        is_user_exist = User.objects.filter(email=email).exists()
+        if not is_user_exist:
+            raise serializers.ValidationError({
+                'email': f"No user exist with {email}"
+            })
+        if len(password) < 6:
+            raise serializers.ValidationError({
+                'password': "Password must be 6 character long"
+            })
+        return super().validate(attrs)
