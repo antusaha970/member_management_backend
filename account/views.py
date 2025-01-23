@@ -75,6 +75,7 @@ class ForgetPasswordView(APIView):
                 otp_model.save()
             else:
                 OTP.objects.create(user=user, otp=otp)
+            # TODO: Mail send
             return Response({
                 "status": "success",
                 "details": "OTP send successful"
