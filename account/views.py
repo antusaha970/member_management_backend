@@ -6,6 +6,7 @@ from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import User
 from .models import OTP
 from random import randint
+from django.core.mail import send_mail
 
 
 class AccountRegistrationView(APIView):
@@ -75,7 +76,8 @@ class ForgetPasswordView(APIView):
                 otp_model.save()
             else:
                 OTP.objects.create(user=user, otp=otp)
-            # TODO: Mail send
+            send_mail("OTP for changing password",
+                      f"Your OTP is {otp}", "ahmedsalauddin677785@gmail.com", [user.email])
             return Response({
                 "status": "success",
                 "details": "OTP send successful"
