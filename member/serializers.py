@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from core.models import Gender
+from core.models import Gender, MembershipType, InstituteName, MembershipStatusChoice, MaritalStatusChoice
 
 
 class MemberSerializer(serializers.Serializer):
@@ -19,4 +19,38 @@ class MemberSerializer(serializers.Serializer):
     marital_status = serializers.CharField()
 
     def validate_gender(self, value):
-        pass
+        is_exist = Gender.objects.filter(name=value).exists()
+        if not is_exist:
+            raise serializers.ValidationError(
+                {'gender': f"Not a valid gender"})
+        return value
+
+    def validate_membership_type(self, value):
+        is_exist = MembershipType.objects.filter(name=value).exists()
+        if not is_exist:
+            raise serializers.ValidationError(
+                {'membership_type': f'{value} does not a valid membership type'})
+        return value
+
+    def validate_institute_name(self, value):
+        is_exist = InstituteName.objects.filter(name=value).exists()
+        if not is_exist:
+            raise serializers.ValidationError(
+                {'institute_name': f'{value} no institute with this name exists'})
+        return value
+
+    def validate_membership_status(self, value):
+        is_exist = MembershipStatusChoice.objects.filter(name=value).exists()
+        if not is_exist:
+            raise serializers.ValidationError(
+                {'membership_status': f'{value} no membership_status with this name exists'})
+        return value
+
+    def validate_marital_status(self, value):
+        is_exist = MaritalStatusChoice.objects.filter(name=value).exists()
+        if not is_exist:
+            raise serializers.ValidationError(
+                {'marital_status': f'{value} no marital_status with this name exists'})
+        return value
+
+    # TODO: Blood group and nationality validation
