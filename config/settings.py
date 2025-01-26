@@ -34,6 +34,8 @@ INSTALLED_APPS = [
     # Custom application
     'account',
     'club',
+    'core',
+    'member'
 ]
 
 MIDDLEWARE = [
