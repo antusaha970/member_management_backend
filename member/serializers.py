@@ -1,5 +1,6 @@
-from rest_framework import serializers
+from core.models import Gender
 from core.models import Gender, MembershipType, InstituteName, MembershipStatusChoice, MaritalStatusChoice
+from rest_framework import serializers
 
 
 class MemberSerializer(serializers.Serializer):
@@ -54,3 +55,12 @@ class MemberSerializer(serializers.Serializer):
         return value
 
     # TODO: Blood group and nationality validation
+
+
+class MembersFinancialBasicsSerializer(serializers.Serializer):
+    membership_fee = serializers.DecimalField(required=False)
+    payment_received = serializers.DecimalField(required=False)
+    membership_fee_remaining = serializers.DecimalField(required=False)
+    subscription_fee = serializers.DecimalField(required=False)
+    dues_limit = serializers.DecimalField(required=False)
+    initial_payment_doc = serializers.FileField(required=False)
