@@ -125,24 +125,30 @@ class ResetPasswordView(APIView):
             }, status=status.HTTP_400_BAD_REQUEST)
 
 
+
 class VerifyOtpView(APIView):
     def post(self, request):
-        email = request.data.get("email")
-        otp = request.data.get("OTP")
+      
+        data = request.data
+        email = data.get("email")
+        otp = data.get("OTP")
+        print(email,otp)
+        serializer = VerifyOtpSerializer(data={
+            "email":email,
+            "otp":otp
+        })
+        print(serializer)
 
-        try:
-            email_record = OTP.objects.get(user__email=email)
-            otp_record = OTP.objects.get(otp=otp)
+        if serializer.is_valid():
+            email = serializer.validated_data["email"]
+            otp = serializer.validated_data["otp"]
+            try:
+                email_record = OTP.objects.get(user__email=email)
+                otp_record = OTP.objects.get(otp=otp)
 
-            serializer = VerifyOtpSerializer(data={
-                "email": email_record.user.email,
-                "otp": otp_record.otp
-            })
-
-            if serializer.is_valid():
-                email = serializer.validated_data["email"]
-                otp_object = OTP.objects.get(user__email=email)
-                otp_object.delete()
+                
+  
+                email_record.delete()
                 return Response(
                     {
                         "status": "success",
@@ -150,30 +156,33 @@ class VerifyOtpView(APIView):
                         "details": None
                     }
                 )
-            else:
+            except OTP.DoesNotExist:
                 return Response(
                     {
                         "status": "failed",
                         "can_change_pass": False,
-                        "details": serializer.errors
+                        "details": "Invalid email or OTP."
                     },
-                    status=400
+                    status=404
                 )
-        except OTP.DoesNotExist:
+            except Exception as e:
+                return Response(
+                    {
+                        "status": "error",
+                        "can_change_pass": False,
+                        "details": str(e)
+                    },
+                    status=500
+                )
+
+        else:
             return Response(
                 {
                     "status": "failed",
                     "can_change_pass": False,
-                    "details": "Invalid email or OTP."
+                    "details": serializer.errors
                 },
-                status=404
+                status=400
             )
-        except Exception as e:
-            return Response(
-                {
-                    "status": "error",
-                    "can_change_pass": False,
-                    "details": str(e)
-                },
-                status=500
-            )
+    
+        

@@ -123,3 +123,4 @@ class ResetPasswordSerializer(serializers.Serializer):
 class VerifyOtpSerializer(serializers.Serializer):
     otp = serializers.IntegerField()
     email = serializers.EmailField()
+    
