@@ -2,12 +2,13 @@ from .serializers import RegistrationSerializer, LoginSerializer, ForgetPassword
 from django.core.mail import send_mail
 from random import randint
 from .models import OTP
-from django.contrib.auth.models import User
 from rest_framework.authtoken.models import Token
 from rest_framework import status
 from .serializers import RegistrationSerializer, LoginSerializer, ForgetPasswordSerializer, ResetPasswordSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from django.contrib.auth import get_user_model
+import pdb
 
 
 class AccountRegistrationView(APIView):
@@ -44,7 +45,7 @@ class AccountLoginView(APIView):
         if serializer.is_valid():
             username = serializer.validated_data['username']
             password = serializer.validated_data['password']
-            user = User.objects.get(username=username)
+            user = get_user_model().objects.get(username=username)
             user.set_password(password)
             user.save()
             token, _ = Token.objects.get_or_create(user=user)
@@ -69,7 +70,8 @@ class ForgetPasswordView(APIView):
         serializer = ForgetPasswordSerializer(
             data=data)  # Validate the data and email
         if serializer.is_valid():
-            user = User.objects.get(email=serializer.validated_data['email'])
+            user = get_user_model().objects.get(
+                email=serializer.validated_data['email'])
             otp = randint(1000, 9999)  # Generate OTP
             # Checking if a user with OTP Exist
             is_exist = OTP.objects.filter(user=user).exists()
@@ -103,7 +105,7 @@ class ResetPasswordView(APIView):
         if serializer.is_valid():
             email = serializer.validated_data['email']
             password = serializer.validated_data['password']
-            user = User.objects.get(email=email)
+            user = get_user_model().objects.get(email=email)
             user.set_password(password)  # Change password
             user.save()
             token_exist = Token.objects.filter(user=user).exists()

@@ -1,17 +1,20 @@
 from rest_framework import serializers
-from django.contrib.auth.models import User
+from django.conf import settings
 from django.contrib.auth import authenticate
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 from rest_framework import serializers
+from django.contrib.auth import get_user_model
+from club.models import Club
+import pdb
 
 
 class RegistrationSerializer(serializers.ModelSerializer):
     name = serializers.CharField()
 
     class Meta:
-        model = User
-        fields = ['username', 'password', 'email', 'name']
+        model = get_user_model()
+        fields = ['username', 'password', 'email', 'name', 'club']
         extra_kwargs = {
             "name": {
                 "required": True,
@@ -24,13 +27,17 @@ class RegistrationSerializer(serializers.ModelSerializer):
             },
             "password": {
                 "required": True,
+            },
+            "club": {
+                "required": True,
             }
         }
 
     def validate(self, attrs):
         email = attrs.get('email')
         password = attrs.get('password')
-        is_same_email_exists = User.objects.filter(email=email).exists()
+        is_same_email_exists = get_user_model().objects.filter(
+            email=email).exists()
         if is_same_email_exists:
             raise serializers.ValidationError({
                 'email': f"{email} already exists",
@@ -39,6 +46,7 @@ class RegistrationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({
                 'password': f"Password must be at least 6 character. Current length {len(password)}"
             })
+
         return super().validate(attrs)
 
     def create(self, validated_data):
@@ -46,9 +54,10 @@ class RegistrationSerializer(serializers.ModelSerializer):
         email = validated_data.get('email')
         password = validated_data.get('password')
         name = validated_data.get('name')
+        club = validated_data.get('club')
 
-        user = User.objects.create_user(
-            username=username, password=password, email=email, first_name=name)
+        user = get_user_model().objects.create_user(
+            username=username, password=password, email=email, first_name=name, club=club)
         return user
 
 
@@ -59,7 +68,8 @@ class LoginSerializer(serializers.Serializer):
     def validate(self, attrs):
         username = attrs.get('username')
         password = attrs.get('password')
-        user = User.objects.filter(username=username).exists()
+        user = get_user_model().objects.filter(
+            username=username).exists()
 
         if not user:
             raise serializers.ValidationError({
@@ -81,7 +91,8 @@ class ForgetPasswordSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         email = attrs.get("email")
-        is_user_exist_with_email = User.objects.filter(email=email).exists()
+        is_user_exist_with_email = get_user_model().objects.filter(
+            email=email).exists()
         if not is_user_exist_with_email:
             raise serializers.ValidationError({
                 'email': f"No user exist with {email}"
@@ -96,7 +107,8 @@ class ResetPasswordSerializer(serializers.Serializer):
     def validate(self, attrs):
         email = attrs.get("email")
         password = attrs.get("password")
-        is_user_exist = User.objects.filter(email=email).exists()
+        is_user_exist = get_user_model().objects.filter(
+            email=email).exists()
         if not is_user_exist:
             raise serializers.ValidationError({
                 'email': f"No user exist with {email}"
