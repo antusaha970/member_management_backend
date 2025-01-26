@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from core.models import Gender
-
+# from .models import *
 
 class MemberSerializer(serializers.Serializer):
     member_ID = serializers.CharField()
@@ -20,3 +20,14 @@ class MemberSerializer(serializers.Serializer):
 
     def validate_gender(self, value):
         pass
+
+
+class MembersFinancialBasicsSerializer(serializers.Serializer):
+    membership_fee = serializers.DecimalField(required=False)
+    payment_received = serializers.DecimalField(required=False)
+    membership_fee_remaining = serializers.DecimalField(required=False)
+    subscription_fee = serializers.DecimalField(required=False)
+    dues_limit = serializers.DecimalField(required=False)
+    initial_payment_doc = serializers.FileField(required=False)  
+
+    
