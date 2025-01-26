@@ -4,14 +4,7 @@ from club.models import Club
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings
 
-
-class OTP(models.Model):
-    otp = models.IntegerField()
-    user = models.OneToOneField(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="user_otp")
-
-    def __str__(self):
-        return self.user.username
+# Extend the user model with custom fields
 
 
 class CustomUser(AbstractUser):
@@ -20,3 +13,14 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         return self.username
+
+# Store user generated OTPS in the DB
+
+
+class OTP(models.Model):
+    otp = models.IntegerField()
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="user_otp")
+
+    def __str__(self):
+        return self.user.username
