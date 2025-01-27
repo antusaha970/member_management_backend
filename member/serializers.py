@@ -2,9 +2,11 @@ from core.models import Gender
 from core.models import Gender, MembershipType, InstituteName, MembershipStatusChoice, MaritalStatusChoice, BLOOD_GROUPS, COUNTRY_CHOICES
 from rest_framework import serializers
 from .models import Member
+import pdb
 
 
 class MemberSerializer(serializers.Serializer):
+    club = serializers.IntegerField()
     member_ID = serializers.CharField()
     first_name = serializers.CharField()
     last_name = serializers.CharField(required=False)
@@ -83,9 +85,28 @@ class MemberSerializer(serializers.Serializer):
 
 
 class MembersFinancialBasicsSerializer(serializers.Serializer):
-    membership_fee = serializers.DecimalField(required=False)
-    payment_received = serializers.DecimalField(required=False)
-    membership_fee_remaining = serializers.DecimalField(required=False)
-    subscription_fee = serializers.DecimalField(required=False)
-    dues_limit = serializers.DecimalField(required=False)
-    initial_payment_doc = serializers.FileField(required=False)
+    membership_fee = serializers.DecimalField(
+        required=False, max_digits=10, decimal_places=2)
+    payment_received = serializers.DecimalField(
+        required=False, max_digits=10, decimal_places=2)
+    membership_fee_remaining = serializers.DecimalField(
+        required=False, max_digits=10, decimal_places=2)
+    subscription_fee = serializers.DecimalField(
+        required=False, max_digits=10, decimal_places=2)
+    dues_limit = serializers.DecimalField(
+        required=False, max_digits=10, decimal_places=2)
+    initial_payment_doc = serializers.FileField(
+        required=False)
+
+
+class MemberIdSerializer(serializers.Serializer):
+    membership_type = serializers.CharField()
+
+    def validate_membership_type(self, value):
+        is_type_exist = MembershipType.objects.filter(name=value).exists()
+
+        if not is_type_exist:
+            raise serializers.ValidationError({
+                'membership_type': f"{value} is not a valid membership type"
+            })
+        return value

@@ -1,8 +1,11 @@
 from django.db import models
 from core.models import Gender, BLOOD_GROUPS, COUNTRY_CHOICES, MembershipType, InstituteName, MembershipStatusChoice, MaritalStatusChoice, STATUS_CHOICES
+from club.models import Club
 
 
 class Member(models.Model):
+    club = models.ForeignKey(
+        Club, on_delete=models.SET_NULL, null=True, blank=True)
     member_ID = models.CharField(
         max_length=200, unique=True)  # mandatory field
     first_name = models.CharField(
