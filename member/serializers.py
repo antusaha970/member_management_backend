@@ -2,6 +2,8 @@ from core.models import Gender
 from core.models import Gender, MembershipType, InstituteName, MembershipStatusChoice, MaritalStatusChoice, BLOOD_GROUPS, COUNTRY_CHOICES
 from rest_framework import serializers
 from .models import Member
+from club.models import Club
+import pdb
 
 
 class MemberSerializer(serializers.Serializer):
@@ -79,6 +81,25 @@ class MemberSerializer(serializers.Serializer):
                 f'{value} id already exists')
 
         return value
+
+    def create(self, validated_data):
+        club_data = validated_data.pop('club')
+        gender_data = validated_data.pop('gender')
+        membership_type_data = validated_data.pop('membership_type')
+        institute_name_data = validated_data.pop('institute_name')
+        membership_status_data = validated_data.pop('membership_status')
+        marital_status_data = validated_data.pop('marital_status')
+        club = Club.objects.get(pk=club_data)
+        gender = Gender.objects.get(name=gender_data)
+        membership_type = MembershipType.objects.get(name=membership_type_data)
+        institute_name = InstituteName.objects.get(name=institute_name_data)
+        membership_status = MembershipStatusChoice.objects.get(
+            name=membership_status_data)
+        marital_status = MaritalStatusChoice.objects.get(
+            name=marital_status_data)
+        member = Member.objects.create(club=club, gender=gender, membership_type=membership_type, institute_name=institute_name,
+                                       membership_status=membership_status, marital_status=marital_status, **validated_data)
+        return member
 
 
 class MembersFinancialBasicsSerializer(serializers.Serializer):

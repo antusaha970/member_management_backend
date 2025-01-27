@@ -4,6 +4,8 @@ from . import serializers
 from .utils.utility_functions import generate_member_id
 from rest_framework.response import Response
 from rest_framework import status
+from django.db import transaction
+
 import pdb
 
 
@@ -13,12 +15,22 @@ class MemberView(APIView):
     def post(self, request):
 
         data = request.data
-        serializer = serializers.MemberSerializer(data=data)
-        if serializer.is_valid():
-            return Response("OK")
+        member_serializer = serializers.MemberSerializer(data=data)
+        member_financial_basics_serializer = serializers.MembersFinancialBasicsSerializer(
+            data=data)
+        is_member_serializer_valid = member_serializer.is_valid()
+        is_member_financial_serializer_valid = member_financial_basics_serializer.is_valid()
+        if is_member_serializer_valid and is_member_financial_serializer_valid:
+            with transaction.atomic():
+                member = member_serializer.save()
+                print(member)
+                return Response("OK")
         else:
+            # Merge errors from both serializers
+            merged_errors = {**member_serializer.errors, **
+                             member_financial_basics_serializer.errors}
             return Response({
-                "errors": serializer.errors,
+                "errors": merged_errors,
                 "status": "failed"
             }, status=status.HTTP_400_BAD_REQUEST)
 
