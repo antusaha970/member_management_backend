@@ -5,7 +5,7 @@ from rest_framework import status
 from .models import Club
 
 
-class ClubRegisterView(APIView):
+class ClubView(APIView):
     def post(self, request):
         data = request.data
         serializer = ClubSerializer(data=data)
