@@ -1,6 +1,7 @@
 from core.models import Gender
 from core.models import Gender, MembershipType, InstituteName, MembershipStatusChoice, MaritalStatusChoice, BLOOD_GROUPS, COUNTRY_CHOICES
 from rest_framework import serializers
+from .models import Member
 
 
 class MemberSerializer(serializers.Serializer):
@@ -70,6 +71,14 @@ class MemberSerializer(serializers.Serializer):
                 raise serializers.ValidationError({
                     'nationality': f"{value} is not a valid country"
                 })
+        return value
+
+    def validate_member_ID(self, value):
+        is_same_id_exist = Member.objects.filter(member_ID=value).exists()
+        if is_same_id_exist:
+            raise serializers.ValidationError(
+                {'member_ID': f'{value} id already exists'})
+
         return value
 
 
