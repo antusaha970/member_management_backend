@@ -11,7 +11,16 @@ class MemberView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        pass
+
+        data = request.data
+        serializer = serializers.MemberSerializer(data=data)
+        if serializer.is_valid():
+            return Response("OK")
+        else:
+            return Response({
+                "errors": serializer.errors,
+                "status": "failed"
+            }, status=status.HTTP_400_BAD_REQUEST)
 
 
 class MemberIdView(APIView):
