@@ -1,3 +1,4 @@
 1. Add celery
 2. Send mail using celery
 3. Configure celery in docker
+4. Do proper comments in codes
