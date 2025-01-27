@@ -73,10 +73,10 @@ class MemberSerializer(serializers.Serializer):
         return value
 
 
-class MembersFinancialBasicsSerializer(serializers.Serializer):
-    membership_fee = serializers.DecimalField(required=False)
-    payment_received = serializers.DecimalField(required=False)
-    membership_fee_remaining = serializers.DecimalField(required=False)
-    subscription_fee = serializers.DecimalField(required=False)
-    dues_limit = serializers.DecimalField(required=False)
-    initial_payment_doc = serializers.FileField(required=False)
+# class MembersFinancialBasicsSerializer(serializers.Serializer):
+#     membership_fee = serializers.DecimalField(required=False)
+#     payment_received = serializers.DecimalField(required=False)
+#     membership_fee_remaining = serializers.DecimalField(required=False)
+#     subscription_fee = serializers.DecimalField(required=False)
+#     dues_limit = serializers.DecimalField(required=False)
+#     initial_payment_doc = serializers.FileField(required=False)
