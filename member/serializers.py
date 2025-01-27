@@ -1,7 +1,7 @@
 from core.models import Gender
 from core.models import Gender, MembershipType, InstituteName, MembershipStatusChoice, MaritalStatusChoice, BLOOD_GROUPS, COUNTRY_CHOICES
 from rest_framework import serializers
-from .models import Member
+from .models import Member, MembersFinancialBasics
 from club.models import Club
 import pdb
 
@@ -115,6 +115,14 @@ class MembersFinancialBasicsSerializer(serializers.Serializer):
         required=False, max_digits=10, decimal_places=2)
     initial_payment_doc = serializers.FileField(
         required=False)
+
+    def create(self, validated_data):
+        member_ID = validated_data.pop("member_ID")
+        member = Member.objects.get(member_ID=member_ID)
+        member_financial_basics = MembersFinancialBasics.objects.create(member=member,
+                                                                        **validated_data)
+
+        return member_financial_basics
 
 
 class MemberIdSerializer(serializers.Serializer):

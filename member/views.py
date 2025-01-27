@@ -6,8 +6,6 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.db import transaction
 
-import pdb
-
 
 class MemberView(APIView):
     permission_classes = [IsAuthenticated]
@@ -23,8 +21,15 @@ class MemberView(APIView):
         if is_member_serializer_valid and is_member_financial_serializer_valid:
             with transaction.atomic():
                 member = member_serializer.save()
-                print(member)
-                return Response("OK")
+                member_financial_basics_serializer.save(
+                    member_ID=member.member_ID)
+
+                return Response({
+                    'data': {
+                        'member_ID': member.member_ID,
+                    },
+                    'status': 'created'
+                }, status=status.HTTP_201_CREATED)
         else:
             # Merge errors from both serializers
             merged_errors = {**member_serializer.errors, **
