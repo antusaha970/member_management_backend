@@ -1,5 +1,5 @@
 from core.models import Gender
-from core.models import Gender, MembershipType, InstituteName, MembershipStatusChoice, MaritalStatusChoice
+from core.models import Gender, MembershipType, InstituteName, MembershipStatusChoice, MaritalStatusChoice, BLOOD_GROUPS, COUNTRY_CHOICES
 from rest_framework import serializers
 
 
@@ -54,7 +54,23 @@ class MemberSerializer(serializers.Serializer):
                 {'marital_status': f'{value} no marital_status with this name exists'})
         return value
 
-    # TODO: Blood group and nationality validation
+    def validate_blood_group(self, value):
+        if value is not None:
+            valid_blood_groups = [bg[0] for bg in BLOOD_GROUPS]
+            if value not in valid_blood_groups:
+                raise serializers.ValidationError({
+                    'blood_group': f"{value} is not a valid blood group"
+                })
+        return value
+
+    def validate_nationality(self, value):
+        if value is not None:
+            valid_countries = [cnt[1] for cnt in COUNTRY_CHOICES]
+            if value not in valid_countries:
+                raise serializers.ValidationError({
+                    'nationality': f"{value} is not a valid country"
+                })
+        return value
 
 
 class MembersFinancialBasicsSerializer(serializers.Serializer):

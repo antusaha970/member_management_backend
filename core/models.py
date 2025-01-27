@@ -29,7 +29,7 @@ BLOOD_GROUPS = [
     ('AB-', 'AB-'),
     ('O+', 'O+'),
     ('O-', 'O-'),
-    ('UNKNOWN', 'Unknown')
+    ('UNKNOWN', 'UNKNOWN')
 ]
 
 # Country choices generated from pycountry
