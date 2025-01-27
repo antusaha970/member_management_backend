@@ -6,4 +6,5 @@ urlpatterns = [
     path('api/account/', include('account.urls')),
     path('api/club/', include('club.urls')),
     path('api/member/', include('member.urls')),
+    path('api/core/', include('core.urls')),
 ]
