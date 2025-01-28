@@ -73,6 +73,23 @@ class MemberView(APIView):
                 "status": "failed"
             }, status=status.HTTP_400_BAD_REQUEST)
 
+    def delete(self, request, member_id):
+        # find the member
+        member = get_object_or_404(Member, member_ID=member_id)
+        if member.status == 2:
+            # if member is already deleted
+            return Response({
+                'detail': "member already deleted",
+                'status': "failed",
+            }, status=status.HTTP_400_BAD_REQUEST)
+        # if not deleted then update the member status to delete
+        member.status = 2
+        member.save(update_fields=['status'])
+        return Response({
+            'detail': "member deleted",
+            'status': "deleted",
+        }, status=status.HTTP_204_NO_CONTENT)
+
 
 class MemberIdView(APIView):
     permission_classes = [IsAuthenticated]
