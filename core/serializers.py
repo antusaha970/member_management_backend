@@ -59,3 +59,9 @@ class EmploymentTypeChoiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmploymentTypeChoice
         fields = "__all__"
+
+
+class EmailTypeChoiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EmailTypeChoice
+        fields = "__all__"

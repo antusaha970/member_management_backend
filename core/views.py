@@ -131,3 +131,24 @@ class EmploymentTypeChoiceViewSet(ModelViewSet):
                 status=response.status_code,
             )
         return response
+
+
+class EmailTypeChoiceViewSet(ModelViewSet):
+    serializer_class = EmailTypeChoiceSerializer
+    queryset = EmailTypeChoice.objects.all()
+    permission_classes = [IsAuthenticated]
+
+    def handle_exception(self, exc):
+        response = super().handle_exception(exc)
+        if response.status_code == 401:
+            return response
+
+        # If there is a DRF validation error, reformat it
+        if response is not None and isinstance(response.data, dict):
+            errors = {field: messages for field,
+                      messages in response.data.items()}
+            return Response(
+                {"errors": errors},
+                status=response.status_code,
+            )
+        return response
