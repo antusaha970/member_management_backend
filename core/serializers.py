@@ -53,3 +53,9 @@ class MaritalStatusChoiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = MaritalStatusChoice
         fields = "__all__"
+
+
+class EmploymentTypeChoiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EmploymentTypeChoice
+        fields = "__all__"
