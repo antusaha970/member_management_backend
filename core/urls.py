@@ -6,6 +6,7 @@ router = routers.DefaultRouter()
 
 router.register("v1/gender", GenderViewSet)
 router.register("v1/member_ship_status_choice", MembershipStatusChoiceViewSet)
+router.register("v1/marital_status_choice", MaritalStatusChoiceViewSet)
 
 
 urlpatterns = [
