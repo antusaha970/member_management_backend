@@ -28,3 +28,6 @@ class OTP(models.Model):
 
 class AccountTestModel(models.Model):
     name = models.TextField()
+
+class PermissonModel(models.Model):
+    name=models.CharField(max_length=250,unique=True)

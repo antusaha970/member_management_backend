@@ -4,12 +4,12 @@ from random import randint
 from .models import OTP
 from rest_framework.authtoken.models import Token
 from rest_framework import status
-from .serializers import RegistrationSerializer, LoginSerializer, ForgetPasswordSerializer, ResetPasswordSerializer
+from .serializers import RegistrationSerializer, LoginSerializer, ForgetPasswordSerializer, ResetPasswordSerializer,CustomPermissionSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 import pdb
-
+from django.contrib.auth.models import Group,Permission
 
 class AccountRegistrationView(APIView):
     def post(self, request):
@@ -177,3 +177,23 @@ class VerifyOtpView(APIView):
                 },
                 status=500
             )
+
+class CustomPermissionView(APIView):
+    def post(self, request):
+        data = request.data
+        serializer = CustomPermissionSerializer(data=data)
+        
+        if serializer.is_valid():
+            permission=serializer.save()
+            name = serializer.validated_data["name"]
+            
+            return Response({
+                "id": permission.id,  
+                "permission_name": name
+            }, status=status.HTTP_201_CREATED)
+        
+        return Response(
+            {
+                "errors":serializer.errors
+            }
+            , status=status.HTTP_400_BAD_REQUEST)

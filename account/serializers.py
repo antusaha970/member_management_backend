@@ -7,8 +7,8 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from club.models import Club
 import pdb
-
-
+from django.contrib.auth.models import Group,Permission
+from .models import PermissonModel
 class RegistrationSerializer(serializers.ModelSerializer):
     name = serializers.CharField()
 
@@ -123,3 +123,24 @@ class ResetPasswordSerializer(serializers.Serializer):
 class VerifyOtpSerializer(serializers.Serializer):
     otp = serializers.IntegerField()
     email = serializers.EmailField()
+
+
+
+class CustomPermissionSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=255, required=True)
+
+    def validate_name(self, value):
+        restricted_words = ["admin", "user"]
+        if any(word in value.lower() for word in restricted_words):
+            raise serializers.ValidationError("The name cannot contain 'admin' or 'user'.")
+
+        if PermissonModel.objects.filter(name=value.replace(' ','_').lower()).exists():
+            raise serializers.ValidationError("Permission with this name already exists.")
+
+        return value
+    
+    def create(self, validated_data):
+        name = validated_data.get('name')
+        permission = PermissonModel.objects.create(name=name.replace(' ','_').lower())
+            
+        return permission
