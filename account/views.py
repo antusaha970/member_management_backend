@@ -21,10 +21,17 @@ class AccountRegistrationView(APIView):
         if serializer.is_valid():
             user = serializer.save()
             token, _ = Token.objects.get_or_create(user=user)
-            return Response({
+
+            response = Response({
                 "status": "success",
                 "token": str(token)
             }, status=status.HTTP_201_CREATED)
+
+            # Add headers to prevent caching
+            response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+            response["Pragma"] = "no-cache"
+            response["Expires"] = "0"
+            return response
         else:
             return Response(
                 {
@@ -49,10 +56,18 @@ class AccountLoginView(APIView):
             user.set_password(password)
             user.save()
             token, _ = Token.objects.get_or_create(user=user)
-            return Response({
+
+            # Response with no-cache headers
+            response = Response({
                 "status": "success",
                 "token": str(token)
             }, status=status.HTTP_200_OK)
+
+            # Add headers to prevent caching
+            response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+            response["Pragma"] = "no-cache"
+            response["Expires"] = "0"
+            return response
 
         else:
             return Response({
