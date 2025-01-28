@@ -75,6 +75,10 @@ class MemberSerializer(serializers.Serializer):
         return value
 
     def validate_member_ID(self, value):
+        # check if updating and instance
+        if self.instance:
+            return value
+
         is_same_id_exist = Member.objects.filter(member_ID=value).exists()
         if is_same_id_exist:
             raise serializers.ValidationError(
@@ -101,6 +105,57 @@ class MemberSerializer(serializers.Serializer):
                                        membership_status=membership_status, marital_status=marital_status, **validated_data)
         return member
 
+    def update(self, instance, validated_data):
+        club = validated_data.get('club', instance.club)
+        first_name = validated_data.get('first_name', instance.first_name)
+        last_name = validated_data.get('last_name', instance.last_name)
+        gender = validated_data.get('gender', instance.gender)
+        date_of_birth = validated_data.get(
+            'date_of_birth', instance.date_of_birth)
+        batch_number = validated_data.get(
+            'batch_number', instance.batch_number)
+        anniversary_date = validated_data.get(
+            'anniversary_date', instance.anniversary_date)
+        profile_photo = validated_data.get(
+            'profile_photo', instance.profile_photo)
+        blood_group = validated_data.get('blood_group', instance.blood_group)
+        nationality = validated_data.get('nationality', instance.nationality)
+        institute_name = validated_data.get(
+            'institute_name', instance.institute_name)
+        membership_status = validated_data.get(
+            'membership_status', instance.membership_status)
+        marital_status = validated_data.get(
+            'marital_status', instance.marital_status)
+
+        # get dependencies
+        club = Club.objects.get(pk=club)
+        gender = Gender.objects.get(name=gender)
+        institute_name = InstituteName.objects.get(name=institute_name)
+        membership_status = MembershipStatusChoice.objects.get(
+            name=membership_status)
+        marital_status = MaritalStatusChoice.objects.get(
+            name=marital_status)
+
+        # update information
+        instance.first_name = first_name
+        instance.last_name = last_name
+        instance.gender = gender
+        instance.date_of_birth = date_of_birth
+        instance.batch_number = batch_number
+        instance.anniversary_date = anniversary_date
+        instance.profile_photo = profile_photo
+        instance.blood_group = blood_group
+        instance.nationality = nationality
+        instance.marital_status = marital_status
+        instance.club = club
+        instance.institute_name = institute_name
+        instance.membership_status = membership_status
+
+        # save the instance
+        instance.save()
+
+        return instance
+
 
 class MembersFinancialBasicsSerializer(serializers.Serializer):
     membership_fee = serializers.DecimalField(
@@ -123,6 +178,31 @@ class MembersFinancialBasicsSerializer(serializers.Serializer):
                                                                         **validated_data)
 
         return member_financial_basics
+
+    def update(self, instance, validated_data):
+        # get the data from instance or
+        membership_fee = validated_data.get(
+            'membership_fee', instance.membership_fee)
+        payment_received = validated_data.get(
+            'payment_received', instance.payment_received)
+        membership_fee_remaining = validated_data.get(
+            'membership_fee_remaining', instance.membership_fee_remaining)
+        subscription_fee = validated_data.get(
+            'subscription_fee', instance.subscription_fee)
+        dues_limit = validated_data.get('dues_limit', instance.dues_limit)
+        initial_payment_doc = validated_data.get(
+            'initial_payment_doc', instance.initial_payment_doc)
+
+        # update the instance
+        instance.membership_fee = membership_fee
+        instance.payment_received = payment_received
+        instance.membership_fee_remaining = membership_fee_remaining
+        instance.subscription_fee = subscription_fee
+        instance.dues_limit = dues_limit
+        instance.initial_payment_doc = initial_payment_doc
+        instance.save()
+
+        return instance
 
 
 class MemberIdSerializer(serializers.Serializer):
