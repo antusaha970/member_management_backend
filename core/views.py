@@ -1,11 +1,13 @@
-from django.shortcuts import render
 from rest_framework.views import APIView
 from .serializers import *
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 
 
 class MembershipTypeView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def post(self, request):
         data = request.data
         serializer = MembershipTypeSerializer(data=data)
@@ -25,6 +27,8 @@ class MembershipTypeView(APIView):
 
 
 class InstituteNameView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def post(self, request):
         data = request.data
         serializer = InstituteNameSerializer(data=data)
