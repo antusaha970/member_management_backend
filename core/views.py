@@ -152,3 +152,108 @@ class EmailTypeChoiceViewSet(ModelViewSet):
                 status=response.status_code,
             )
         return response
+
+
+class ContactTypeChoiceViewSet(ModelViewSet):
+    serializer_class = ContactTypeChoiceSerializer
+    queryset = ContactTypeChoice.objects.all()
+    permission_classes = [IsAuthenticated]
+
+    def handle_exception(self, exc):
+        response = super().handle_exception(exc)
+        if response.status_code == 401:
+            return response
+
+        # If there is a DRF validation error, reformat it
+        if response is not None and isinstance(response.data, dict):
+            errors = {field: messages for field,
+                      messages in response.data.items()}
+            return Response(
+                {"errors": errors},
+                status=response.status_code,
+            )
+        return response
+
+
+class AddressTypeChoiceViewSet(ModelViewSet):
+    serializer_class = AddressTypeChoiceSerializer
+    queryset = AddressTypeChoice.objects.all()
+    permission_classes = [IsAuthenticated]
+
+    def handle_exception(self, exc):
+        response = super().handle_exception(exc)
+        if response.status_code == 401:
+            return response
+
+        # If there is a DRF validation error, reformat it
+        if response is not None and isinstance(response.data, dict):
+            errors = {field: messages for field,
+                      messages in response.data.items()}
+            return Response(
+                {"errors": errors},
+                status=response.status_code,
+            )
+        return response
+
+
+class DocumentTypeChoiceViewSet(ModelViewSet):
+    serializer_class = DocumentTypeChoiceSerializer
+    queryset = DocumentTypeChoice.objects.all()
+    permission_classes = [IsAuthenticated]
+
+    def handle_exception(self, exc):
+        response = super().handle_exception(exc)
+        if response.status_code == 401:
+            return response
+
+        # If there is a DRF validation error, reformat it
+        if response is not None and isinstance(response.data, dict):
+            errors = {field: messages for field,
+                      messages in response.data.items()}
+            return Response(
+                {"errors": errors},
+                status=response.status_code,
+            )
+        return response
+
+
+class SpouseStatusChoiceViewSet(ModelViewSet):
+    serializer_class = SpouseStatusChoiceSerializer
+    queryset = SpouseStatusChoice.objects.all()
+    permission_classes = [IsAuthenticated]
+
+    def handle_exception(self, exc):
+        response = super().handle_exception(exc)
+        if response.status_code == 401:
+            return response
+
+        # If there is a DRF validation error, reformat it
+        if response is not None and isinstance(response.data, dict):
+            errors = {field: messages for field,
+                      messages in response.data.items()}
+            return Response(
+                {"errors": errors},
+                status=response.status_code,
+            )
+        return response
+
+
+class DescendantRelationChoiceViewSet(ModelViewSet):
+    serializer_class = DescendantRelationChoiceSerializer
+    queryset = DescendantRelationChoice.objects.all()
+    permission_classes = [IsAuthenticated]
+
+    def handle_exception(self, exc):
+        response = super().handle_exception(exc)
+        if response.status_code == 401:
+            return response
+
+        # If there is a DRF validation error, reformat it
+        if response is not None and isinstance(response.data, dict):
+            errors = {field: messages for field,
+                      messages in response.data.items()}
+            return Response(
+                {"errors": errors},
+                status=response.status_code,
+            )
+        return response

@@ -65,3 +65,33 @@ class EmailTypeChoiceSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmailTypeChoice
         fields = "__all__"
+
+
+class ContactTypeChoiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContactTypeChoice
+        fields = "__all__"
+
+
+class AddressTypeChoiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AddressTypeChoice
+        fields = "__all__"
+
+
+class DocumentTypeChoiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DocumentTypeChoice
+        fields = "__all__"
+
+
+class SpouseStatusChoiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SpouseStatusChoice
+        fields = "__all__"
+
+
+class DescendantRelationChoiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DescendantRelationChoice
+        fields = "__all__"
