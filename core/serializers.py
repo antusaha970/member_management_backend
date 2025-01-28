@@ -41,3 +41,9 @@ class GenderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Gender
         fields = "__all__"
+
+
+class MembershipStatusChoiceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MembershipStatusChoice
+        fields = "__all__"
