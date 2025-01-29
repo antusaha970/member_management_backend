@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import environ
 environ.Env.read_env()
@@ -102,9 +103,12 @@ USE_I18N = True
 
 USE_TZ = True
 
-
+## File system settings ##
 STATIC_URL = 'static/'
-
+# Media files (uploaded files)
+MEDIA_URL = '/media/'  # URL prefix for media files
+# File system path to media directory
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -116,7 +120,7 @@ REST_FRAMEWORK = {
     ],
 }
 
-
+## SMTP settings ##
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_USE_TLS = True
@@ -124,5 +128,5 @@ EMAIL_PORT = 587
 EMAIL_HOST_USER = env("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")
 
-
+## Auth model settings ##
 AUTH_USER_MODEL = 'account.CustomUser'
