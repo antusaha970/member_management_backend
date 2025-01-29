@@ -9,7 +9,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 import pdb
-from .tasks import add
+from .tasks import send_otp_mail_to_email
 
 
 class AccountRegistrationView(APIView):
@@ -48,7 +48,6 @@ class AccountLoginView(APIView):
         """
         Login to an account with valid data.
         """
-        add.delay(1, 2)
         data = request.data
         serializer = LoginSerializer(data=data)
         if serializer.is_valid():
@@ -99,8 +98,8 @@ class ForgetPasswordView(APIView):
             else:
                 # If new user Create OTP Model
                 OTP.objects.create(user=user, otp=otp)
-            send_mail("OTP for changing password",
-                      f"Your OTP is {otp}", "ahmedsalauddin677785@gmail.com", [user.email])  # Send mail
+                # initiate CELERY to send mail
+                send_otp_mail_to_email.delay_on_commit(otp, user.email)
             return Response({
                 "status": "success",
                 "details": "OTP send successful"
