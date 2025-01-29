@@ -215,3 +215,10 @@ class MemberIdSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 f"{value} is not a valid membership type")
         return value
+
+
+class MemberSerializerForViewSingleMember(serializers.ModelSerializer):
+    class Meta:
+        model = Member
+        fields = "__all__"
+        depth = 1

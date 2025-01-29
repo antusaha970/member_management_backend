@@ -99,6 +99,17 @@ class MemberView(APIView):
         except Exception as server_error:
             return Response({'detail': "Internal Server Error", 'error_message': str(server_error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    def get(self, request, member_id):
+        member = get_object_or_404(Member, member_ID=member_id)
+        try:
+            serializer = serializers.MemberSerializerForViewSingleMember(
+                member)
+            return Response({
+                'data': serializer.data
+            })
+        except Exception as server_error:
+            return Response({'detail': "Internal Server Error", 'error_message': str(server_error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class MemberIdView(APIView):
     permission_classes = [IsAuthenticated]
