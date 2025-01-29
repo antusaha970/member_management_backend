@@ -104,6 +104,13 @@ class MemberView(APIView):
         member_financial_basics = get_object_or_404(
             MembersFinancialBasics, member=member)  # get member financial data
         try:
+            # check if member status is deleted or not
+            if member.status == 2:
+                return Response({
+                    'errors': {
+                        'member_ID': [f"{member_id} member has been deleted"]
+                    }
+                }, status=status.HTTP_204_NO_CONTENT)
             # pass the data to the serializers
             member_serializer = serializers.MemberSerializerForViewSingleMember(
                 member)
