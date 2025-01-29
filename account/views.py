@@ -10,6 +10,12 @@ from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 import pdb
 from .tasks import send_otp_mail_to_email
+import environ
+from datetime import timedelta
+
+
+environ.Env.read_env()
+env = environ.Env()
 
 
 class AccountRegistrationView(APIView):
@@ -32,6 +38,15 @@ class AccountRegistrationView(APIView):
             response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
             response["Pragma"] = "no-cache"
             response["Expires"] = "0"
+            # set cookie
+            response.set_cookie(
+                'auth_token',
+                str(token),
+                httponly=True,
+                secure=env("COOKIE_SECURE") == "True",
+                max_age=timedelta(days=7).total_seconds()
+            )
+
             return response
         else:
             return Response(
@@ -68,6 +83,14 @@ class AccountLoginView(APIView):
             response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
             response["Pragma"] = "no-cache"
             response["Expires"] = "0"
+            # set cookie
+            response.set_cookie(
+                'auth_token',
+                str(token),
+                httponly=True,
+                secure=env("COOKIE_SECURE") == "True",
+                max_age=timedelta(days=7).total_seconds()
+            )
             return response
 
         else:
