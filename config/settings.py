@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'django_cleanup',
+    'django_celery_results',
     # Custom application
     'account',
     'club',
@@ -130,3 +131,13 @@ EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")
 
 ## Auth model settings ##
 AUTH_USER_MODEL = 'account.CustomUser'
+
+
+# Celery settings
+CELERY_BROKER_URL = 'redis://127.0.0.1:6379'  # Redis as the message broker
+CELERY_RESULT_BACKEND = 'django-db'  # Store task results in Redis
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'Asia/Dhaka'  # Set the timezone for Celery
+CELERY_TASK_REJECT_ON_WORKER_LOST = True  # Retry tasks if a worker crashes

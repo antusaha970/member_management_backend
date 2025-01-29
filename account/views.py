@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 import pdb
+from .tasks import add
 
 
 class AccountRegistrationView(APIView):
@@ -47,6 +48,7 @@ class AccountLoginView(APIView):
         """
         Login to an account with valid data.
         """
+        add.delay(1, 2)
         data = request.data
         serializer = LoginSerializer(data=data)
         if serializer.is_valid():
