@@ -12,4 +12,5 @@ urlpatterns = [
     path('v1/verify_otp/', views.VerifyOtpView.as_view(), name="verify_otp"),
     path('v1/custom_permission_name/', views.CustomPermissionView.as_view(), name="custom_permission_name"),
     path('v1/group_permission_create/', views.GroupPermissionView.as_view(), name="group_permission_create"),
+    path('v1/assign_group/', views.AssignGroupPermissionView.as_view(), name="assign_group"),
 ]

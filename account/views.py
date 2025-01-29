@@ -12,7 +12,8 @@ from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 import pdb
 from django.contrib.auth.models import Group,Permission
-
+from .permissions import HasCustomPermission
+from rest_framework.permissions import IsAuthenticated
 class AccountRegistrationView(APIView):
     def post(self, request):
         """
@@ -180,7 +181,54 @@ class VerifyOtpView(APIView):
                 status=500
             )
 
+
+
+
+class GroupPermissionView(APIView):
+    
+    def post(self, request):
+        data = request.data
+        serializer = GroupModelSerializer(data=data)
+        if serializer.is_valid():
+            group = serializer.save()
+            permissions = group.permission.all()
+            permission_ids = [perm.id for perm in permissions]
+            
+            return Response({
+                "group_id": group.id,
+                "name": group.name,
+                "permission": permission_ids  
+            }, status=status.HTTP_201_CREATED)
+        else:
+            return Response({
+                "errors": serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+   
+
+class ViewMemberPermission(HasCustomPermission):
+    required_permission = "view_member"
+
+class DeleteMemberPermission(HasCustomPermission):
+    required_permission = "delete_member"
+
+class AddMemberPermission(HasCustomPermission):
+    required_permission = "add_member"
+
+class UpdateMemberPermission(HasCustomPermission):
+    required_permission = "update_member"
+
+
 class CustomPermissionView(APIView):
+    permission_classes=[IsAuthenticated]
+    # def get_permissions(self):
+    #     # Assign method-specific permissions
+    #     if self.request.method == 'POST':
+    #         self.permission_classes = [IsAuthenticated, AddMemberPermission]
+    #     elif self.request.method == 'GET':
+    #         self.permission_classes = [IsAuthenticated]
+        
+    #     return super().get_permissions()
     def post(self, request):
         data = request.data
         serializer = CustomPermissionSerializer(data=data)
@@ -214,33 +262,31 @@ class CustomPermissionView(APIView):
             return Response({
                 "errors": str(e)  
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            
-class GroupPermissionView(APIView):
-    def post(self, request):
+      
+      
+
+
+class AssignGroupPermissionView(APIView):
+    permission_classes = [IsAuthenticated ]
+    def post(self,request):
         data = request.data
-        permission=request.data.get("permission")
-        permission = request.data.get("permission")
-        if not permission:
-            return Response({"errors": "permission field must be needed"}, status=status.HTTP_400_BAD_REQUEST)
-        if not isinstance(permission, list):
-            return Response({"errors": "Permission must be a list"}, status=status.HTTP_400_BAD_REQUEST)
-        print(data)  
-        serializer = GroupModelSerializer(data=data)
-        
+        print(data)
+        serializer=AssignGroupPermissionSerializer(data=data)
         if serializer.is_valid():
-            group = serializer.save()
-            
-            permissions = group.permission.all()
-            permission_ids = [perm.id for perm in permissions]
-            
+            serializer.save()
+            group=serializer.validated_data.get("group")
+            print(group)
+            user=serializer.validated_data.get("user")
+            groups_ids = [gro.id for gro in group]
             return Response({
-                "group_id": group.id,
-                "name": group.name,
-                "permission": permission_ids  
+                "user":user.id ,
+                "groups": groups_ids 
             }, status=status.HTTP_201_CREATED)
+        
         else:
             return Response({
                 "errors": serializer.errors
             }, status=status.HTTP_400_BAD_REQUEST)
             
-       
+            
+         

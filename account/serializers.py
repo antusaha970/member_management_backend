@@ -179,16 +179,16 @@ class GroupModelSerializer(serializers.Serializer):
 
  
 class AssignGroupPermissionSerializer(serializers.Serializer):
-    user = serializers.PrimaryKeyRelatedField(queryset=get_user_model().objects.all(), many=True,required=True)
-    group = serializers.PrimaryKeyRelatedField(queryset=GroupModel.objects.all(), many=True,required=True)
-    permission = serializers.PrimaryKeyRelatedField(queryset=PermissonModel.objects.all(), many=True,required=True)
+    user = serializers.PrimaryKeyRelatedField(queryset=get_user_model().objects.all(), required=True)
+    group = serializers.PrimaryKeyRelatedField(queryset=GroupModel.objects.all(), many=True, required=True)
 
     
+    
     def create(self, validated_data):
-        user=self.validated_data.get("user")
-        group=self.validated_data.get("group")
-        permission=self.validated_data.get("permission")
+        groups = validated_data.pop('group')
         
-        assign_group_permission=AssignGroupPermission.objects.create(**validated_data)
-        assign_group_permission.user.set(user=user)
-        return 
+        assign_group_permission = AssignGroupPermission.objects.create(**validated_data)
+        
+        assign_group_permission.group.set(groups)
+        
+        return assign_group_permission
