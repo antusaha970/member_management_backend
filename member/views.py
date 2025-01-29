@@ -101,11 +101,17 @@ class MemberView(APIView):
 
     def get(self, request, member_id):
         member = get_object_or_404(Member, member_ID=member_id)
+        member_financial_basics = get_object_or_404(
+            MembersFinancialBasics, member=member)
         try:
-            serializer = serializers.MemberSerializerForViewSingleMember(
+            member_serializer = serializers.MemberSerializerForViewSingleMember(
                 member)
+            member_financial_basics_serializer = serializers.MembersFinancialBasicsSerializerForViewSingleMember(
+                member_financial_basics)
+            data = {**member_serializer.data, **
+                    member_financial_basics_serializer.data}
             return Response({
-                'data': serializer.data
+                'data': data
             })
         except Exception as server_error:
             return Response({'detail': "Internal Server Error", 'error_message': str(server_error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

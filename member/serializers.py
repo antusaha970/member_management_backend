@@ -222,3 +222,9 @@ class MemberSerializerForViewSingleMember(serializers.ModelSerializer):
         model = Member
         fields = "__all__"
         depth = 1
+
+
+class MembersFinancialBasicsSerializerForViewSingleMember(serializers.ModelSerializer):
+    class Meta:
+        model = MembersFinancialBasics
+        exclude = ['id', 'member', 'status', 'created_at', 'updated_at']
