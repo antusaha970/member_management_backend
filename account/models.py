@@ -31,3 +31,21 @@ class AccountTestModel(models.Model):
 
 class PermissonModel(models.Model):
     name=models.CharField(max_length=250,unique=True)
+    
+    def __str__(self):
+        return self.name
+class GroupModel(models.Model):
+    name=models.CharField(max_length=250,unique=True)
+    permission=models.ManyToManyField(PermissonModel,related_name="groups")
+    
+    def __str__(self):
+        return self.name
+    
+class AssignGroupPermission(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, related_name="custom_user",null=True,blank=True)
+    group= models.ForeignKey(GroupModel,on_delete=models.SET_NULL,related_name="groups",null=True,blank=True)
+    permission= models.ManyToManyField(PermissonModel,related_name="permissions")
+    
+    def __str__(self):
+        
+        return f"{self.user.username}"

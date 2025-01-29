@@ -8,7 +8,7 @@ from django.contrib.auth import get_user_model
 from club.models import Club
 import pdb
 from django.contrib.auth.models import Group,Permission
-from .models import PermissonModel
+from .models import PermissonModel,GroupModel,AssignGroupPermission
 class RegistrationSerializer(serializers.ModelSerializer):
     name = serializers.CharField()
 
@@ -135,7 +135,7 @@ class CustomPermissionSerializer(serializers.Serializer):
             raise serializers.ValidationError("The name cannot contain 'admin' or 'user'.")
 
         if PermissonModel.objects.filter(name=value.replace(' ','_').lower()).exists():
-            raise serializers.ValidationError("Permission with this name already exists.")
+            raise serializers.ValidationError(f"Permission with this name {value} already exists.")
 
         return value
     
@@ -144,3 +144,51 @@ class CustomPermissionSerializer(serializers.Serializer):
         permission = PermissonModel.objects.create(name=name.replace(' ','_').lower())
             
         return permission
+
+class CustomPermissionSerializerForView(serializers.ModelSerializer):
+    class Meta:
+        model=PermissonModel
+        fields="__all__"   
+
+class GroupModelSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=250, required=True)
+    permission = serializers.PrimaryKeyRelatedField(queryset=PermissonModel.objects.all(), many=True,required=True)
+
+    def validate_name(self,value):
+        name=value.replace(' ','_').lower()
+        if  GroupModel.objects.filter(name=name).exists():
+            raise serializers.ValidationError(f"Group with this name {value} already exists.")
+
+        return name
+    
+    def create(self, validated_data):
+        permissions_data = validated_data.pop('permission')
+        group = GroupModel.objects.create(**validated_data)
+        group.permission.set(permissions_data)
+        return group
+
+    # def update(self, instance, validated_data):
+    #     instance.name = validated_data.get('name', instance.name)
+        
+    #     if 'permission' in validated_data:
+    #         permissions_data = validated_data.pop('permission')
+    #         instance.permission.set(permissions_data)
+        
+    #     instance.save()
+    #     return instance
+
+ 
+class AssignGroupPermissionSerializer(serializers.Serializer):
+    user = serializers.PrimaryKeyRelatedField(queryset=get_user_model().objects.all(), many=True,required=True)
+    group = serializers.PrimaryKeyRelatedField(queryset=GroupModel.objects.all(), many=True,required=True)
+    permission = serializers.PrimaryKeyRelatedField(queryset=PermissonModel.objects.all(), many=True,required=True)
+
+    
+    def create(self, validated_data):
+        user=self.validated_data.get("user")
+        group=self.validated_data.get("group")
+        permission=self.validated_data.get("permission")
+        
+        assign_group_permission=AssignGroupPermission.objects.create(**validated_data)
+        assign_group_permission.user.set(user=user)
+        return 

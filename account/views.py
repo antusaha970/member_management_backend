@@ -4,7 +4,9 @@ from random import randint
 from .models import OTP
 from rest_framework.authtoken.models import Token
 from rest_framework import status
-from .serializers import RegistrationSerializer, LoginSerializer, ForgetPasswordSerializer, ResetPasswordSerializer,CustomPermissionSerializer
+from .serializers import *
+
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
@@ -197,3 +199,48 @@ class CustomPermissionView(APIView):
                 "errors":serializer.errors
             }
             , status=status.HTTP_400_BAD_REQUEST)
+    
+    def get(self, request):
+        try:
+            all_permission = PermissonModel.objects.all()
+            
+            serializer = CustomPermissionSerializerForView(all_permission, many=True)
+            
+            return Response(
+                serializer.data
+            , status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return Response({
+                "errors": str(e)  
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+class GroupPermissionView(APIView):
+    def post(self, request):
+        data = request.data
+        permission=request.data.get("permission")
+        permission = request.data.get("permission")
+        if not permission:
+            return Response({"errors": "permission field must be needed"}, status=status.HTTP_400_BAD_REQUEST)
+        if not isinstance(permission, list):
+            return Response({"errors": "Permission must be a list"}, status=status.HTTP_400_BAD_REQUEST)
+        print(data)  
+        serializer = GroupModelSerializer(data=data)
+        
+        if serializer.is_valid():
+            group = serializer.save()
+            
+            permissions = group.permission.all()
+            permission_ids = [perm.id for perm in permissions]
+            
+            return Response({
+                "group_id": group.id,
+                "name": group.name,
+                "permission": permission_ids  
+            }, status=status.HTTP_201_CREATED)
+        else:
+            return Response({
+                "errors": serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+       
