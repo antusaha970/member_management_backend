@@ -24,7 +24,7 @@ class MemberView(APIView):
                 with transaction.atomic():
                     member = member_serializer.save()
                     member_financial_basics_serializer.save(
-                        member_ID=member.member_ID)
+                        member_ID=member.member_ID, club=member.club.id)
 
                     return Response({
                         'data': {

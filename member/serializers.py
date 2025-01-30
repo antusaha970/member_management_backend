@@ -173,8 +173,10 @@ class MembersFinancialBasicsSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         member_ID = validated_data.pop("member_ID")
+        club = validated_data.pop("club")
+        club = Club.objects.get(pk=club)
         member = Member.objects.get(member_ID=member_ID)
-        member_financial_basics = MembersFinancialBasics.objects.create(member=member,
+        member_financial_basics = MembersFinancialBasics.objects.create(club=club, member=member,
                                                                         **validated_data)
 
         return member_financial_basics

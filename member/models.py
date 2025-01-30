@@ -68,7 +68,8 @@ class MembersFinancialBasics(models.Model):
     # relations
     member = models.ForeignKey(
         Member, related_name='members_financial_basics', on_delete=models.RESTRICT)
-
+    club = models.ForeignKey(Club, related_name="member_financial_basics_club",
+                             on_delete=models.RESTRICT)
     # Record keeping
     status = models.IntegerField(choices=STATUS_CHOICES, default=0)
     created_at = models.DateTimeField(auto_now_add=True)
