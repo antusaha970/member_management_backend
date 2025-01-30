@@ -28,3 +28,34 @@ class OTP(models.Model):
 
 class AccountTestModel(models.Model):
     name = models.TextField()
+
+
+# Authrization code
+
+
+class PermissonModel(models.Model):
+    name = models.CharField(max_length=250, unique=True)
+
+    def __str__(self):
+        return self.name
+
+
+class GroupModel(models.Model):
+    name = models.CharField(max_length=250, unique=True)
+    permission = models.ManyToManyField(PermissonModel, related_name="group")
+
+    def __str__(self):
+        return self.name
+
+
+class AssignGroupPermission(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+                             related_name="custom_user", null=True, blank=True)
+    group = models.ManyToManyField(GroupModel, related_name="group")
+
+    def __str__(self):
+        groups_all = self.group.all()
+        group_name = ""
+        for grp in groups_all:
+            group_name = group_name + f"{grp}"
+        return f"{self.user.username}  {group_name}"

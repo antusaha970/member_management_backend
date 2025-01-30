@@ -12,7 +12,9 @@ import pdb
 from .tasks import send_otp_mail_to_email
 import environ
 from datetime import timedelta
-
+from .permissions import HasCustomPermission
+from .serializers import *
+from rest_framework.permissions import IsAuthenticated
 
 environ.Env.read_env()
 env = environ.Env()
@@ -220,3 +222,109 @@ class VerifyOtpView(APIView):
                 },
                 status=500
             )
+
+
+# Auth Views form Authorization
+class ViewMemberPermission(HasCustomPermission):
+    required_permission = "view_member"
+
+
+class DeleteMemberPermission(HasCustomPermission):
+    required_permission = "delete_member"
+
+
+class AddMemberPermission(HasCustomPermission):
+    required_permission = "add_member"
+
+
+class UpdateMemberPermission(HasCustomPermission):
+    required_permission = "update_member"
+
+
+class GroupPermissionView(APIView):
+
+    def post(self, request):
+        data = request.data
+        serializer = GroupModelSerializer(data=data)
+        if serializer.is_valid():
+            group = serializer.save()
+            permissions = group.permission.all()
+            permission_ids = [perm.id for perm in permissions]
+
+            return Response({
+                "group_id": group.id,
+                "name": group.name,
+                "permission": permission_ids
+            }, status=status.HTTP_201_CREATED)
+        else:
+            return Response({
+                "errors": serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CustomPermissionView(APIView):
+    permission_classes = [IsAuthenticated]
+    # def get_permissions(self):
+    #     # Assign method-specific permissions
+    #     if self.request.method == 'POST':
+    #         self.permission_classes = [IsAuthenticated, AddMemberPermission]
+    #     elif self.request.method == 'GET':
+    #         self.permission_classes = [IsAuthenticated]
+
+    #     return super().get_permissions()
+    def post(self, request):
+        data = request.data
+        serializer = CustomPermissionSerializer(data=data)
+
+        if serializer.is_valid():
+            permission = serializer.save()
+            name = serializer.validated_data["name"]
+
+            return Response({
+                "id": permission.id,
+                "permission_name": name
+            }, status=status.HTTP_201_CREATED)
+
+        return Response(
+            {
+                "errors": serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+    def get(self, request):
+        try:
+            all_permission = PermissonModel.objects.all()
+
+            serializer = CustomPermissionSerializerForView(
+                all_permission, many=True)
+
+            return Response(
+                serializer.data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                "errors": str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class AssignGroupPermissionView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        data = request.data
+        print(data)
+        serializer = AssignGroupPermissionSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            group = serializer.validated_data.get("group")
+            print(group)
+            user = serializer.validated_data.get("user")
+            groups_ids = [gro.id for gro in group]
+            return Response({
+                "user": user.id,
+                "groups": groups_ids
+            }, status=status.HTTP_201_CREATED)
+
+        else:
+            return Response({
+                "errors": serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
