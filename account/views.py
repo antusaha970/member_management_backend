@@ -26,6 +26,7 @@ class AccountRegistrationView(APIView):
         data = request.data
         serializer = RegistrationSerializer(data=data)
         if serializer.is_valid():
+            remember_me = serializer.validated_data['remember_me']
             user = serializer.save()
             token, _ = Token.objects.get_or_create(user=user)
 
@@ -39,12 +40,13 @@ class AccountRegistrationView(APIView):
             response["Pragma"] = "no-cache"
             response["Expires"] = "0"
             # set cookie
+            time_limit_for_cookie = 30 if remember_me == True else 7
             response.set_cookie(
                 'auth_token',
                 str(token),
                 httponly=True,
                 secure=env("COOKIE_SECURE") == "True",
-                max_age=timedelta(days=7).total_seconds()
+                max_age=timedelta(days=time_limit_for_cookie).total_seconds()
             )
 
             return response
@@ -68,6 +70,7 @@ class AccountLoginView(APIView):
         if serializer.is_valid():
             username = serializer.validated_data['username']
             password = serializer.validated_data['password']
+            remember_me = serializer.validated_data['remember_me']
             user = get_user_model().objects.get(username=username)
             user.set_password(password)
             user.save()
@@ -84,12 +87,13 @@ class AccountLoginView(APIView):
             response["Pragma"] = "no-cache"
             response["Expires"] = "0"
             # set cookie
+            time_limit_for_cookie = 30 if remember_me == True else 7
             response.set_cookie(
                 'auth_token',
                 str(token),
                 httponly=True,
                 secure=env("COOKIE_SECURE") == "True",
-                max_age=timedelta(days=7).total_seconds()
+                max_age=timedelta(days=time_limit_for_cookie).total_seconds()
             )
             return response
 

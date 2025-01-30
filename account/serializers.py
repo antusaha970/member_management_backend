@@ -11,10 +11,12 @@ import pdb
 
 class RegistrationSerializer(serializers.ModelSerializer):
     name = serializers.CharField()
+    remember_me = serializers.BooleanField(default=False)
 
     class Meta:
         model = get_user_model()
-        fields = ['username', 'password', 'email', 'name', 'club']
+        fields = ['username', 'password', 'email',
+                  'name', 'club', 'remember_me']
         extra_kwargs = {
             "name": {
                 "required": True,
@@ -64,6 +66,7 @@ class RegistrationSerializer(serializers.ModelSerializer):
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField()
+    remember_me = serializers.BooleanField(default=False)
 
     def validate(self, attrs):
         username = attrs.get('username')
