@@ -141,3 +141,22 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'Asia/Dhaka'  # Set the timezone for Celery
 CELERY_TASK_REJECT_ON_WORKER_LOST = True  # Retry tasks if a worker crashes
+
+
+### CACHING SETTINGS ###
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379",  # Redis instance
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            # Optional: Enable compression
+            "COMPRESSOR": "django_redis.compressors.zlib.ZlibCompressor",
+            "SOCKET_TIMEOUT": 10,  # Timeout in seconds
+            "SOCKET_CONNECT_TIMEOUT": 10,
+            "PASSWORD": None,  # Add password if Redis is secured
+            "PARSER_CLASS": "redis.connection.HiredisParser",
+            "CONNECTION_POOL_CLASS": "redis.ConnectionPool",
+        },
+    }
+}
