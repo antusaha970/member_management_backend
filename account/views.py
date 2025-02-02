@@ -402,6 +402,7 @@ class AssignGroupPermissionView(APIView):
             assign_group = AssignGroupPermission.objects.get(user=user)
             assign_group.group.remove(group)
             assign_group.save()
+            clear_user_permissions_cache()
             return Response({"detail": "User removed from group successfully."}, status=status.HTTP_200_OK)
         else:
             return Response({'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
