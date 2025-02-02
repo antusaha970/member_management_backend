@@ -180,16 +180,6 @@ class GroupModelSerializer(serializers.Serializer):
         group.permission.set(permissions_data)
         return group
 
-    # def update(self, instance, validated_data):
-    #     instance.name = validated_data.get('name', instance.name)
-
-    #     if 'permission' in validated_data:
-    #         permissions_data = validated_data.pop('permission')
-    #         instance.permission.set(permissions_data)
-
-    #     instance.save()
-    #     return instance
-
 
 class AssignGroupPermissionSerializer(serializers.Serializer):
     user = serializers.PrimaryKeyRelatedField(
@@ -206,3 +196,10 @@ class AssignGroupPermissionSerializer(serializers.Serializer):
         assign_group_permission.group.set(groups)
 
         return assign_group_permission
+
+
+class GroupSerializerForViewAllGroups(serializers.ModelSerializer):
+    class Meta:
+        model = GroupModel
+        fields = "__all__"
+        depth = 1

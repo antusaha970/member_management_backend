@@ -242,6 +242,7 @@ class UpdateMemberPermission(HasCustomPermission):
 
 
 class GroupPermissionView(APIView):
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         data = request.data
@@ -260,6 +261,18 @@ class GroupPermissionView(APIView):
             return Response({
                 "errors": serializer.errors
             }, status=status.HTTP_400_BAD_REQUEST)
+
+    def get(self, request):
+        try:
+            data = GroupModel.objects.all()
+            serializer = GroupSerializerForViewAllGroups(data, many=True)
+            return Response({
+                'data': serializer.data
+            })
+        except Exception as e:
+            return Response({
+                'errors': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class CustomPermissionView(APIView):
@@ -311,12 +324,10 @@ class AssignGroupPermissionView(APIView):
 
     def post(self, request):
         data = request.data
-        print(data)
         serializer = AssignGroupPermissionSerializer(data=data)
         if serializer.is_valid():
             serializer.save()
             group = serializer.validated_data.get("group")
-            print(group)
             user = serializer.validated_data.get("user")
             groups_ids = [gro.id for gro in group]
             return Response({
