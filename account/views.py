@@ -288,7 +288,6 @@ class GroupPermissionView(APIView):
         try:
             data = GroupModel.objects.all()
             serializer = GroupSerializerForViewAllGroups(data, many=True)
-            x
             return Response({
                 'data': serializer.data
             })
@@ -389,7 +388,7 @@ class AssignGroupPermissionView(APIView):
             for gro in group:
                 groups_data.append(
                     {"group_id": gro.id, "group_name": gro.name})
-
+            clear_user_permissions_cache()
             return Response({
                 "user_id": user.id,
                 "groups": groups_data
