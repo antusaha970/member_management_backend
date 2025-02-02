@@ -244,25 +244,6 @@ class UserView(APIView):
             return Response({'errors': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# Auth Views form Authorization
-
-
-class ViewMemberPermission(HasCustomPermission):
-    required_permission = "view_member"
-
-
-class DeleteMemberPermission(HasCustomPermission):
-    required_permission = "delete_member"
-
-
-class AddMemberPermission(HasCustomPermission):
-    required_permission = "add_member"
-
-
-class UpdateMemberPermission(HasCustomPermission):
-    required_permission = "update_member"
-
-
 class GroupPermissionView(APIView):
     permission_classes = [IsAuthenticated]
 

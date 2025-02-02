@@ -7,6 +7,7 @@ from rest_framework import status
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from .models import Member, MembersFinancialBasics
+from .utils.permission_classes import ViewMemberPermission
 
 
 class MemberView(APIView):
@@ -127,7 +128,7 @@ class MemberView(APIView):
 
 
 class MemberIdView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, ViewMemberPermission]
 
     def post(self, request):
         try:
