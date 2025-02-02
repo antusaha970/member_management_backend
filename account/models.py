@@ -30,7 +30,7 @@ class AccountTestModel(models.Model):
     name = models.TextField()
 
 
-# Authrization code
+# authorization Model
 
 
 class PermissonModel(models.Model):
@@ -42,7 +42,7 @@ class PermissonModel(models.Model):
 
 class GroupModel(models.Model):
     name = models.CharField(max_length=250, unique=True)
-    permission = models.ManyToManyField(PermissonModel, related_name="group")
+    permission = models.ManyToManyField(PermissonModel)
 
     def __str__(self):
         return self.name
@@ -51,7 +51,7 @@ class GroupModel(models.Model):
 class AssignGroupPermission(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
                              related_name="custom_user", null=True, blank=True)
-    group = models.ManyToManyField(GroupModel, related_name="group")
+    group = models.ManyToManyField(GroupModel)
 
     def __str__(self):
         groups_all = self.group.all()
