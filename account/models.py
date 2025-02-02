@@ -58,4 +58,4 @@ class AssignGroupPermission(models.Model):
         group_name = ""
         for grp in groups_all:
             group_name = group_name + f"{grp}"
-        return f"{self.user.username}  {group_name}"
+        return f"{self.user.username} - {group_name}"

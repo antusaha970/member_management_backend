@@ -197,9 +197,15 @@ class AssignGroupPermissionSerializer(serializers.Serializer):
 
         return assign_group_permission
 
-
 class GroupSerializerForViewAllGroups(serializers.ModelSerializer):
     class Meta:
         model = GroupModel
         fields = "__all__"
         depth = 1
+              
+class AssignGroupPermissionSerializerForView(serializers.Serializer):
+    
+    class Meta:
+        model= AssignGroupPermission
+        fields="__all__"
+        depth=1

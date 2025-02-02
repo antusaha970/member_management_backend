@@ -14,6 +14,6 @@ urlpatterns = [
          views.CustomPermissionView.as_view(), name="custom_permission_name"),
     path('v1/group_permission_create/',
          views.GroupPermissionView.as_view(), name="group_permission_create"),
-    path('v1/assign_group/', views.AssignGroupPermissionView.as_view(),
+    path('v1/authorization/assign_group_user/', views.AssignGroupPermissionView.as_view(),
          name="assign_group"),
 ]
