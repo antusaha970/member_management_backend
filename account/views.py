@@ -378,4 +378,32 @@ class AssignGroupPermissionView(APIView):
         except Exception as e:
             return Response({"errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    
+    def patch(self, request):
+        try:
+            data = request.data
+            user=data.get("user")
+            group=data.get("group")
+            if not user:
+                return Response({"errors":"user field must be needed"},status=status.HTTP_400_BAD_REQUEST)
+            if not group:
+                return Response({"errors":"group field must be needed"},status=status.HTTP_400_BAD_REQUEST)
+            
+            instance = AssignGroupPermission.objects.get(user=user)
+            serializer = AssignGroupPermissionSerializer(instance, data=data, partial=True)
+            if serializer.is_valid():
+                serializer.save()  
+                user_id = serializer.validated_data["user"].id
+                groups = serializer.validated_data["group"]
+                groups_data = [{"group_id": gro.id, "group_name": gro.name} for gro in groups]
+                clear_user_permissions_cache()
+                return Response({
+                    "user_id": user_id,
+                    "updated_groups": groups_data
+                }, status=status.HTTP_200_OK)
+            else:
+                return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+        except AssignGroupPermission.DoesNotExist:
+            return Response({"errors": "User not found in AssignGroupPermission"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"errors":str(e)}, status=status.HTTP_400_BAD_REQUEST)

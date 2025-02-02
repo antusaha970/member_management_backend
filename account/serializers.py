@@ -196,6 +196,12 @@ class AssignGroupPermissionSerializer(serializers.Serializer):
         assign_group_permission.group.set(groups)
 
         return assign_group_permission
+    
+    def update(self, instance, validated_data):
+        groups = validated_data.get('group', [])
+        instance.group.set(groups)  
+        instance.save()
+        return instance
 
 class GroupSerializerForViewAllGroups(serializers.ModelSerializer):
     class Meta:
