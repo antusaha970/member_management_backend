@@ -9,7 +9,18 @@ from club.models import Club
 from .models import *
 import pdb
 
+# user serializes
 
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = get_user_model()
+        exclude = ["password", "last_login",
+                   "is_superuser", "groups", "user_permissions"]
+        depth = 1
+
+
+# Authentication serializers
 class RegistrationSerializer(serializers.ModelSerializer):
     name = serializers.CharField()
     remember_me = serializers.BooleanField(default=False)

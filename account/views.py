@@ -22,6 +22,8 @@ environ.Env.read_env()
 env = environ.Env()
 
 
+# Authentication views
+
 class AccountRegistrationView(APIView):
     def post(self, request):
         """
@@ -225,8 +227,26 @@ class VerifyOtpView(APIView):
                 status=500
             )
 
+# Authentication views
+
+# User views
+
+
+class UserView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            data = get_user_model().objects.all()
+            serializer = UserSerializer(data, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            return Response({'errors': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 # Auth Views form Authorization
+
+
 class ViewMemberPermission(HasCustomPermission):
     required_permission = "view_member"
 
