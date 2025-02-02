@@ -251,3 +251,11 @@ class DeleteUserFromGroupSerializer(serializers.Serializer):
             raise serializers.ValidationError("The user is not in this group.")
 
         return value
+
+
+class AssignGroupPermissionSerializerForView(serializers.Serializer):
+
+    class Meta:
+        model = AssignGroupPermission
+        fields = "__all__"
+        depth = 1

@@ -288,6 +288,7 @@ class GroupPermissionView(APIView):
         try:
             data = GroupModel.objects.all()
             serializer = GroupSerializerForViewAllGroups(data, many=True)
+            x
             return Response({
                 'data': serializer.data
             })
@@ -383,10 +384,15 @@ class AssignGroupPermissionView(APIView):
             serializer.save()
             group = serializer.validated_data.get("group")
             user = serializer.validated_data.get("user")
-            groups_ids = [gro.id for gro in group]
+
+            groups_data = []
+            for gro in group:
+                groups_data.append(
+                    {"group_id": gro.id, "group_name": gro.name})
+
             return Response({
-                "user": user.id,
-                "groups": groups_ids
+                "user_id": user.id,
+                "groups": groups_data
             }, status=status.HTTP_201_CREATED)
 
         else:
@@ -409,3 +415,28 @@ class AssignGroupPermissionView(APIView):
                 return Response({'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response({'errors': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def get(self, request):
+        try:
+            data = AssignGroupPermission.objects.all()
+            users_data = []
+            for assign_group in data:
+                user_info = {
+                    "user_id": assign_group.user.id if assign_group.user else None,
+                    "username": assign_group.user.username if assign_group.user else "No User",
+                    "groups": []
+                }
+                for group in assign_group.group.all():
+                    group_info = {
+                        "group_id": group.id,
+                        "group_name": group.name,
+                        "permissions": [
+                            {"permission_id": perm.id, "permission_name": perm.name}
+                            for perm in group.permission.all()
+                        ]
+                    }
+                    user_info["groups"].append(group_info)
+                users_data.append(user_info)
+            return Response({"data": users_data}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
