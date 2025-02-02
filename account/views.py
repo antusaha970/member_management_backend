@@ -393,3 +393,15 @@ class AssignGroupPermissionView(APIView):
             return Response({
                 "errors": serializer.errors
             }, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request):
+        serializer = DeleteUserFromGroupSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.validated_data['user_id']
+            group = serializer.validated_data['group_id']
+            assign_group = AssignGroupPermission.objects.get(user=user)
+            assign_group.group.remove(group)
+            assign_group.save()
+            return Response({"detail": "User removed from group successfully."}, status=status.HTTP_200_OK)
+        else:
+            return Response({'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)

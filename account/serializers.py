@@ -232,3 +232,22 @@ class GroupSerializerForViewAllGroups(serializers.ModelSerializer):
         model = GroupModel
         fields = "__all__"
         depth = 1
+
+
+class DeleteUserFromGroupSerializer(serializers.Serializer):
+    user_id = serializers.PrimaryKeyRelatedField(
+        queryset=get_user_model().objects.all(), required=True)
+    group_id = serializers.PrimaryKeyRelatedField(
+        queryset=GroupModel.objects.all(), required=True)
+
+    def validate_group_id(self, value):
+        user = self.initial_data.get('user_id')
+        user = get_user_model().objects.get(pk=user)
+        # Check if the user is in the group
+        user_in_group = AssignGroupPermission.objects.filter(
+            user=user, group=value
+        ).exists()
+        if not user_in_group:
+            raise serializers.ValidationError("The user is not in this group.")
+
+        return value
