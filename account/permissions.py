@@ -77,7 +77,6 @@ class HasCustomPermission(BasePermission):
     def has_permission(self, request, view):
         if self.required_permission is None:
             return False
-
         user = request.user
         cache_key = f"user_permissions_{user.id}"
 

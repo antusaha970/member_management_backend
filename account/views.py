@@ -15,6 +15,7 @@ from datetime import timedelta
 from .permissions import HasCustomPermission
 from .serializers import *
 from rest_framework.permissions import IsAuthenticated
+from account.utils.functions import clear_user_permissions_cache
 
 environ.Env.read_env()
 env = environ.Env()
@@ -242,7 +243,7 @@ class UpdateMemberPermission(HasCustomPermission):
 
 
 class GroupPermissionView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, AddMemberPermission]
 
     def post(self, request):
         data = request.data
