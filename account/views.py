@@ -16,6 +16,7 @@ from .permissions import HasCustomPermission
 from .serializers import *
 from rest_framework.permissions import IsAuthenticated
 from account.utils.functions import clear_user_permissions_cache
+from django.shortcuts import get_object_or_404
 
 environ.Env.read_env()
 env = environ.Env()
@@ -243,7 +244,7 @@ class UpdateMemberPermission(HasCustomPermission):
 
 
 class GroupPermissionView(APIView):
-    permission_classes = [IsAuthenticated, AddMemberPermission]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         data = request.data
@@ -270,6 +271,38 @@ class GroupPermissionView(APIView):
             return Response({
                 'data': serializer.data
             })
+        except Exception as e:
+            return Response({
+                'errors': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def patch(self, request, group_id):
+        """Update a group with required permissions at least one permission"""
+        group = get_object_or_404(GroupModel, pk=group_id)
+        try:
+            serializer = GroupModelSerializer(group, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                # after updating the group delete the permissions cache
+                clear_user_permissions_cache()
+                return Response({
+                    'data': serializer.data
+                })
+            else:
+                return Response({'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                'errors': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def delete(self, request, group_id):
+        """Delete a group"""
+        group = get_object_or_404(GroupModel, pk=group_id)
+        try:
+            group.delete()
+            # clear permissions cache for all users after a group deletion
+            clear_user_permissions_cache()
+            return Response({'detail': f"Group deleted successfully"})
         except Exception as e:
             return Response({
                 'errors': str(e)
