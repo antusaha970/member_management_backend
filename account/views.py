@@ -38,7 +38,7 @@ class AccountRegistrationView(APIView):
 
             response = Response({
                 "status": "success",
-                "token": str(token)
+                "token": str(token) 
             }, status=status.HTTP_201_CREATED)
 
             # Add headers to prevent caching
@@ -64,7 +64,6 @@ class AccountRegistrationView(APIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
-
 
 class AccountLoginView(APIView):
     def post(self, request):
@@ -406,3 +405,48 @@ class AssignGroupPermissionView(APIView):
             return Response({"detail": "User removed from group successfully."}, status=status.HTTP_200_OK)
         else:
             return Response({'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+class AdminUserRegistrationView(APIView):
+    permission_classes = [IsAuthenticated, AddMemberPermission]
+
+    def post(self, request):
+        data = request.data
+        club = request.data.get("club")
+        club_id = request.user.club.id
+        if not club_id == club:
+            return Response({"errors": "club id do not match for registration a user"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer = AdminUserRegistrationSerializer(data=data)
+        if serializer.is_valid():
+            email = serializer.validated_data["email"]
+            otp = randint(1000, 9999)
+            user = get_user_model().objects.get(email=email)
+            otp=OTP.objects.create(user=user, otp=otp)
+
+            send_mail(
+                'Your OTP Code',
+                f'Your OTP code is {otp}',
+                settings.DEFAULT_FROM_EMAIL,
+                [email],
+                fail_silently=False,
+            )
+            try:
+                token= Token.objects.get(user=request.user)
+            except Token.DoesNotExist:
+                return Response({"errors": "Token not found "}, status=status.HTTP_400_BAD_REQUEST)
+
+
+            return Response({
+                "message": "OTP sent successfully",
+                "token": token.key,  
+                "user": {
+                    "id": user.id,
+                    "username": user.username,
+                    "email": user.email,
+                }
+            }, status=status.HTTP_201_CREATED)
+
+        return Response({"errors":serializer.errors},status=status.HTTP_400_BAD_REQUEST)

@@ -75,6 +75,57 @@ class RegistrationSerializer(serializers.ModelSerializer):
         return user
 
 
+class AdminUserRegistrationSerializer(serializers.ModelSerializer):
+    name = serializers.CharField()
+    class Meta:
+        model = get_user_model()
+        fields = ['username', 'password', 'email',
+                  'name', 'club',]
+        extra_kwargs = {
+            "name": {
+                "required": True,
+            },
+            "email": {
+                "required": True,
+            },
+            "username": {
+                "required": True,
+            },
+            "password": {
+                "required": True,
+            },
+            "club": {
+                "required": True,
+            }
+        }
+
+    def validate(self, attrs):
+        email = attrs.get('email')
+        password = attrs.get('password')
+        is_same_email_exists = get_user_model().objects.filter(
+            email=email).exists()
+        if is_same_email_exists:
+            raise serializers.ValidationError({
+                'email': f"{email} already exists",
+            })
+        if len(password) < 6:
+            raise serializers.ValidationError({
+                'password': f"Password must be at least 6 character. Current length {len(password)}"
+            })
+
+        return super().validate(attrs)
+
+    def create(self, validated_data):
+        username = validated_data.get('username')
+        email = validated_data.get('email')
+        password = validated_data.get('password')
+        name = validated_data.get('name')
+        club = validated_data.get('club')
+        
+        user = get_user_model().objects.create_user(
+            username=username, password=password, email=email, first_name=name, club=club)
+        return user
+
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField()
