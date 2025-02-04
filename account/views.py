@@ -120,6 +120,9 @@ class AccountLoginLogoutView(APIView):
             }, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request):
+        """
+        Delete authorization cookie from the server cookie
+        """
         try:
             response = Response(
                 {'detail': "Logout successful"}, status=status.HTTP_200_OK)
