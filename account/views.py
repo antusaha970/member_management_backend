@@ -14,7 +14,7 @@ import environ
 from datetime import timedelta
 from .permissions import HasCustomPermission
 from .serializers import *
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from account.utils.functions import clear_user_permissions_cache
 from django.shortcuts import get_object_or_404
 
@@ -32,7 +32,6 @@ class AccountRegistrationView(APIView):
         data = request.data
         serializer = RegistrationSerializer(data=data)
         if serializer.is_valid():
-            remember_me = serializer.validated_data['remember_me']
             user = serializer.save()
             token, _ = Token.objects.get_or_create(user=user)
 
@@ -46,13 +45,13 @@ class AccountRegistrationView(APIView):
             response["Pragma"] = "no-cache"
             response["Expires"] = "0"
             # set cookie
-            time_limit_for_cookie = 30 if remember_me == True else 7
+
             response.set_cookie(
                 'auth_token',
                 str(token),
                 httponly=True,
                 secure=env("COOKIE_SECURE") == "True",
-                max_age=timedelta(days=time_limit_for_cookie).total_seconds()
+                max_age=timedelta(days=7).total_seconds()
             )
 
             return response
@@ -66,7 +65,13 @@ class AccountRegistrationView(APIView):
             )
 
 
-class AccountLoginView(APIView):
+class AccountLoginLogoutView(APIView):
+    def get_permissions(self):
+        if self.request.method == "DELETE":
+            return [IsAuthenticated()]
+        else:
+            return [AllowAny()]
+
     def post(self, request):
         """
         Login to an account with valid data.
@@ -113,6 +118,23 @@ class AccountLoginView(APIView):
                 'status': "failed",
                 'errors': serializer.errors
             }, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request):
+        try:
+            response = Response(
+                {'detail': "Logout successful"}, status=status.HTTP_200_OK)
+            # Delete the 'auth_token' cookie
+            response.delete_cookie('auth_token')
+
+            # Add headers to prevent caching
+            response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+            response["Pragma"] = "no-cache"
+            response["Expires"] = "0"
+
+            return response
+
+        except Exception as e:
+            return Response({'errors': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class ForgetPasswordView(APIView):
