@@ -80,6 +80,11 @@ class AccountLoginView(APIView):
             user = get_user_model().objects.get(username=username)
             user.set_password(password)
             user.save()
+            # Generate a new token on every login session
+            is_token_exist = Token.objects.filter(user=user).exists()
+            if is_token_exist:
+                Token.objects.filter(user=user).delete()
+
             token, _ = Token.objects.get_or_create(user=user)
 
             # Response with no-cache headers
