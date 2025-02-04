@@ -22,5 +22,11 @@ urlpatterns = [
          name="assign_group"),
     path('v1/view_all_users/', views.UserView.as_view(),
          name="user_view"),
+    path('v1/authorization/admin_user_email/',
+         views.AdminUserEmailView.as_view(), name="admin_user_email"),
+    path('v1/authorization/admin_user_verify_otp/',
+         views.AdminUserVerifyOtpView.as_view(), name="admin_user_verify_otp"),
+    path('v1/authorization/admin_user_register/',
+         views.AdminUserRegistrationView.as_view(), name="admin_user_register"),
 
 ]
