@@ -18,11 +18,15 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from account.utils.functions import clear_user_permissions_cache, add_no_cache_header_in_response
 from django.shortcuts import get_object_or_404
 from .utils.permissions_classes import RegisterUserPermission
+import logging
+# set env
 environ.Env.read_env()
 env = environ.Env()
-
+# Set logger
+logger = logging.getLogger("myapp")
 
 # Authentication views
+
 
 class AccountRegistrationView(APIView):
     def post(self, request):
@@ -137,6 +141,7 @@ class AccountLoginLogoutView(APIView):
             return response
 
         except Exception as e:
+            logger.exception(str(e))
             return Response({'errors': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -248,6 +253,7 @@ class VerifyOtpView(APIView):
                 status=404
             )
         except Exception as e:
+            logger.exception(str(e))
             return Response(
                 {
                     "status": "error",
@@ -271,6 +277,7 @@ class UserView(APIView):
             serializer = UserSerializer(data, many=True)
             return Response(serializer.data)
         except Exception as e:
+            logger.exception(str(e))
             return Response({'errors': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -303,6 +310,7 @@ class GroupPermissionView(APIView):
                 'data': serializer.data
             })
         except Exception as e:
+            logger.exception(str(e))
             return Response({
                 'errors': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -322,6 +330,7 @@ class GroupPermissionView(APIView):
             else:
                 return Response({'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            logger.exception(str(e))
             return Response({
                 'errors': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -335,6 +344,7 @@ class GroupPermissionView(APIView):
             clear_user_permissions_cache()
             return Response({'detail': f"Group deleted successfully"})
         except Exception as e:
+            logger.exception(str(e))
             return Response({
                 'errors': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -342,14 +352,7 @@ class GroupPermissionView(APIView):
 
 class CustomPermissionView(APIView):
     permission_classes = [IsAuthenticated]
-    # def get_permissions(self):
-    #     # Assign method-specific permissions
-    #     if self.request.method == 'POST':
-    #         self.permission_classes = [IsAuthenticated, AddMemberPermission]
-    #     elif self.request.method == 'GET':
-    #         self.permission_classes = [IsAuthenticated]
 
-    #     return super().get_permissions()
     def post(self, request):
         data = request.data
         serializer = CustomPermissionSerializer(data=data)
@@ -379,6 +382,7 @@ class CustomPermissionView(APIView):
                 serializer.data, status=status.HTTP_200_OK)
 
         except Exception as e:
+            logger.exception(str(e))
             return Response({
                 "errors": str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -449,6 +453,7 @@ class AssignGroupPermissionView(APIView):
                 users_data.append(user_info)
             return Response({"data": users_data}, status=status.HTTP_200_OK)
         except Exception as e:
+            logger.exception(str(e))
             return Response({"errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def patch(self, request):
@@ -481,6 +486,7 @@ class AssignGroupPermissionView(APIView):
         except AssignGroupPermission.DoesNotExist:
             return Response({"errors": "User not found in AssignGroupPermission"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
+            logger.exception(str(e))
             return Response({"errors": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -611,4 +617,5 @@ class GetUserPermissionsView(APIView):
             response = add_no_cache_header_in_response(response)
             return response
         except Exception as e:
+            logger.exception(str(e))
             return Response({"errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
