@@ -489,7 +489,7 @@ class AdminUserEmailView(APIView):
 
     def post(self, request):
         data = request.data
-        print("data", data)
+        # TODO: handle error when user is not associated with club
         club_id = request.user.club.id
         serializer = AdminUserEmailSerializer(
             data=data, context={"club_id": club_id})
@@ -499,6 +499,7 @@ class AdminUserEmailView(APIView):
             try:
                 otp = OTP.objects.get(email=email)
                 otp_value = otp.otp
+                # TODO: send mail using celery
                 send_mail(
                     'Your OTP Code',
                     f'Your OTP code is {otp_value}',

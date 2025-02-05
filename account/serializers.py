@@ -294,22 +294,19 @@ class AdminUserEmailSerializer(serializers.Serializer):
 class AdminUserVerifyOtpSerializer(serializers.Serializer):
     otp = serializers.IntegerField()
     email = serializers.EmailField()
-    club = serializers.IntegerField()
+    club = serializers.PrimaryKeyRelatedField(queryset=Club.objects.all())
 
     def validate(self, attrs):
         club = attrs.get("club")
         request_club_id = self.context.get("club_id")
-        if not request_club_id == club:
+        if not request_club_id == club.id:
             raise ValidationError(
-                {"errors": "You are not allowed to register users in another club."})
+                {"club": ["You are not allowed to register users in another club."]})
 
         otp = attrs.get("otp")
         email = attrs.get("email")
-        # print(otp,email)
         is_valid = OTP.objects.filter(otp=otp, email=email).exists()
-        # print(is_valid)
         if not is_valid:
-            # TODO: make this field error from non-field errors
             raise ValidationError(
                 {'otp': [f"OTP {otp} and Email {email} do not match previous email and otp"]})
         return super().validate(attrs)
@@ -321,7 +318,7 @@ class VerifySuccessfulAllEmailSerializer(serializers.Serializer):
 
 class AdminUserRegistrationSerializer(serializers.ModelSerializer):
     name = serializers.CharField()
-    club = serializers.IntegerField()
+    club = serializers.PrimaryKeyRelatedField(queryset=Club.objects.all())
 
     class Meta:
         model = get_user_model()
@@ -348,9 +345,9 @@ class AdminUserRegistrationSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         club = attrs.get("club")
         request_club_id = self.context.get("club_id")
-        if not request_club_id == club:
+        if not request_club_id == club.id:
             raise ValidationError(
-                {"errors": "You are not allowed to register users in another club."})
+                {"club": ["You are not allowed to register users in another club."]})
 
         email = attrs.get('email')
         password = attrs.get('password')
@@ -378,12 +375,6 @@ class AdminUserRegistrationSerializer(serializers.ModelSerializer):
         password = validated_data.get('password')
         name = validated_data.get('name')
         club = validated_data.get('club')
-
-        try:
-            club_object = Club.objects.get(pk=club)
-        except Club.DoesNotExist:
-            raise ValidationError({"errors": "club does not exist"})
-
         user = get_user_model().objects.create_user(
-            username=username, password=password, email=email, first_name=name, club=club_object)
+            username=username, password=password, email=email, first_name=name, club=club)
         return user
