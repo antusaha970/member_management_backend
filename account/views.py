@@ -286,7 +286,8 @@ class GroupPermissionView(APIView):
 
     def post(self, request):
         data = request.data
-        serializer = GroupModelSerializer(data=data)
+        serializer = GroupModelSerializer(
+            data=data, context={'user': request.user})
         if serializer.is_valid():
             group = serializer.save()
             permissions = group.permission.all()

@@ -177,6 +177,7 @@ class GroupModelSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=250, required=True)
     permission = serializers.PrimaryKeyRelatedField(
         queryset=PermissonModel.objects.all(), many=True, required=True)
+    club = serializers.PrimaryKeyRelatedField(queryset=Club.objects.all())
 
     def validate_name(self, value):
         if self.instance:
@@ -195,6 +196,13 @@ class GroupModelSerializer(serializers.Serializer):
                 f"Group with this name {value} already exists.")
 
         return name
+
+    def validate_club(self, value):
+        user = self.context.get('user')
+        if user.club != value:
+            raise serializers.ValidationError(
+                f"You can't add group to this club")
+        return value
 
     def create(self, validated_data):
         permissions_data = validated_data.pop('permission')

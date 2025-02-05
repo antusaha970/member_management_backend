@@ -34,6 +34,8 @@ class PermissonModel(models.Model):
 class GroupModel(models.Model):
     name = models.CharField(max_length=250, unique=True)
     permission = models.ManyToManyField(PermissonModel)
+    club = models.ForeignKey(
+        Club, on_delete=models.SET_NULL, null=True, blank=True, default=None)
 
     def __str__(self):
         return self.name
