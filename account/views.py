@@ -15,7 +15,7 @@ import environ
 from datetime import timedelta
 from .permissions import HasCustomPermission
 from .serializers import *
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 from account.utils.functions import clear_user_permissions_cache, add_no_cache_header_in_response
 from django.shortcuts import get_object_or_404
 from .utils.permissions_classes import RegisterUserPermission
@@ -284,7 +284,11 @@ class UserView(APIView):
 
 
 class GroupPermissionView(APIView):
-    permission_classes = [IsAuthenticated]
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsAdminUser()]
+        else:
+            return [IsAuthenticated()]
 
     def post(self, request):
         data = request.data
@@ -357,7 +361,7 @@ class GroupPermissionView(APIView):
 
 
 class CustomPermissionView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminUser]
 
     def post(self, request):
         data = request.data
@@ -395,7 +399,7 @@ class CustomPermissionView(APIView):
 
 
 class AssignGroupPermissionView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminUser]
 
     def post(self, request):
         data = request.data
