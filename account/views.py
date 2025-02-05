@@ -323,7 +323,9 @@ class GroupPermissionView(APIView):
         """Update a group with required permissions at least one permission"""
         group = get_object_or_404(GroupModel, pk=group_id)
         try:
-            serializer = GroupModelSerializer(group, data=request.data)
+            user = request.user
+            serializer = GroupModelSerializer(
+                group, data=request.data, context={'user': user})
             if serializer.is_valid():
                 serializer.save()
                 # after updating the group delete the permissions cache
@@ -495,7 +497,7 @@ class AssignGroupPermissionView(APIView):
 
 
 class AdminUserEmailView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RegisterUserPermission]
 
     def post(self, request):
         data = request.data
