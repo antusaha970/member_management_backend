@@ -1,3 +1,4 @@
+from .tasks import send_otp_email
 from .serializers import RegistrationSerializer, LoginSerializer, ForgetPasswordSerializer, VerifyOtpSerializer
 from django.core.mail import send_mail
 from random import randint
@@ -273,7 +274,8 @@ class UserView(APIView):
 
     def get(self, request):
         try:
-            data = get_user_model().objects.all()
+            user = request.user
+            data = get_user_model().objects.filter(club=user.club)
             serializer = UserSerializer(data, many=True)
             return Response(serializer.data)
         except Exception as e:
@@ -493,28 +495,24 @@ class AssignGroupPermissionView(APIView):
 
 
 class AdminUserEmailView(APIView):
-    permission_classes = [IsAuthenticated, RegisterUserPermission]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         data = request.data
-        # TODO: handle error when user is not associated with club
+        if request.user.club is None:
+            return Response({"errors": "You are not associated in club"}, status=status.HTTP_404_NOT_FOUND)
+
         club_id = request.user.club.id
         serializer = AdminUserEmailSerializer(
             data=data, context={"club_id": club_id})
         if serializer.is_valid():
-            serializer.save()
+            instance = serializer.save()
             email = serializer.validated_data["email"]
             try:
                 otp = OTP.objects.get(email=email)
                 otp_value = otp.otp
-                # TODO: send mail using celery
-                send_mail(
-                    'Your OTP Code',
-                    f'Your OTP code is {otp_value}',
-                    settings.DEFAULT_FROM_EMAIL,
-                    [email],
-                    fail_silently=False,
-                )
+                send_otp_email.delay_on_commit(email, otp_value)
+
             except OTP.DoesNotExist:
                 return Response({"errors": "OTP for the provided email does not exist."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -541,6 +539,8 @@ class AdminUserVerifyOtpView(APIView):
 
     def post(self, request):
         data = request.data
+        if request.user.club is None:
+            return Response({"errors": "You are not associated in club"}, status=status.HTTP_404_NOT_FOUND)
         club_id = request.user.club.id
 
         serializer = AdminUserVerifyOtpSerializer(
@@ -550,7 +550,11 @@ class AdminUserVerifyOtpView(APIView):
             otp = serializer.validated_data["otp"]
             otp_object = OTP.objects.get(email=email, otp=otp)
             otp_object.delete()
-            VerifySuccessfulEmail.objects.create(email=email)
+            try:
+                VerifySuccessfulEmail.objects.create(email=email)
+            except Exception as e:
+                return Response({"errors": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
             try:
                 token = Token.objects.get(user=request.user)
             except Token.DoesNotExist:
@@ -573,6 +577,9 @@ class AdminUserRegistrationView(APIView):
 
     def post(self, request):
         data = request.data
+        if request.user.club is None:
+            return Response({"errors": "You are not associated in club"}, status=status.HTTP_404_NOT_FOUND)
+
         club_id = request.user.club.id
 
         serializer = AdminUserRegistrationSerializer(

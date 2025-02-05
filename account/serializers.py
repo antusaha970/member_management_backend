@@ -302,12 +302,17 @@ class AdminUserEmailSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
     def validate_club(self, value):
-        # print(value)
         request_club_id = self.context.get("club_id")
-        # print(request_club_id,"request club id")
         if not request_club_id == value:
-            raise ValidationError(
+            raise serializers.ValidationError(
                 "You are not allowed to register users in another club.")
+        return value
+
+    def validate_email(self, value):
+        user = get_user_model().objects.filter(email=value).exists()
+        if user:
+            raise serializers.ValidationError(
+                {'email': ["Email already exists."]})
         return value
 
     def create(self, validated_data):
@@ -331,6 +336,11 @@ class AdminUserVerifyOtpSerializer(serializers.Serializer):
 
         otp = attrs.get("otp")
         email = attrs.get("email")
+        verified_email = VerifySuccessfulEmail.objects.filter(
+            email=email).exists()
+        if verified_email:
+            raise ValidationError(
+                {'email': ["Email already verified."]})
         is_valid = OTP.objects.filter(otp=otp, email=email).exists()
         if not is_valid:
             raise ValidationError(
