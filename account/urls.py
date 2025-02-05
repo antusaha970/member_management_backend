@@ -28,5 +28,7 @@ urlpatterns = [
          views.AdminUserVerifyOtpView.as_view(), name="admin_user_verify_otp"),
     path('v1/authorization/admin_user_register/',
          views.AdminUserRegistrationView.as_view(), name="admin_user_register"),
+    path('v1/authorization/get_user_all_permissions/',
+         views.GetUserPermissionsView.as_view(), name="get_user_all_permissions"),
 
 ]

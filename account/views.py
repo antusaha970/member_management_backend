@@ -573,3 +573,33 @@ class AdminUserRegistrationView(APIView):
             }, status=status.HTTP_200_OK)
 
         return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class GetUserPermissionsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            user = request.user
+            data = AssignGroupPermission.objects.filter(user=user)
+            users_data = []
+            for assign_group in data:
+                user_info = {
+                    "user_id": assign_group.user.id if assign_group.user else None,
+                    "username": assign_group.user.username if assign_group.user else "No User",
+                    "groups": []
+                }
+                for group in assign_group.group.all():
+                    group_info = {
+                        "group_id": group.id,
+                        "group_name": group.name,
+                        "permissions": [
+                            {"permission_id": perm.id, "permission_name": perm.name}
+                            for perm in group.permission.all()
+                        ]
+                    }
+                    user_info["groups"].append(group_info)
+                users_data.append(user_info)
+            return Response({"data": users_data}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
