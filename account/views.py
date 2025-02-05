@@ -409,44 +409,90 @@ class AssignGroupPermissionView(APIView):
 
 
 
-class AdminUserRegistrationView(APIView):
+class AdminUserEmailView(APIView):
     permission_classes = [IsAuthenticated, AddMemberPermission]
 
     def post(self, request):
         data = request.data
-        club = request.data.get("club")
+        print("data",data)
         club_id = request.user.club.id
-        if not club_id == club:
-            return Response({"errors": "club id do not match for registration a user"}, status=status.HTTP_400_BAD_REQUEST)
-        
-        serializer = AdminUserRegistrationSerializer(data=data)
+        serializer = AdminUserEmailSerializer(data=data,context={"club_id": club_id})
         if serializer.is_valid():
+            serializer.save()
             email = serializer.validated_data["email"]
-            otp = randint(1000, 9999)
-            user = get_user_model().objects.get(email=email)
-            otp=OTP.objects.create(user=user, otp=otp)
+            try:
+                otp = OTP.objects.get(email=email)
+                otp_value = otp.otp
+                send_mail(
+                    'Your OTP Code',
+                    f'Your OTP code is {otp_value}',
+                    settings.DEFAULT_FROM_EMAIL,
+                    [email],
+                    fail_silently=False,
+                )
+            except OTP.DoesNotExist:
+                return Response({"errors": "OTP for the provided email does not exist."}, status=status.HTTP_404_NOT_FOUND)
 
-            send_mail(
-                'Your OTP Code',
-                f'Your OTP code is {otp}',
-                settings.DEFAULT_FROM_EMAIL,
-                [email],
-                fail_silently=False,
-            )
+            
             try:
                 token= Token.objects.get(user=request.user)
             except Token.DoesNotExist:
                 return Response({"errors": "Token not found "}, status=status.HTTP_400_BAD_REQUEST)
-
-
+            
             return Response({
                 "message": "OTP sent successfully",
                 "token": token.key,  
-                "user": {
-                    "id": user.id,
-                    "username": user.username,
-                    "email": user.email,
+                "to": {  
+                    "email": email,
                 }
-            }, status=status.HTTP_201_CREATED)
+            },status=status.HTTP_201_CREATED)
 
         return Response({"errors":serializer.errors},status=status.HTTP_400_BAD_REQUEST)
+    
+class AdminUserVerifyOtpView(APIView):
+    permission_classes=[IsAuthenticated,AddMemberPermission]
+    
+    def post(self,request):
+        data = request.data
+        club_id = request.user.club.id
+       
+        serializer=AdminUserVerifyOtpSerializer(data=data,context={"club_id": club_id})
+        if serializer.is_valid():
+            # serializer.save()
+            email = serializer.validated_data["email"]
+            otp = serializer.validated_data["otp"]
+            otp_object = OTP.objects.get(email=email,otp=otp)
+            otp_object.delete()
+            VerifySuccessfulEmail.objects.create(email=email)
+            try:
+                token= Token.objects.get(user=request.user)
+            except Token.DoesNotExist:
+                return Response({"errors": "Token not found "}, status=status.HTTP_400_BAD_REQUEST)
+            
+            return Response({
+                "status":"Passed",
+                "email":email,
+                "token": token.key
+                
+            },status=status.HTTP_200_OK)
+
+        return Response({"errors":serializer.errors},status=status.HTTP_400_BAD_REQUEST)
+    
+class AdminUserRegistrationView(APIView):
+    permission_classes=[IsAuthenticated,AddMemberPermission]
+    def post(self,request):
+        data = request.data
+        club_id = request.user.club.id
+        
+        serializer=AdminUserRegistrationSerializer(data=data,context={"club_id": club_id})
+        if serializer.is_valid():
+            user=serializer.save()
+            username=serializer.validated_data["username"]
+            # print(username)
+            return Response({
+                "status": "success",
+                "username":username
+            }, status=status.HTTP_200_OK)
+
+        return Response({"errors":serializer.errors},status=status.HTTP_400_BAD_REQUEST)
+    

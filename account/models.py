@@ -19,13 +19,18 @@ class CustomUser(AbstractUser):
 
 class OTP(models.Model):
     otp = models.IntegerField()
-    user = models.OneToOneField(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="user_otp")
+    email=models.EmailField(unique=True)
+    
+    def __str__(self):
+        return self.email
+    
+class VerifySuccessfulEmail(models.Model):
+    email= models.EmailField(unique=True)
 
     def __str__(self):
-        return self.user.username
+        return self.email
 
-
+    
 class AccountTestModel(models.Model):
     name = models.TextField()
 

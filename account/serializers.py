@@ -8,6 +8,8 @@ from django.contrib.auth import get_user_model
 from club.models import Club
 from .models import *
 import pdb
+from django.core.validators import validate_email as django_validate_email
+from random import randint
 
 # user serializes
 
@@ -75,56 +77,6 @@ class RegistrationSerializer(serializers.ModelSerializer):
         return user
 
 
-class AdminUserRegistrationSerializer(serializers.ModelSerializer):
-    name = serializers.CharField()
-    class Meta:
-        model = get_user_model()
-        fields = ['username', 'password', 'email',
-                  'name', 'club',]
-        extra_kwargs = {
-            "name": {
-                "required": True,
-            },
-            "email": {
-                "required": True,
-            },
-            "username": {
-                "required": True,
-            },
-            "password": {
-                "required": True,
-            },
-            "club": {
-                "required": True,
-            }
-        }
-
-    def validate(self, attrs):
-        email = attrs.get('email')
-        password = attrs.get('password')
-        is_same_email_exists = get_user_model().objects.filter(
-            email=email).exists()
-        if is_same_email_exists:
-            raise serializers.ValidationError({
-                'email': f"{email} already exists",
-            })
-        if len(password) < 6:
-            raise serializers.ValidationError({
-                'password': f"Password must be at least 6 character. Current length {len(password)}"
-            })
-
-        return super().validate(attrs)
-
-    def create(self, validated_data):
-        username = validated_data.get('username')
-        email = validated_data.get('email')
-        password = validated_data.get('password')
-        name = validated_data.get('name')
-        club = validated_data.get('club')
-        
-        user = get_user_model().objects.create_user(
-            username=username, password=password, email=email, first_name=name, club=club)
-        return user
 
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()
@@ -188,8 +140,7 @@ class ResetPasswordSerializer(serializers.Serializer):
 
 class VerifyOtpSerializer(serializers.Serializer):
     otp = serializers.IntegerField()
-    email = serializers.EmailField()
-
+    
 
 # autherzaiton serializers
 
@@ -269,10 +220,8 @@ class AssignGroupPermissionSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         groups = validated_data.pop('group')
-
         assign_group_permission = AssignGroupPermission.objects.create(
             **validated_data)
-
         assign_group_permission.group.set(groups)
 
         return assign_group_permission
@@ -302,3 +251,122 @@ class DeleteUserFromGroupSerializer(serializers.Serializer):
             raise serializers.ValidationError("The user is not in this group.")
 
         return value
+
+
+
+
+
+class AdminUserEmailSerializer(serializers.Serializer):
+    club = serializers.IntegerField()
+    email=serializers.EmailField()
+   
+    
+    def validate_club(self,value):
+        # print(value)
+        request_club_id = self.context.get("club_id") 
+        # print(request_club_id,"request club id") 
+        if not  request_club_id==value:
+            raise ValidationError("You are not allowed to register users in another club.")
+        return value
+    
+    
+    
+    def create(self, validated_data):
+        email = validated_data.get('email')
+        otp = randint(1000, 9999)
+        # pdb.set_trace()
+        otp_instance = OTP.objects.create(email=email, otp=otp)
+        return otp_instance
+        
+class AdminUserVerifyOtpSerializer(serializers.Serializer):
+    otp= serializers.IntegerField()
+    email=serializers.EmailField()
+    club = serializers.IntegerField()
+    
+    def validate(self, attrs):
+        club=attrs.get("club")
+        request_club_id = self.context.get("club_id")  
+        if not request_club_id==club:
+            raise ValidationError({"errors": "You are not allowed to register users in another club."})
+        
+        otp=attrs.get("otp")
+        email=attrs.get("email")
+        # print(otp,email)
+        is_valid= OTP.objects.filter(otp=otp,email=email).exists()
+        # print(is_valid)
+        if not is_valid:
+            # TODO: make this field error from non-field errors
+            raise ValidationError(f"OTP {otp} and Email {email} do not match previous email and otp")
+        return super().validate(attrs)
+    
+class VerifySuccessfulAllEmailSerializer(serializers.Serializer):
+    email = serializers.EmailField()  
+class AdminUserRegistrationSerializer(serializers.ModelSerializer):
+    name = serializers.CharField()
+    club = serializers.IntegerField()
+
+    class Meta:
+        model = get_user_model()
+        fields = ['username', 'password', 'email',
+                  'name', 'club',]
+        extra_kwargs = {
+            "name": {
+                "required": True,
+            },
+            "email": {
+                "required": True,
+            },
+            "username": {
+                "required": True,
+            },
+            "password": {
+                "required": True,
+            },
+            "club": {
+                "required": True,
+            }
+        }
+
+    def validate(self, attrs):
+        club=attrs.get("club")
+        request_club_id = self.context.get("club_id")          
+        if not request_club_id==club:
+            raise ValidationError({"errors": "You are not allowed to register users in another club."})
+        
+        email = attrs.get('email')
+        password = attrs.get('password')
+        
+        is_exist=get_user_model().objects.filter(email=email)
+        if is_exist:
+            raise ValidationError({"errors":"email already exist"})
+        
+        is_email_exists = VerifySuccessfulEmail.objects.filter(
+            email=email).exists()
+        if not is_email_exists:
+            raise serializers.ValidationError({
+                'email': f"{email} not found in VerifySuccessfulEmail.Please first of all verify user email. ",
+            })
+        if len(password) < 6:
+            raise serializers.ValidationError({
+                'password': f"Password must be at least 6 character. Current length {len(password)}"
+            })
+
+        return super().validate(attrs)
+
+    def create(self, validated_data):
+        username = validated_data.get('username')
+        email = validated_data.get('email')
+        password = validated_data.get('password')
+        name = validated_data.get('name')
+        club = validated_data.get('club')
+        
+        
+        try:
+            club_object=Club.objects.get(pk=club)
+        except Club.DoesNotExist:
+            raise ValidationError({"errors":"club does not exist"})
+        
+        user = get_user_model().objects.create_user(
+            username=username, password=password, email=email, first_name=name, club=club_object)
+        return user
+
