@@ -15,7 +15,7 @@ from datetime import timedelta
 from .permissions import HasCustomPermission
 from .serializers import *
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from account.utils.functions import clear_user_permissions_cache
+from account.utils.functions import clear_user_permissions_cache, add_no_cache_header_in_response
 from django.shortcuts import get_object_or_404
 from .utils.permissions_classes import RegisterUserPermission
 environ.Env.read_env()
@@ -513,14 +513,16 @@ class AdminUserEmailView(APIView):
                 token = Token.objects.get(user=request.user)
             except Token.DoesNotExist:
                 return Response({"errors": "Token not found "}, status=status.HTTP_400_BAD_REQUEST)
-
-            return Response({
+            response = Response({
                 "message": "OTP sent successfully",
                 "token": token.key,
                 "to": {
                     "email": email,
                 }
             }, status=status.HTTP_201_CREATED)
+            # Add no cache header in response
+            response = add_no_cache_header_in_response(response)
+            return response
 
         return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -544,13 +546,15 @@ class AdminUserVerifyOtpView(APIView):
                 token = Token.objects.get(user=request.user)
             except Token.DoesNotExist:
                 return Response({"errors": "Token not found "}, status=status.HTTP_400_BAD_REQUEST)
-
-            return Response({
+            response = Response({
                 "status": "Passed",
                 "email": email,
                 "token": token.key
 
             }, status=status.HTTP_200_OK)
+            # Add no cache header in response
+            response = add_no_cache_header_in_response(response)
+            return response
 
         return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -600,6 +604,10 @@ class GetUserPermissionsView(APIView):
                     }
                     user_info["groups"].append(group_info)
                 users_data.append(user_info)
-            return Response({"data": users_data}, status=status.HTTP_200_OK)
+            response = Response({"data": users_data},
+                                status=status.HTTP_200_OK)
+            # add no cache header to response
+            response = add_no_cache_header_in_response(response)
+            return response
         except Exception as e:
             return Response({"errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -14,3 +14,11 @@ def clear_user_permissions_cache():
         print(f"Deleted cache keys: {keys_to_delete}")  # All keys
     else:
         print("No user permission caches found to clear.")
+
+
+def add_no_cache_header_in_response(response):
+    # Add headers to prevent caching
+    response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response["Pragma"] = "no-cache"
+    response["Expires"] = "0"
+    return response
