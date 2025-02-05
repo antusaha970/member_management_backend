@@ -225,6 +225,24 @@ class AssignGroupPermissionSerializer(serializers.Serializer):
     group = serializers.PrimaryKeyRelatedField(
         queryset=GroupModel.objects.all(), many=True, required=True)
 
+    def validate_group(self, groups):
+        """Ensure groups belong to the user's club."""
+        user = self.initial_data.get("user")  # Get user from request data
+        if isinstance(user, int):  # Convert ID to user instance if necessary
+            user = get_user_model().objects.get(id=user)
+
+        if not user.club:
+            raise serializers.ValidationError(
+                "User is not associated with any club.")
+
+        for group in groups:
+            if group.club != user.club:
+                raise serializers.ValidationError(
+                    f"Group '{group.name}' does not belong to user's club."
+                )
+
+        return groups
+
     def create(self, validated_data):
         groups = validated_data.pop('group')
         user = validated_data.get("user")

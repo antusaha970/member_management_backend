@@ -305,7 +305,8 @@ class GroupPermissionView(APIView):
 
     def get(self, request):
         try:
-            data = GroupModel.objects.all()
+            user = request.user
+            data = GroupModel.objects.filter(club=user.club)
             serializer = GroupSerializerForViewAllGroups(data, many=True)
             return Response({
                 'data': serializer.data
