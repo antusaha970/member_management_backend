@@ -311,7 +311,7 @@ class AdminUserVerifyOtpSerializer(serializers.Serializer):
         if not is_valid:
             # TODO: make this field error from non-field errors
             raise ValidationError(
-                f"OTP {otp} and Email {email} do not match previous email and otp")
+                {'otp': [f"OTP {otp} and Email {email} do not match previous email and otp"]})
         return super().validate(attrs)
 
 
