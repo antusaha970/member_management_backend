@@ -214,7 +214,7 @@ class VerifyOtpView(APIView):
     def post(self, request):
         email = request.data.get("email")
         otp = request.data.get("OTP")
-
+        
         try:
             email_record = OTP.objects.get(user__email=email)
             otp_record = OTP.objects.get(otp=otp)
