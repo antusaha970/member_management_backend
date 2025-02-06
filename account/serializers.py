@@ -119,6 +119,7 @@ class ForgetPasswordSerializer(serializers.Serializer):
 class ResetPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField()
+    token = serializers.CharField()
 
     def validate(self, attrs):
         email = attrs.get("email")
