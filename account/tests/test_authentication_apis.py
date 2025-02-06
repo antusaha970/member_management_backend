@@ -228,3 +228,51 @@ class ResetPasswordAPITest(APITestCase):
         self.assertEqual(_response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertNotIn("token", _response.json())
         self.assertFalse(_response.json()['can_change_pass'])
+
+    def test_reset_password_endpoint_with_valid_token(self):
+        """
+            Endpoint: /api/account/v1/reset_password/
+        """
+        # Arrange
+        email = self.email
+        otp = self.faker.random_number(digits=4)
+        token = self.faker.pystr(max_chars=20, min_chars=20)
+        obj = ForgetPasswordOTP.objects.create(
+            email=email, otp=otp, token=token)
+        password = self.faker.password(length=8)
+        _data = {
+            'email': email,
+            'password': password,
+            'token': token
+        }
+        # act
+        _response = self.client.post(
+            "/api/account/v1/reset_password/", data=_data)
+
+        # assert
+        self.assertIn("token", _response.json())
+        self.assertEqual(_response.status_code, status.HTTP_200_OK)
+
+    def test_reset_password_endpoint_with_invalid_token(self):
+        """
+            Endpoint: /api/account/v1/reset_password/
+        """
+        # Arrange
+        email = self.email
+        otp = self.faker.random_number(digits=4)
+        token = self.faker.pystr(max_chars=20, min_chars=20)
+        obj = ForgetPasswordOTP.objects.create(
+            email=email, otp=otp, token=token)
+        password = self.faker.password(length=8)
+        _data = {
+            'email': email,
+            'password': password,
+            'token': f"{token}f"
+        }
+        # act
+        _response = self.client.post(
+            "/api/account/v1/reset_password/", data=_data)
+
+        # assert
+        self.assertNotIn("token", _response.json())
+        self.assertEqual(_response.status_code, status.HTTP_400_BAD_REQUEST)
