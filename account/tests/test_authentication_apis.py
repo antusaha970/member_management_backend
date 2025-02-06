@@ -16,6 +16,7 @@ class AuthenticationAPITest(APITestCase):
     def test_registration_api_with_valid_data(self):
         """
           Endpoint: /api/account/v1/register/  
+          Registration api with valid data and must return 201
         """
         # Arrange
         name = self.faker.name()
@@ -43,6 +44,7 @@ class AuthenticationAPITest(APITestCase):
     def test_login_api_with_valid_data(self):
         """
             Endpoint: /api/account/v1/login/
+            Login with valid data and must return 200 and a token
         """
 
         # Arrange
@@ -68,6 +70,7 @@ class AuthenticationAPITest(APITestCase):
     def test_login_api_with_invalid_data(self):
         """
             Endpoint: /api/account/v1/login/
+            Login with invalid data and must not return a token
         """
 
         # Arrange
@@ -93,6 +96,7 @@ class AuthenticationAPITest(APITestCase):
     def test_logout_api_with_valid_token(self):
         """
             Endpoint: /api/account/v1/logout/
+            Logout with valid token and must be auth_token cookie can't have value
         """
 
         # Arrange
@@ -117,6 +121,7 @@ class AuthenticationAPITest(APITestCase):
     def test_logout_api_with_invalid_token(self):
         """
             Endpoint: /api/account/v1/logout/
+            Checking logout with invalid token
         """
 
         # Arrange
@@ -150,6 +155,7 @@ class ResetPasswordAPITest(APITestCase):
     def test_forget_password_api_with_valid_email(self):
         """
             Endpoint : /api/account/v1/forget_password/
+            check if OTP is going with valid email 
         """
         # arrange
         _data = {
@@ -167,6 +173,7 @@ class ResetPasswordAPITest(APITestCase):
     def test_forget_password_api_with_invalid_email(self):
         """
             Endpoint : /api/account/v1/forget_password/
+            check if OTP is not going with invalid email 
         """
         # arrange
         _data = {
@@ -184,6 +191,7 @@ class ResetPasswordAPITest(APITestCase):
     def test_verify_otp_endpoint_with_valid_otp(self):
         """
             Endpoint: /api/account/v1/verify_otp/
+            Test the OTP verification with valid OTP 
         """
 
         # arrange
@@ -208,6 +216,7 @@ class ResetPasswordAPITest(APITestCase):
     def test_verify_otp_endpoint_with_invalid_otp(self):
         """
             Endpoint: /api/account/v1/verify_otp/
+            Test the OTP verification with invalid OTP 
         """
 
         # arrange
@@ -232,6 +241,7 @@ class ResetPasswordAPITest(APITestCase):
     def test_reset_password_endpoint_with_valid_token(self):
         """
             Endpoint: /api/account/v1/reset_password/
+            Test reset password with valid token provided
         """
         # Arrange
         email = self.email
@@ -256,6 +266,7 @@ class ResetPasswordAPITest(APITestCase):
     def test_reset_password_endpoint_with_invalid_token(self):
         """
             Endpoint: /api/account/v1/reset_password/
+            Test reset password with invalid token provided
         """
         # Arrange
         email = self.email
