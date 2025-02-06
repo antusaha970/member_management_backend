@@ -4,6 +4,7 @@ from club.models import Club
 from rest_framework import status
 from django.contrib.auth import get_user_model
 from rest_framework.authtoken.models import Token
+from ..models import ForgetPasswordOTP
 
 
 class AuthenticationAPITest(APITestCase):
@@ -179,3 +180,51 @@ class ResetPasswordAPITest(APITestCase):
         # assert
         self.assertEqual(_response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual('failed', _response.json()['status'])
+
+    def test_verify_otp_endpoint_with_valid_otp(self):
+        """
+            Endpoint: /api/account/v1/verify_otp/
+        """
+
+        # arrange
+        email = self.email
+        otp = self.faker.random_number(digits=4)
+        token = self.faker.pystr(max_chars=20, min_chars=20)
+        obj = ForgetPasswordOTP.objects.create(
+            email=email, otp=otp, token=token)
+
+        # act
+        _data = {
+            'email': email,
+            'otp': otp,
+        }
+        _response = self.client.post("/api/account/v1/verify_otp/", data=_data)
+
+        # assert
+        self.assertEqual(_response.status_code, status.HTTP_200_OK)
+        self.assertIn("token", _response.json())
+        self.assertTrue(_response.json()['can_change_pass'])
+
+    def test_verify_otp_endpoint_with_invalid_otp(self):
+        """
+            Endpoint: /api/account/v1/verify_otp/
+        """
+
+        # arrange
+        email = self.email
+        otp = self.faker.random_number(digits=4)
+        token = self.faker.pystr(max_chars=20, min_chars=20)
+        obj = ForgetPasswordOTP.objects.create(
+            email=email, otp=otp, token=token)
+
+        # act
+        _data = {
+            'email': email,
+            'otp': otp+1,
+        }
+        _response = self.client.post("/api/account/v1/verify_otp/", data=_data)
+
+        # assert
+        self.assertEqual(_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertNotIn("token", _response.json())
+        self.assertFalse(_response.json()['can_change_pass'])
