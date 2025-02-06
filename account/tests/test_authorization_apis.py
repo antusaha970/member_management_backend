@@ -1,33 +1,33 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
 from rest_framework import status
-from django.contrib.auth.models import User
 from django.contrib.auth import get_user_model
-from ..models import PermissonModel  
-
+from account.models import PermissonModel,GroupModel,AssignGroupPermission  
+from club.models import Club
+import pdb
 class CustomPermissionAPITest(TestCase):
     def setUp(self):
         self.client = APIClient()
-        self.admin_user = get_user_model().objects.create_superuser(username="admin", password="adminpass")
-        self.normal_user = get_user_model().objects.create_user(username="user", password="userpass")
-        self.permission1 = PermissonModel.objects.create(name="Read Access")
-        self.permission2 = PermissonModel.objects.create(name="Write Access")
-
+        self.admin_user = get_user_model().objects.create_superuser(username="admin", password="admin")
+        self.normal_user = get_user_model().objects.create_user(username="salauddin_85", password="root25809#")
+        self.permission1 = PermissonModel.objects.create(name="add_member")
+        self.permission2 = PermissonModel.objects.create(name="view_member")
         # API endpoint
-        self.url = "api/account/v1/authorization/custom_permission_name/"
-
+        self.url = "/api/account/v1/authorization/custom_permission_name/"
+        
     def test_create_permission_success(self):
-        self.client.force_authenticate(user=self.admin_user)
-        data = {"name": "Delete Access"}
+        admin=self.client.force_authenticate(user=self.admin_user)
+        # print(admin.is_superuser)
+        data = {"name": "add_member_permission"}
         response = self.client.post(self.url, data)
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertIn("id", response.data)
-        self.assertIn("permission_name", response.data)
-        self.assertEqual(response.data["permission_name"], "Delete Access")
-
+        succes=self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        ids = self.assertIn("id", response.data)
+        name= self.assertIn("permission_name", response.data)
+        self.assertEqual(response.data["permission_name"], "add_member_permission")
+        
     def test_create_permission_unauthenticated(self):
         """Test that unauthenticated users cannot create permissions and check error message"""
-        data = {"name": "Manage Users"}
+        data = {"name": "view_permission"}
         response = self.client.post(self.url, data)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertIn("detail", response.data)
@@ -35,7 +35,7 @@ class CustomPermissionAPITest(TestCase):
     def test_create_permission_non_admin(self):
         """Test that a normal user (non-admin) cannot create permissions and validate response"""
         self.client.force_authenticate(user=self.normal_user)
-        data = {"name": "Manage Users"}
+        data = {"name": "view_member"}
         response = self.client.post(self.url, data)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertIn("detail", response.data)
@@ -43,7 +43,7 @@ class CustomPermissionAPITest(TestCase):
     def test_create_permission_duplicate_name(self):
         """Test that duplicate permission names are not allowed"""
         self.client.force_authenticate(user=self.admin_user)
-        data = {"name": "Read Access"}  # Already exists
+        data = {"name": "add_member"}  # Already exists
         response = self.client.post(self.url, data)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("errors", response.data)
@@ -64,7 +64,7 @@ class CustomPermissionAPITest(TestCase):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIsInstance(response.data, list)
-        self.assertGreaterEqual(len(response.data), 2)  # We created 2 permissions in setUp()
+        self.assertGreaterEqual(len(response.data), 2) 
         for permission in response.data:
             self.assertIn("id", permission)
             self.assertIn("name", permission)
@@ -81,3 +81,29 @@ class CustomPermissionAPITest(TestCase):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertIn("detail", response.data)
+
+
+class CustomGroupModel(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.admin_user = get_user_model().objects.create_superuser(username="admin", password="admin")
+        self.normal_user = get_user_model().objects.create_user(username="salauddin_85", password="root25809#")
+        
+        self.club = Club.objects.create(name="golpokotha")
+        self.groupname = GroupModel.objects.create(name="test", club=self.club)
+        self.permission1 = PermissonModel.objects.create(name="add_member")
+        self.permission2 = PermissonModel.objects.create(name="view_member")
+        self.admin_user.club = self.club
+        self.url = "/api/account/v1/authorization/group_permissions/"
+
+    def test_create_group_success(self):
+        """Ensure that an admin user can create a group with permissions"""
+        self.client.force_authenticate(user=self.admin_user)
+        data = {"name": "moderator", "permission": [self.permission1.id, self.permission2.id], "club":1}
+        response = self.client.post(self.url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn("group_id", response.data)
+        self.assertIn("name", response.data)
+        self.assertEqual(response.data["permission"], [self.permission1.id, self.permission2.id])
+        group_exists = GroupModel.objects.filter(name="moderator").exists()
+        self.assertTrue(group_exists)
