@@ -36,40 +36,46 @@ class AccountRegistrationView(APIView):
         """
         Register a new account with valid data. 
         """
-        data = request.data
-        serializer = RegistrationSerializer(data=data)
-        if serializer.is_valid():
-            user = serializer.save()
-            token, _ = Token.objects.get_or_create(user=user)
+        try:
+            data = request.data
+            serializer = RegistrationSerializer(data=data)
+            if serializer.is_valid():
+                user = serializer.save()
+                token, _ = Token.objects.get_or_create(user=user)
 
-            response = Response({
-                "status": "success",
-                "token": str(token)
-            }, status=status.HTTP_201_CREATED)
+                response = Response({
+                    "status": "success",
+                    "token": str(token)
+                }, status=status.HTTP_201_CREATED)
 
-            # Add headers to prevent caching
-            response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-            response["Pragma"] = "no-cache"
-            response["Expires"] = "0"
-            # set cookie
+                # Add headers to prevent caching
+                response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+                response["Pragma"] = "no-cache"
+                response["Expires"] = "0"
+                # set cookie
 
-            response.set_cookie(
-                'auth_token',
-                str(token),
-                httponly=True,
-                secure=env("COOKIE_SECURE") == "True",
-                max_age=timedelta(days=7).total_seconds()
-            )
+                response.set_cookie(
+                    'auth_token',
+                    str(token),
+                    httponly=True,
+                    secure=env("COOKIE_SECURE") == "True",
+                    max_age=timedelta(days=7).total_seconds()
+                )
 
-            return response
-        else:
-            return Response(
-                {
-                    'status': "failed",
-                    'errors': serializer.errors
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
+                return response
+            else:
+                return Response(
+                    {
+                        'status': "failed",
+                        'errors': serializer.errors
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        except Exception as e:
+            logger.exception(str(e))
+            return Response({'errors': {
+                'server_error': [str(e)]
+            }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class AccountLoginLogoutView(APIView):
@@ -83,48 +89,55 @@ class AccountLoginLogoutView(APIView):
         """
         Login to an account with valid data.
         """
-        data = request.data
-        serializer = LoginSerializer(data=data)
-        if serializer.is_valid():
-            username = serializer.validated_data['username']
-            password = serializer.validated_data['password']
-            remember_me = serializer.validated_data['remember_me']
-            user = get_user_model().objects.get(username=username)
-            user.set_password(password)
-            user.save()
-            # Generate a new token on every login session
-            is_token_exist = Token.objects.filter(user=user).exists()
-            if is_token_exist:
-                Token.objects.filter(user=user).delete()
+        try:
+            data = request.data
+            serializer = LoginSerializer(data=data)
+            if serializer.is_valid():
+                username = serializer.validated_data['username']
+                password = serializer.validated_data['password']
+                remember_me = serializer.validated_data['remember_me']
+                user = get_user_model().objects.get(username=username)
+                user.set_password(password)
+                user.save()
+                # Generate a new token on every login session
+                is_token_exist = Token.objects.filter(user=user).exists()
+                if is_token_exist:
+                    Token.objects.filter(user=user).delete()
 
-            token, _ = Token.objects.get_or_create(user=user)
+                token, _ = Token.objects.get_or_create(user=user)
 
-            # Response with no-cache headers
-            response = Response({
-                "status": "success",
-                "token": str(token)
-            }, status=status.HTTP_200_OK)
+                # Response with no-cache headers
+                response = Response({
+                    "status": "success",
+                    "token": str(token)
+                }, status=status.HTTP_200_OK)
 
-            # Add headers to prevent caching
-            response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-            response["Pragma"] = "no-cache"
-            response["Expires"] = "0"
-            # set cookie
-            time_limit_for_cookie = 30 if remember_me == True else 7
-            response.set_cookie(
-                'auth_token',
-                str(token),
-                httponly=True,
-                secure=env("COOKIE_SECURE") == "True",
-                max_age=timedelta(days=time_limit_for_cookie).total_seconds()
-            )
-            return response
+                # Add headers to prevent caching
+                response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+                response["Pragma"] = "no-cache"
+                response["Expires"] = "0"
+                # set cookie
+                time_limit_for_cookie = 30 if remember_me == True else 7
+                response.set_cookie(
+                    'auth_token',
+                    str(token),
+                    httponly=True,
+                    secure=env("COOKIE_SECURE") == "True",
+                    max_age=timedelta(
+                        days=time_limit_for_cookie).total_seconds()
+                )
+                return response
 
-        else:
-            return Response({
-                'status': "failed",
-                'errors': serializer.errors
-            }, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({
+                    'status': "failed",
+                    'errors': serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
+            return Response({'errors': {
+                'server_error': [str(e)]
+            }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def delete(self, request):
         """
@@ -145,7 +158,9 @@ class AccountLoginLogoutView(APIView):
 
         except Exception as e:
             logger.exception(str(e))
-            return Response({'errors': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({'errors': {
+                'server_error': [str(e)]
+            }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class ForgetPasswordView(APIView):
@@ -287,7 +302,11 @@ class UserView(APIView):
             return Response(serializer.data)
         except Exception as e:
             logger.exception(str(e))
-            return Response({'errors': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({
+                'errors': {
+                    'server_error': [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class GroupPermissionView(APIView):
@@ -298,23 +317,31 @@ class GroupPermissionView(APIView):
             return [IsAuthenticated()]
 
     def post(self, request):
-        data = request.data
-        serializer = GroupModelSerializer(
-            data=data, context={'user': request.user})
-        if serializer.is_valid():
-            group = serializer.save()
-            permissions = group.permission.all()
-            permission_ids = [perm.id for perm in permissions]
+        try:
+            data = request.data
+            serializer = GroupModelSerializer(
+                data=data, context={'user': request.user})
+            if serializer.is_valid():
+                group = serializer.save()
+                permissions = group.permission.all()
+                permission_ids = [perm.id for perm in permissions]
 
+                return Response({
+                    "group_id": group.id,
+                    "name": group.name,
+                    "permission": permission_ids
+                }, status=status.HTTP_201_CREATED)
+            else:
+                return Response({
+                    "errors": serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
             return Response({
-                "group_id": group.id,
-                "name": group.name,
-                "permission": permission_ids
-            }, status=status.HTTP_201_CREATED)
-        else:
-            return Response({
-                "errors": serializer.errors
-            }, status=status.HTTP_400_BAD_REQUEST)
+                'errors': {
+                    'server_error': [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def get(self, request):
         try:
@@ -327,7 +354,9 @@ class GroupPermissionView(APIView):
         except Exception as e:
             logger.exception(str(e))
             return Response({
-                'errors': str(e)
+                'errors': {
+                    'server_error': [str(e)]
+                }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def patch(self, request, group_id):
@@ -349,7 +378,9 @@ class GroupPermissionView(APIView):
         except Exception as e:
             logger.exception(str(e))
             return Response({
-                'errors': str(e)
+                'errors': {
+                    'server_error': [str(e)]
+                }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def delete(self, request, group_id):
@@ -363,7 +394,9 @@ class GroupPermissionView(APIView):
         except Exception as e:
             logger.exception(str(e))
             return Response({
-                'errors': str(e)
+                'errors': {
+                    'server_error': [str(e)]
+                }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -371,22 +404,30 @@ class CustomPermissionView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
 
     def post(self, request):
-        data = request.data
-        serializer = CustomPermissionSerializer(data=data)
+        try:
+            data = request.data
+            serializer = CustomPermissionSerializer(data=data)
 
-        if serializer.is_valid():
-            permission = serializer.save()
-            name = serializer.validated_data["name"]
+            if serializer.is_valid():
+                permission = serializer.save()
+                name = serializer.validated_data["name"]
 
+                return Response({
+                    "id": permission.id,
+                    "permission_name": name
+                }, status=status.HTTP_201_CREATED)
+
+            return Response(
+                {
+                    "errors": serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
             return Response({
-                "id": permission.id,
-                "permission_name": name
-            }, status=status.HTTP_201_CREATED)
-
-        return Response(
-            {
-                "errors": serializer.errors
-            }, status=status.HTTP_400_BAD_REQUEST)
+                "errors": {
+                    'server_error': [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def get(self, request):
         try:
@@ -401,7 +442,9 @@ class CustomPermissionView(APIView):
         except Exception as e:
             logger.exception(str(e))
             return Response({
-                "errors": str(e)
+                "errors": {
+                    'server_error': [str(e)]
+                }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -409,27 +452,31 @@ class AssignGroupPermissionView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
 
     def post(self, request):
-        data = request.data
-        serializer = AssignGroupPermissionSerializer(data=data)
-        if serializer.is_valid():
-            serializer.save()
-            group = serializer.validated_data.get("group")
-            user = serializer.validated_data.get("user")
+        try:
+            data = request.data
+            serializer = AssignGroupPermissionSerializer(data=data)
+            if serializer.is_valid():
+                serializer.save()
+                group = serializer.validated_data.get("group")
+                user = serializer.validated_data.get("user")
 
-            groups_data = []
-            for gro in group:
-                groups_data.append(
-                    {"group_id": gro.id, "group_name": gro.name})
-            clear_user_permissions_cache()
-            return Response({
-                "user_id": user.id,
-                "groups": groups_data
-            }, status=status.HTTP_201_CREATED)
+                groups_data = []
+                for gro in group:
+                    groups_data.append(
+                        {"group_id": gro.id, "group_name": gro.name})
+                clear_user_permissions_cache()
+                return Response({
+                    "user_id": user.id,
+                    "groups": groups_data
+                }, status=status.HTTP_201_CREATED)
 
-        else:
-            return Response({
-                "errors": serializer.errors
-            }, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({
+                    "errors": serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
+            return Response({'errors': {'server_error': [str(e)]}}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def delete(self, request):
         try:
@@ -445,7 +492,10 @@ class AssignGroupPermissionView(APIView):
             else:
                 return Response({'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            return Response({'errors': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.exception(str(e))
+            return Response({'errors': {
+                "server_error": [str(e)]
+            }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def get(self, request):
         try:
@@ -471,7 +521,9 @@ class AssignGroupPermissionView(APIView):
             return Response({"data": users_data}, status=status.HTTP_200_OK)
         except Exception as e:
             logger.exception(str(e))
-            return Response({"errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"errors": {
+                "server_error": [str(e)]
+            }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def patch(self, request):
         try:
@@ -479,9 +531,13 @@ class AssignGroupPermissionView(APIView):
             user = data.get("user")
             group = data.get("group")
             if not user:
-                return Response({"errors": "user field must be needed"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"errors": {
+                    "user": ["user field must be needed"]
+                }}, status=status.HTTP_400_BAD_REQUEST)
             if not group:
-                return Response({"errors": "group field must be needed"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"errors": {
+                    "group": ["Group is must need"]
+                }}, status=status.HTTP_400_BAD_REQUEST)
 
             instance = AssignGroupPermission.objects.get(user=user)
             serializer = AssignGroupPermissionSerializer(
@@ -501,111 +557,144 @@ class AssignGroupPermissionView(APIView):
                 return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
         except AssignGroupPermission.DoesNotExist:
-            return Response({"errors": "User not found in AssignGroupPermission"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"errors": {"user": ["User not found in AssignGroupPermission"]}}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             logger.exception(str(e))
-            return Response({"errors": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"errors":
+                             {
+                                 'server_error': [str(e)]
+                             }
+                             }, status=status.HTTP_400_BAD_REQUEST)
 
 
 class AdminUserEmailView(APIView):
     permission_classes = [IsAuthenticated, RegisterUserPermission]
 
     def post(self, request):
-        data = request.data
-        if request.user.club is None:
-            return Response({"errors": "You are not associated in club"}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            data = request.data
+            if request.user.club is None:
+                return Response({"errors": {
+                    'club': ["You are not associated in club"]
+                }}, status=status.HTTP_404_NOT_FOUND)
 
-        club_id = request.user.club.id
-        serializer = AdminUserEmailSerializer(
-            data=data, context={"club_id": club_id})
-        if serializer.is_valid():
-            instance = serializer.save()
-            email = serializer.validated_data["email"]
-            try:
-                otp = OTP.objects.get(email=email)
-                otp_value = otp.otp
-                send_otp_email.delay_on_commit(email, otp_value)
+            club_id = request.user.club.id
+            serializer = AdminUserEmailSerializer(
+                data=data, context={"club_id": club_id})
+            if serializer.is_valid():
+                instance = serializer.save()
+                email = serializer.validated_data["email"]
+                try:
+                    otp = OTP.objects.get(email=email)
+                    otp_value = otp.otp
+                    send_otp_email.delay_on_commit(email, otp_value)
 
-            except OTP.DoesNotExist:
-                return Response({"errors": "OTP for the provided email does not exist."}, status=status.HTTP_404_NOT_FOUND)
+                except OTP.DoesNotExist:
+                    return Response({"errors": {
+                        'otp': ["OTP for the provided email does not exist."]
+                    }}, status=status.HTTP_404_NOT_FOUND)
 
-            try:
-                token = Token.objects.get(user=request.user)
-            except Token.DoesNotExist:
-                return Response({"errors": "Token not found "}, status=status.HTTP_400_BAD_REQUEST)
-            response = Response({
-                "message": "OTP sent successfully",
-                "token": token.key,
-                "to": {
-                    "email": email,
-                }
-            }, status=status.HTTP_201_CREATED)
-            # Add no cache header in response
-            response = add_no_cache_header_in_response(response)
-            return response
+                try:
+                    token = Token.objects.get(user=request.user)
+                except Token.DoesNotExist:
+                    return Response({"errors": {
+                        'token': ["Token not found."]
+                    }}, status=status.HTTP_400_BAD_REQUEST)
+                response = Response({
+                    "message": "OTP sent successfully",
+                    "token": token.key,
+                    "to": {
+                        "email": email,
+                    }
+                }, status=status.HTTP_201_CREATED)
+                # Add no cache header in response
+                response = add_no_cache_header_in_response(response)
+                return response
 
-        return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
+            return Response({'errors': {
+                'server_error': [str(e)]
+            }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class AdminUserVerifyOtpView(APIView):
     permission_classes = [IsAuthenticated, RegisterUserPermission]
 
     def post(self, request):
-        data = request.data
-        if request.user.club is None:
-            return Response({"errors": "You are not associated in club"}, status=status.HTTP_404_NOT_FOUND)
-        club_id = request.user.club.id
+        try:
+            data = request.data
+            if request.user.club is None:
+                return Response({"errors": {
+                    'club': ["You are not associated in club"]
+                }}, status=status.HTTP_404_NOT_FOUND)
+            club_id = request.user.club.id
 
-        serializer = AdminUserVerifyOtpSerializer(
-            data=data, context={"club_id": club_id})
-        if serializer.is_valid():
-            email = serializer.validated_data["email"]
-            otp = serializer.validated_data["otp"]
-            otp_object = OTP.objects.get(email=email, otp=otp)
-            otp_object.delete()
-            try:
-                VerifySuccessfulEmail.objects.create(email=email)
-            except Exception as e:
-                return Response({"errors": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            serializer = AdminUserVerifyOtpSerializer(
+                data=data, context={"club_id": club_id})
+            if serializer.is_valid():
+                email = serializer.validated_data["email"]
+                otp = serializer.validated_data["otp"]
+                otp_object = OTP.objects.get(email=email, otp=otp)
+                otp_object.delete()
+                try:
+                    VerifySuccessfulEmail.objects.create(email=email)
+                except Exception as e:
+                    logger.exception(str(e))
+                    return Response({"errors": {
+                        'email': [str(e)]
+                    }}, status=status.HTTP_400_BAD_REQUEST)
 
-            try:
-                token = Token.objects.get(user=request.user)
-            except Token.DoesNotExist:
-                return Response({"errors": "Token not found "}, status=status.HTTP_400_BAD_REQUEST)
-            response = Response({
-                "status": "Passed",
-                "email": email,
-                "token": token.key
+                try:
+                    token = Token.objects.get(user=request.user)
+                except Token.DoesNotExist:
+                    return Response({"errors": {"token": ["Token not found "]}}, status=status.HTTP_400_BAD_REQUEST)
+                response = Response({
+                    "status": "Passed",
+                    "email": email,
+                    "token": token.key
 
-            }, status=status.HTTP_200_OK)
-            # Add no cache header in response
-            response = add_no_cache_header_in_response(response)
-            return response
+                }, status=status.HTTP_200_OK)
+                # Add no cache header in response
+                response = add_no_cache_header_in_response(response)
+                return response
 
-        return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
+            return Response({'errors': {
+                'server_error': [str(e)]
+            }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class AdminUserRegistrationView(APIView):
     permission_classes = [IsAuthenticated, RegisterUserPermission]
 
     def post(self, request):
-        data = request.data
-        if request.user.club is None:
-            return Response({"errors": "You are not associated in club"}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            data = request.data
+            if request.user.club is None:
+                return Response({"errors": "You are not associated in club"}, status=status.HTTP_404_NOT_FOUND)
 
-        club_id = request.user.club.id
+            club_id = request.user.club.id
 
-        serializer = AdminUserRegistrationSerializer(
-            data=data, context={"club_id": club_id})
-        if serializer.is_valid():
-            user = serializer.save()
-            username = serializer.validated_data["username"]
-            return Response({
-                "status": "success",
-                "username": username
-            }, status=status.HTTP_200_OK)
+            serializer = AdminUserRegistrationSerializer(
+                data=data, context={"club_id": club_id})
+            if serializer.is_valid():
+                user = serializer.save()
+                username = serializer.validated_data["username"]
+                return Response({
+                    "status": "success",
+                    "username": username
+                }, status=status.HTTP_200_OK)
 
-        return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
+            return Response({'errors': {
+                'server_error': [str(e)]
+            }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class GetUserPermissionsView(APIView):
@@ -640,4 +729,6 @@ class GetUserPermissionsView(APIView):
             return response
         except Exception as e:
             logger.exception(str(e))
-            return Response({"errors": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"errors": {
+                'server_error': [str(e)]
+            }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

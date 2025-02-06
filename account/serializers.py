@@ -249,7 +249,7 @@ class AssignGroupPermissionSerializer(serializers.Serializer):
         user = validated_data.get("user")
         if AssignGroupPermission.objects.filter(user=user).exists():
             raise serializers.ValidationError(
-                {'detail': "Already assigned a group. Please make patch request to update or add to new group."})
+                "Already assigned a group. Please make patch request to update or add to new group.")
         assign_group_permission = AssignGroupPermission.objects.create(
             **validated_data)
 
