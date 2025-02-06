@@ -131,3 +131,51 @@ class AuthenticationAPITest(APITestCase):
 
         # Assert
         self.assertEqual(_response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class ResetPasswordAPITest(APITestCase):
+    def setUp(self):
+        self.faker = Faker()
+        # setup club
+        self.club = Club.objects.create(name=self.faker.name())
+        username = self.faker.user_name()
+        password = self.faker.password(length=8)
+        self.email = "antusaha990@gmail.com"
+        self.user = get_user_model().objects.create_user(
+            username=username, password=password, email=self.email)
+        self.user.club = self.club
+        self.user.save()
+
+    def test_forget_password_api_with_valid_email(self):
+        """
+            Endpoint : /api/account/v1/forget_password/
+        """
+        # arrange
+        _data = {
+            'email': self.email
+        }
+
+        # Act
+        _response = self.client.post(
+            "/api/account/v1/forget_password/", data=_data)
+
+        # assert
+        self.assertEqual(_response.status_code, status.HTTP_200_OK)
+        self.assertEqual('success', _response.json()['status'])
+
+    def test_forget_password_api_with_invalid_email(self):
+        """
+            Endpoint : /api/account/v1/forget_password/
+        """
+        # arrange
+        _data = {
+            'email': self.faker.email()
+        }
+
+        # Act
+        _response = self.client.post(
+            "/api/account/v1/forget_password/", data=_data)
+
+        # assert
+        self.assertEqual(_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual('failed', _response.json()['status'])
