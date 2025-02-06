@@ -119,6 +119,7 @@ class ForgetPasswordSerializer(serializers.Serializer):
 class ResetPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField()
+    token = serializers.CharField()
 
     def validate(self, attrs):
         email = attrs.get("email")
@@ -312,7 +313,7 @@ class AdminUserEmailSerializer(serializers.Serializer):
         user = get_user_model().objects.filter(email=value).exists()
         if user:
             raise serializers.ValidationError(
-                {'email': ["Email already exists."]})
+                "Email already exists.")
         return value
 
     def create(self, validated_data):

@@ -15,9 +15,11 @@ import environ
 from datetime import timedelta
 from .permissions import HasCustomPermission
 from .serializers import *
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from account.utils.functions import clear_user_permissions_cache, add_no_cache_header_in_response
+from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
+from account.utils.functions import clear_user_permissions_cache, add_no_cache_header_in_response, generate_random_token
+from django.utils import timezone
 from django.shortcuts import get_object_or_404
+from django.db import transaction
 from .utils.permissions_classes import RegisterUserPermission
 import logging
 # set env
@@ -155,20 +157,20 @@ class ForgetPasswordView(APIView):
         serializer = ForgetPasswordSerializer(
             data=data)  # Validate the data and email
         if serializer.is_valid():
-            user = get_user_model().objects.get(
-                email=serializer.validated_data['email'])
+            email = serializer.validated_data['email']
             otp = randint(1000, 9999)  # Generate OTP
             # Checking if a user with OTP Exist
-            is_exist = OTP.objects.filter(user=user).exists()
+            is_exist = ForgetPasswordOTP.objects.filter(email=email).exists()
             if is_exist:
-                otp_model = OTP.objects.get(user=user)
+                otp_model = ForgetPasswordOTP.objects.get(email=email)
+                otp_model.expire_time = timezone.now()
                 otp_model.otp = otp  # If exist update the OTP
                 otp_model.save()
             else:
                 # If new user Create OTP Model
-                OTP.objects.create(user=user, otp=otp)
+                ForgetPasswordOTP.objects.create(email=email, otp=otp)
                 # initiate CELERY to send mail
-                send_otp_mail_to_email.delay_on_commit(otp, user.email)
+            send_otp_mail_to_email.delay_on_commit(otp, email)
             return Response({
                 "status": "success",
                 "details": "OTP send successful"
@@ -190,19 +192,32 @@ class ResetPasswordView(APIView):
         if serializer.is_valid():
             email = serializer.validated_data['email']
             password = serializer.validated_data['password']
-            user = get_user_model().objects.get(email=email)
-            user.set_password(password)  # Change password
-            user.save()
-            token_exist = Token.objects.filter(user=user).exists()
-            if token_exist:  # Delete previous token if exist
-                token = Token.objects.get(user=user)
-                token.delete()
-            # Create new token and return
-            token = Token.objects.create(user=user)
-            return Response({
-                "status": "success",
-                "token": str(token)
-            }, status=status.HTTP_200_OK)
+            pass_change_token = serializer.validated_data['token']
+            forget_password_otp_obj = get_object_or_404(
+                ForgetPasswordOTP, email=email)
+
+            if pass_change_token != forget_password_otp_obj.token:
+                return Response({'status': 'failed', 'detail': 'Token did not match'}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                try:
+                    with transaction.atomic():
+                        user = get_user_model().objects.get(email=email)
+                        user.set_password(password)  # Change password
+                        user.save()
+                        token_exist = Token.objects.filter(user=user).exists()
+                        if token_exist:  # Delete previous token if exist
+                            token = Token.objects.get(user=user)
+                            token.delete()
+                        # Create new token and return
+                        token = Token.objects.create(user=user)
+                        forget_password_otp_obj.delete()
+                        return Response({
+                            "status": "success",
+                            "token": str(token)
+                        }, status=status.HTTP_200_OK)
+                except Exception as e:
+                    logger.exception(str(e))
+                    return Response({'status': 'failed', 'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         else:
             return Response({
                 'status': "failed",
@@ -214,7 +229,7 @@ class VerifyOtpView(APIView):
     def post(self, request):
         email = request.data.get("email")
         otp = request.data.get("OTP")
-        
+
         try:
             email_record = OTP.objects.get(user__email=email)
             otp_record = OTP.objects.get(otp=otp)
@@ -249,20 +264,28 @@ class VerifyOtpView(APIView):
                 {
                     "status": "failed",
                     "can_change_pass": False,
-                    "details": "Invalid email or OTP."
-                },
-                status=404
-            )
-        except Exception as e:
-            logger.exception(str(e))
-            return Response(
-                {
-                    "status": "error",
-                    "can_change_pass": False,
-                    "details": str(e)
-                },
-                status=500
-            )
+                    "details": "OTP expired generate a new OTP"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            try:
+                token = generate_random_token()
+                forget_password_otp_obj.token = token
+                forget_password_otp_obj.save(update_fields=['token'])
+                return Response({
+                    "status": "success",
+                    "can_change_pass": True,
+                    "details": "Generated new Token for changing password",
+                    "token": token
+                }, status=status.HTTP_200_OK)
+            except Exception as e:
+                logger.exception(str(e))
+                return Response({'errors': {'server_error': [str(e)]}}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        else:
+            return Response({
+                'errors': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+
 
 # Authentication views
 
@@ -284,7 +307,11 @@ class UserView(APIView):
 
 
 class GroupPermissionView(APIView):
-    permission_classes = [IsAuthenticated]
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsAdminUser()]
+        else:
+            return [IsAuthenticated()]
 
     def post(self, request):
         data = request.data
@@ -323,7 +350,9 @@ class GroupPermissionView(APIView):
         """Update a group with required permissions at least one permission"""
         group = get_object_or_404(GroupModel, pk=group_id)
         try:
-            serializer = GroupModelSerializer(group, data=request.data)
+            user = request.user
+            serializer = GroupModelSerializer(
+                group, data=request.data, context={'user': user})
             if serializer.is_valid():
                 serializer.save()
                 # after updating the group delete the permissions cache
@@ -355,7 +384,7 @@ class GroupPermissionView(APIView):
 
 
 class CustomPermissionView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminUser]
 
     def post(self, request):
         data = request.data
@@ -393,7 +422,7 @@ class CustomPermissionView(APIView):
 
 
 class AssignGroupPermissionView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminUser]
 
     def post(self, request):
         data = request.data
@@ -495,7 +524,7 @@ class AssignGroupPermissionView(APIView):
 
 
 class AdminUserEmailView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RegisterUserPermission]
 
     def post(self, request):
         data = request.data

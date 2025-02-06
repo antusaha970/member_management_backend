@@ -3,7 +3,8 @@ from django.db import models
 from club.models import Club
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings
-
+from django.utils import timezone
+from datetime import timedelta
 # Extend the user model with custom fields
 
 
@@ -17,9 +18,18 @@ class CustomUser(AbstractUser):
 # Store user generated OTPS in the DB
 
 
-class AccountTestModel(models.Model):
-    name = models.TextField()
+class ForgetPasswordOTP(models.Model):
+    email = models.EmailField(unique=True, db_index=True)
+    otp = models.IntegerField()
+    expire_time = models.DateTimeField(auto_now_add=True)
+    token = models.CharField(max_length=100)
 
+    def __str__(self):
+        return self.email
+
+    def is_expired(self):
+        """Check if the OTP is expired (valid for 5 minutes)"""
+        return timezone.now() > self.expire_time + timedelta(minutes=5)
 
 # authorization Model
 

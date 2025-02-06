@@ -1,5 +1,7 @@
 from django.core.cache import cache
 from django_redis import get_redis_connection
+import secrets
+import string
 
 
 def clear_user_permissions_cache():
@@ -22,3 +24,9 @@ def add_no_cache_header_in_response(response):
     response["Pragma"] = "no-cache"
     response["Expires"] = "0"
     return response
+
+
+def generate_random_token(length=20):
+    """Generate a secure random token of given length"""
+    characters = string.ascii_letters + string.digits  # a-z, A-Z, 0-9
+    return ''.join(secrets.choice(characters) for _ in range(length))
