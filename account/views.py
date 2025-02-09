@@ -499,7 +499,9 @@ class AssignGroupPermissionView(APIView):
 
     def get(self, request):
         try:
-            data = AssignGroupPermission.objects.all()
+            current_user = request.user
+            data = AssignGroupPermission.objects.filter(
+                user__club=current_user.club)
             users_data = []
             for assign_group in data:
                 user_info = {

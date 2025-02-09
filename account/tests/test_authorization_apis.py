@@ -207,6 +207,10 @@ class AssignGroupUserAPIsTEST(APITestCase):
         self.token, _ = Token.objects.get_or_create(user=self.admin)
 
     def test_assign_group_user_post_method_with_valid_data(self):
+        """
+        Endpoint: "/api/account/v1/authorization/assign_group_user/"
+        Test for assigning a user to a group with valid information
+        """
         # arrange
         group_name = self.faker.name()
         permissions = PermissonModel.objects.create(name="register_account")
@@ -234,3 +238,63 @@ class AssignGroupUserAPIsTEST(APITestCase):
         _group_name = _groups.get("group_name")
         self.assertEqual(group_name, _group_name)
         self.assertEqual(_user_id, self.user.id)
+
+    def test_assign_group_user_post_method_with_invalid_data(self):
+        """
+        Endpoint: "/api/account/v1/authorization/assign_group_user/"
+        Test for assigning a user to a group with invalid information. Like the user does belongs to the admin group
+        """
+        # arrange
+        group_name = self.faker.name()
+        permissions = PermissonModel.objects.create(name="register_account")
+        group = GroupModel.objects.create(
+            name=group_name, club=self.club)
+        group.permission.add(permissions)
+        group.save()
+        new_club = Club.objects.create(name=self.faker.name())
+        self.user.club = new_club
+        self.user.save()
+
+        # act
+        _data = {
+            'user': self.user.id,
+            'group': [
+                group.id
+            ]
+        }
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {str(self.token)}")
+        _response = self.client.post(
+            "/api/account/v1/authorization/assign_group_user/", data=_data)
+
+        # assert
+        data = _response.json()
+        self.assertEqual(_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('errors', data)
+
+    def test_assign_group_user_get_method_with_valid_data(self):
+        """
+            Endpoint: "/api/account/v1/authorization/assign_group_user/"
+            Test for getting all the groups with user for valid admin token
+        """
+        # act
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {str(self.token)}")
+        _response = self.client.get(
+            "/api/account/v1/authorization/assign_group_user/")
+        # assert
+        self.assertEqual(_response.status_code, status.HTTP_200_OK)
+        self.assertIn('data', _response.json())
+
+    def test_assign_group_user_get_method_with_invalid_data(self):
+        """
+            Endpoint: "/api/account/v1/authorization/assign_group_user/"
+            Test for getting all the groups with user for invalid admin token
+        """
+        # arrange
+        token, _ = Token.objects.get_or_create(user=self.user)
+        # act
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {str(token)}")
+        _response = self.client.get(
+            "/api/account/v1/authorization/assign_group_user/")
+        # assert
+        self.assertEqual(_response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertNotIn('data', _response.json())
