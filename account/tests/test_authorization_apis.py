@@ -2,10 +2,13 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 from rest_framework import status
 from django.contrib.auth import get_user_model
-from account.models import PermissonModel, GroupModel, AssignGroupPermission
+from account.models import PermissonModel, GroupModel, AssignGroupPermission,OTP,VerifySuccessfulEmail
 from club.models import Club
 import pdb
-
+from rest_framework.authtoken.models import Token
+from unittest.mock import patch
+from account.utils.permissions_classes import RegisterUserPermission
+from random import randint
 
 class CustomPermissionAPITest(TestCase):
     def setUp(self):
@@ -87,7 +90,6 @@ class CustomPermissionAPITest(TestCase):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertIn("detail", response.data)
-
 
 class CustomGroupModel(TestCase):
     def setUp(self):
@@ -180,3 +182,115 @@ class CustomGroupModel(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertFalse(GroupModel.objects.filter(
             id=self.groupname.id).exists())
+           
+class AdminUserModel(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.admin_user = get_user_model().objects.create_superuser(
+            username="admin", password="admin")
+        self.normal_user = get_user_model().objects.create_user(
+            username="salauddin_85", password="root25809#")
+        self.club = Club.objects.create(name="golpokotha")
+        self.permission1 = PermissonModel.objects.create(name="add_member")
+        self.permission2 = PermissonModel.objects.create(name="view_member")
+        self.admin_user.club = self.club
+
+        self.token = Token.objects.create(user=self.admin_user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.token.key}')
+
+        self.url = "/api/account/v1/authorization/admin_user_email/"
+
+    @patch.object(RegisterUserPermission, "has_permission", return_value=True)
+    def test_create_admin_user_email_success(self, mock_permission):
+        self.client.force_authenticate(user=self.admin_user)
+        data = {"club": self.club.id, "email": "ahmedsalauddin677785@gmail.com"}
+        response = self.client.post(self.url, data, format="json")  
+        self.assertEqual(response.status_code, 201)
+        self.assertIn("token", response.data)  
+        self.assertIn("ahmedsalauddin677785@gmail.com", response.data["to"]["email"])
+        
+        data2 = {"club": self.club.id, "email": "ahmedsalauddin677785@gmail.com"}
+        response2 = self.client.post(self.url, data2, format="json") 
+        # pdb.set_trace() 
+        
+    @patch.object(RegisterUserPermission, "has_permission", return_value=True)
+    def test_create_admin_user_verify_otp_success(self, mock_permission):
+        self.url = "/api/account/v1/authorization/admin_user_verify_otp/"
+        self.client.force_authenticate(user=self.admin_user)
+        otp=randint(1000, 9999)
+        otp_instance=OTP.objects.create(email="ahmedsalauddin677785@gmail.com",otp=otp)
+
+        data = {"club": self.club.id, "email": "ahmedsalauddin677785@gmail.com","otp":otp_instance.otp}
+        response = self.client.post(self.url, data, format="json")      
+        
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("token", response.data)  
+        self.assertIn("status", response.data)  
+        self.assertIn("ahmedsalauddin677785@gmail.com", response.data["email"])
+
+        data2 = {"club": self.club.id, "email": "antu@gmail.com","otp":123}
+        response2 = self.client.post(self.url, data2, format="json")
+        # pdb.set_trace() 
+
+    @patch.object(RegisterUserPermission, "has_permission", return_value=True)
+    def test_create_admin_user_object_create_success(self, mock_permission):
+        self.url = "/api/account/v1/authorization/admin_user_register/"
+        self.client.force_authenticate(user=self.admin_user)
+        
+        data={
+        "club": self.club.id,
+        "email": "ahmedsalauddin677785@gmail.com",
+        "username": "salauddin85",
+        "name": "salauddin",
+        "password": "root2580#"
+        }
+        email=data["email"]
+        verify=VerifySuccessfulEmail.objects.create(email=email)
+        response = self.client.post(self.url, data, format="json")       
+        self.assertEqual(response.status_code, 201)
+        self.assertIn("username", response.data)  
+        self.assertIn("status", response.data) 
+        user_instance=get_user_model().objects.filter(username=data["username"]).exists()
+        self.assertTrue(user_instance)
+        verify_success=VerifySuccessfulEmail.objects.filter(email=data["email"]).exists()
+        self.assertTrue(verify_success)
+        
+        data2={
+        "club": self.club.id,
+        "email": "ahmedsalauddin67778556565@gmail.com",
+        "username": "salauddin85565",
+        "name": "salauddin",
+        "password": "root2580#"
+        }
+        response2 = self.client.post(self.url, data2, format="json")
+  
+class GetSpecificUserPermissionsViewTest(TestCase):
+    def setUp(self):
+        """ check permissions for a specific user """
+        self.client = APIClient()
+        self.user = get_user_model().objects.create_user(username="testuser", password="testpassword")
+
+        self.permission1 = PermissonModel.objects.create(name="add_member")
+        self.permission2 = PermissonModel.objects.create(name="view_member")
+        self.permission3 = PermissonModel.objects.create(name="delete_member")
+
+        self.group = GroupModel.objects.create(name="Test")
+        self.group2 = GroupModel.objects.create(name="Moderator")
+        self.group.permission.add(self.permission1, self.permission2)
+        self.group2.permission.add(self.permission3)
+
+        self.assign_group_permission = AssignGroupPermission.objects.create(user=self.user)
+        self.assign_group_permission.group.add(self.group)
+        self.assign_group_permission.group.add(self.group2)
+
+        self.url = "/api/account/v1/authorization/get_user_all_permissions/"
+
+    def test_get_permissions_authenticated(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(self.url)
+        # pdb.set_trace()
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_get_permissions_unauthenticated(self):
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
