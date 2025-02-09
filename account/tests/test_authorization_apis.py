@@ -5,6 +5,11 @@ from django.contrib.auth import get_user_model
 from account.models import PermissonModel, GroupModel, AssignGroupPermission
 from club.models import Club
 import pdb
+from rest_framework.test import APITestCase
+from rest_framework.authtoken.models import Token
+from faker import Faker
+import os
+from django.conf import settings
 
 
 class CustomPermissionAPITest(TestCase):
@@ -180,3 +185,52 @@ class CustomGroupModel(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertFalse(GroupModel.objects.filter(
             id=self.groupname.id).exists())
+
+
+class AssignGroupUserAPIsTEST(APITestCase):
+
+    def setUp(self):
+        self.faker = Faker()
+        username = self.faker.user_name()
+        password = self.faker.password(length=8)
+        email = self.faker.email()
+        club_name = self.faker.name()
+        self.club = Club.objects.create(name=club_name)
+        self.user = get_user_model().objects.create_user(
+            username=username, password=password, email=email, club=self.club)
+
+        admin_username = self.faker.user_name()
+        admin_password = self.faker.password(length=8)
+        admin_email = self.faker.email()
+        self.admin = get_user_model().objects.create_superuser(
+            username=admin_username, password=admin_password, email=admin_email, club=self.club)
+        self.token, _ = Token.objects.get_or_create(user=self.admin)
+
+    def test_assign_group_user_post_method_with_valid_data(self):
+        # arrange
+        group_name = self.faker.name()
+        permissions = PermissonModel.objects.create(name="register_account")
+        group = GroupModel.objects.create(
+            name=group_name, club=self.club)
+        group.permission.add(permissions)
+        group.save()
+
+        # act
+        _data = {
+            'user': self.user.id,
+            'group': [
+                group.id
+            ]
+        }
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {str(self.token)}")
+        _response = self.client.post(
+            "/api/account/v1/authorization/assign_group_user/", data=_data)
+
+        # assert
+        data = _response.json()
+        self.assertEqual(_response.status_code, status.HTTP_201_CREATED)
+        _groups = data.get("groups")[0]
+        _user_id = data.get("user_id")
+        _group_name = _groups.get("group_name")
+        self.assertEqual(group_name, _group_name)
+        self.assertEqual(_user_id, self.user.id)

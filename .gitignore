@@ -12,7 +12,6 @@ db.sqlite3
 db.sqlite3-journal
 media
 
-
 #static Files
 profile_photos/
 initial_payment_doc/

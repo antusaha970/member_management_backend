@@ -231,7 +231,8 @@ class AssignGroupPermissionSerializer(serializers.Serializer):
         user = self.initial_data.get("user")  # Get user from request data
         if isinstance(user, int):  # Convert ID to user instance if necessary
             user = get_user_model().objects.get(id=user)
-
+        if isinstance(user, str):
+            user = get_user_model().objects.get(id=int(user))
         if not user.club:
             raise serializers.ValidationError(
                 "User is not associated with any club.")
