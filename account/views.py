@@ -109,6 +109,8 @@ class AccountLoginLogoutView(APIView):
                 # Response with no-cache headers
                 response = Response({
                     "status": "success",
+                    "code": status.HTTP_200_OK,
+                    "message": "Token was created successfully",
                     "token": str(token)
                 }, status=status.HTTP_200_OK)
 
@@ -130,12 +132,17 @@ class AccountLoginLogoutView(APIView):
 
             else:
                 return Response({
+                    'code': status.HTTP_400_BAD_REQUEST,
                     'status': "failed",
+                    'message': "Invalid request",
                     'errors': serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
             return Response({'errors': {
+                'code': status.HTTP_400_BAD_REQUEST,
+                'status': "failed",
+                'message': "Error occurred",
                 'server_error': [str(e)]
             }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -145,7 +152,9 @@ class AccountLoginLogoutView(APIView):
         """
         try:
             response = Response(
-                {'detail': "Logout successful"}, status=status.HTTP_200_OK)
+                {'code': status.HTTP_200_OK,
+                 'status': "success",
+                 'message': "Logout successful", 'detail': "Logout successful"}, status=status.HTTP_200_OK)
             # Delete the 'auth_token' cookie
             response.delete_cookie('auth_token')
 
@@ -159,6 +168,9 @@ class AccountLoginLogoutView(APIView):
         except Exception as e:
             logger.exception(str(e))
             return Response({'errors': {
+                'code': status.HTTP_500_INTERNAL_SERVER_ERROR,
+                'status': "failed",
+                'message': "Error occurred",
                 'server_error': [str(e)]
             }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -188,11 +200,15 @@ class ForgetPasswordView(APIView):
             send_otp_mail_to_email.delay_on_commit(otp, email)
             return Response({
                 "status": "success",
+                'code': status.HTTP_200_OK,
+                'message': "OTP has been created successfully",
                 "details": "OTP send successful"
             }, status=status.HTTP_200_OK)
         else:
             return Response({
                 "status": "failed",
+                'code': status.HTTP_400_BAD_REQUEST,
+                'message': "invalid request",
                 "errors": serializer.errors
             }, status=status.HTTP_400_BAD_REQUEST)
 
@@ -212,7 +228,12 @@ class ResetPasswordView(APIView):
                 ForgetPasswordOTP, email=email)
 
             if pass_change_token != forget_password_otp_obj.token:
-                return Response({'status': 'failed', 'detail': 'Token did not match'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({
+                    'code': status.HTTP_400_BAD_REQUEST,
+                    'status': 'failed',
+                    'message': "Error while matching token",
+                    'detail': 'Token did not match',
+                }, status=status.HTTP_400_BAD_REQUEST)
             else:
                 try:
                     with transaction.atomic():
@@ -227,14 +248,22 @@ class ResetPasswordView(APIView):
                         token = Token.objects.create(user=user)
                         forget_password_otp_obj.delete()
                         return Response({
+                            "code": status.HTTP_200_OK,
+                            "message": "Operation successful",
                             "status": "success",
                             "token": str(token)
                         }, status=status.HTTP_200_OK)
                 except Exception as e:
                     logger.exception(str(e))
-                    return Response({'status': 'failed', 'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                    return Response({
+                        "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        "message": "Error occurred",
+                        'status': 'failed', 'detail': str(e)
+                    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         else:
             return Response({
+                "code": status.HTTP_400_BAD_REQUEST,
+                "message": "Invalid request",
                 'status': "failed",
                 'errors': serializer.errors
             }, status=status.HTTP_400_BAD_REQUEST)
@@ -254,6 +283,8 @@ class VerifyOtpView(APIView):
                 ForgetPasswordOTP, email=email)
             if forget_password_otp_obj.otp != otp:  # check if OTP matched
                 return Response({
+                    "code": status.HTTP_400_BAD_REQUEST,
+                    "message": "Failed while verifying OTP",
                     "status": "failed",
                     "can_change_pass": False,
                     "details": "OTP didn't match"
@@ -261,6 +292,8 @@ class VerifyOtpView(APIView):
 
             if forget_password_otp_obj.is_expired():  # check if OTP has expired
                 return Response({
+                    "code": status.HTTP_400_BAD_REQUEST,
+                    "message": "Failed while verifying OTP",
                     "status": "failed",
                     "can_change_pass": False,
                     "details": "OTP expired generate a new OTP"
@@ -271,6 +304,8 @@ class VerifyOtpView(APIView):
                 forget_password_otp_obj.token = token
                 forget_password_otp_obj.save(update_fields=['token'])
                 return Response({
+                    "code": status.HTTP_200_OK,
+                    "message": "Operation successful",
                     "status": "success",
                     "can_change_pass": True,
                     "details": "Generated new Token for changing password",
@@ -278,10 +313,19 @@ class VerifyOtpView(APIView):
                 }, status=status.HTTP_200_OK)
             except Exception as e:
                 logger.exception(str(e))
-                return Response({'errors': {'server_error': [str(e)]}}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response({
+                    "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    "message": "Error occurred",
+                    "status": "failed",
+                    'errors': {'server_error': [str(e)]}
+
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         else:
             return Response({
+                "code": status.HTTP_400_BAD_REQUEST,
+                "message": "Invalid request",
+                "status": "failed",
                 'errors': serializer.errors
             }, status=status.HTTP_400_BAD_REQUEST)
 
@@ -304,7 +348,10 @@ class UserView(APIView):
             logger.exception(str(e))
             return Response({
                 'errors': {
-                    'server_error': [str(e)]
+                    "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    "message": "Error occurred",
+                    "status": "failed",
+                    "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -327,17 +374,26 @@ class GroupPermissionView(APIView):
                 permission_ids = [perm.id for perm in permissions]
 
                 return Response({
+                    "code": status.HTTP_201_CREATED,
+                    "message": "Operation successfully",
+                    "status": "success",
                     "group_id": group.id,
                     "name": group.name,
                     "permission": permission_ids
                 }, status=status.HTTP_201_CREATED)
             else:
                 return Response({
+                    "code": status.HTTP_400_BAD_REQUEST,
+                    "message": "invalid request",
+                    "status": "failed",
                     "errors": serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
             return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "invalid request",
+                "status": "failed",
                 'errors': {
                     'server_error': [str(e)]
                 }
@@ -349,11 +405,17 @@ class GroupPermissionView(APIView):
             data = GroupModel.objects.filter(club=user.club)
             serializer = GroupSerializerForViewAllGroups(data, many=True)
             return Response({
+                "code": status.HTTP_200_OK,
+                "message": "operation successful",
+                "status": "success",
                 'data': serializer.data
-            })
+            }, status=status.HTTP_200_OK)
         except Exception as e:
             logger.exception(str(e))
             return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
                 'errors': {
                     'server_error': [str(e)]
                 }
@@ -371,13 +433,23 @@ class GroupPermissionView(APIView):
                 # after updating the group delete the permissions cache
                 clear_user_permissions_cache()
                 return Response({
+                    "code": status.HTTP_200_OK,
+                    "message": "Operation successful",
+                    "status": "success",
                     'data': serializer.data
                 })
             else:
-                return Response({'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({
+                    "code": status.HTTP_400_BAD_REQUEST,
+                    "message": "Invalid request",
+                    "status": "failed",
+                    'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
             return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
                 'errors': {
                     'server_error': [str(e)]
                 }
@@ -390,10 +462,18 @@ class GroupPermissionView(APIView):
             group.delete()
             # clear permissions cache for all users after a group deletion
             clear_user_permissions_cache()
-            return Response({'detail': f"Group deleted successfully"})
+            return Response({
+                "code": status.HTTP_200_OK,
+                "message": "Operation successful",
+                "status": "success",
+                'detail': f"Group deleted successfully"
+            }, status=status.HTTP_200_OK)
         except Exception as e:
             logger.exception(str(e))
             return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
                 'errors': {
                     'server_error': [str(e)]
                 }
@@ -413,17 +493,26 @@ class CustomPermissionView(APIView):
                 name = serializer.validated_data["name"]
 
                 return Response({
+                    "code": status.HTTP_201_CREATED,
+                    "message": "Operation successful",
+                    "status": "success",
                     "id": permission.id,
                     "permission_name": name
                 }, status=status.HTTP_201_CREATED)
 
             return Response(
                 {
+                    "code": status.HTTP_400_BAD_REQUEST,
+                    "message": "Invalid request",
+                    "status": "failed",
                     "errors": serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
             return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
                 "errors": {
                     'server_error': [str(e)]
                 }
@@ -437,11 +526,19 @@ class CustomPermissionView(APIView):
                 all_permission, many=True)
 
             return Response(
-                serializer.data, status=status.HTTP_200_OK)
+                {
+                    "code": status.HTTP_200_OK,
+                    "message": "Operation successful",
+                    "status": "success",
+                    "data": serializer.data
+                }, status=status.HTTP_200_OK)
 
         except Exception as e:
             logger.exception(str(e))
             return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
                 "errors": {
                     'server_error': [str(e)]
                 }
@@ -466,17 +563,28 @@ class AssignGroupPermissionView(APIView):
                         {"group_id": gro.id, "group_name": gro.name})
                 clear_user_permissions_cache()
                 return Response({
+                    "code": status.HTTP_201_CREATED,
+                    "message": "Operation successful",
+                    "status": "success",
                     "user_id": user.id,
                     "groups": groups_data
                 }, status=status.HTTP_201_CREATED)
 
             else:
                 return Response({
+                    "code": status.HTTP_400_BAD_REQUEST,
+                    "message": "Invalid request",
+                    "status": "failed",
                     "errors": serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
-            return Response({'errors': {'server_error': [str(e)]}}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
+                'errors': {'server_error': [str(e)]}
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def delete(self, request):
         try:
@@ -488,14 +596,28 @@ class AssignGroupPermissionView(APIView):
                 assign_group.group.remove(group)
                 assign_group.save()
                 clear_user_permissions_cache()
-                return Response({"detail": "User removed from group successfully."}, status=status.HTTP_200_OK)
+                return Response({
+                    "code": status.HTTP_200_OK,
+                    "message": "Operation successful",
+                    "status": "success",
+                    "detail": "User removed from group successfully."
+                }, status=status.HTTP_200_OK)
             else:
-                return Response({'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({
+                    "code": status.HTTP_400_BAD_REQUEST,
+                    "message": "Invalid request",
+                    "status": "failed",
+                    'errors': serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
-            return Response({'errors': {
-                "server_error": [str(e)]
-            }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
+                'errors': {
+                    "server_error": [str(e)]
+                }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def get(self, request):
         try:
@@ -520,12 +642,21 @@ class AssignGroupPermissionView(APIView):
                     }
                     user_info["groups"].append(group_info)
                 users_data.append(user_info)
-            return Response({"data": users_data}, status=status.HTTP_200_OK)
+            return Response({
+                "code": status.HTTP_200_OK,
+                "message": "Operation successful",
+                "status": "success",
+                "data": users_data
+            }, status=status.HTTP_200_OK)
         except Exception as e:
             logger.exception(str(e))
-            return Response({"errors": {
-                "server_error": [str(e)]
-            }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
+                "errors": {
+                    "server_error": [str(e)]
+                }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def patch(self, request):
         try:
@@ -533,13 +664,22 @@ class AssignGroupPermissionView(APIView):
             user = data.get("user")
             group = data.get("group")
             if not user:
-                return Response({"errors": {
-                    "user": ["user field must be needed"]
-                }}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({
+                    "code": status.HTTP_400_BAD_REQUEST,
+                    "message": "Invalid request",
+                    "status": "failed",
+                    "errors": {
+                        "user": ["user field must be needed"]
+                    }
+                }, status=status.HTTP_400_BAD_REQUEST)
             if not group:
-                return Response({"errors": {
-                    "group": ["Group is must need"]
-                }}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({
+                    "code": status.HTTP_400_BAD_REQUEST,
+                    "message": "Invalid request",
+                    "status": "failed",
+                    "errors": {
+                        "group": ["Group is must need"]
+                    }}, status=status.HTTP_400_BAD_REQUEST)
 
             instance = AssignGroupPermission.objects.get(user=user)
             serializer = AssignGroupPermissionSerializer(
@@ -552,21 +692,36 @@ class AssignGroupPermissionView(APIView):
                                 "group_name": gro.name} for gro in groups]
                 clear_user_permissions_cache()
                 return Response({
+                    "code": status.HTTP_200_OK,
+                    "message": "Operation successful",
+                    "status": "success",
                     "user_id": user_id,
                     "updated_groups": groups_data
                 }, status=status.HTTP_200_OK)
             else:
-                return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({
+                    "code": status.HTTP_400_BAD_REQUEST,
+                    "message": "Invalid request",
+                    "status": "failed",
+                    "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
         except AssignGroupPermission.DoesNotExist:
-            return Response({"errors": {"user": ["User not found in AssignGroupPermission"]}}, status=status.HTTP_404_NOT_FOUND)
+            return Response({
+                "code": status.HTTP_400_BAD_REQUEST,
+                "message": "Invalid request",
+                "status": "failed",
+                "errors": {"user": ["User not found in AssignGroupPermission"]}}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             logger.exception(str(e))
-            return Response({"errors":
-                             {
-                                 'server_error': [str(e)]
-                             }
-                             }, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                "code": status.HTTP_400_BAD_REQUEST,
+                "message": "Invalid request",
+                "status": "failed",
+                "errors":
+                {
+                    'server_error': [str(e)]
+                }
+            }, status=status.HTTP_400_BAD_REQUEST)
 
 
 class AdminUserEmailView(APIView):
@@ -576,9 +731,13 @@ class AdminUserEmailView(APIView):
         try:
             data = request.data
             if request.user.club is None:
-                return Response({"errors": {
-                    'club': ["You are not associated in club"]
-                }}, status=status.HTTP_404_NOT_FOUND)
+                return Response({
+                    "code": status.HTTP_404_NOT_FOUND,
+                    "message": "Invalid request",
+                    "status": "failed",
+                    "errors": {
+                        'club': ["You are not associated in club"]
+                    }}, status=status.HTTP_404_NOT_FOUND)
 
             club_id = request.user.club.id
             serializer = AdminUserEmailSerializer(
@@ -592,17 +751,28 @@ class AdminUserEmailView(APIView):
                     send_otp_email.delay_on_commit(email, otp_value)
 
                 except OTP.DoesNotExist:
-                    return Response({"errors": {
-                        'otp': ["OTP for the provided email does not exist."]
-                    }}, status=status.HTTP_404_NOT_FOUND)
+                    return Response({
+                        "code": status.HTTP_404_NOT_FOUND,
+                        "message": "Invalid request",
+                        "status": "failed",
+                        "errors": {
+                            'otp': ["OTP for the provided email does not exist."]
+                        }}, status=status.HTTP_404_NOT_FOUND)
 
                 try:
                     token = Token.objects.get(user=request.user)
                 except Token.DoesNotExist:
-                    return Response({"errors": {
-                        'token': ["Token not found."]
-                    }}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response({
+                        "code": status.HTTP_400_BAD_REQUEST,
+                        "message": "Invalid request",
+                        "status": "failed",
+                        "errors": {
+                            'token': ["Token not found."]
+                        }}, status=status.HTTP_400_BAD_REQUEST)
                 response = Response({
+                    "code": status.HTTP_201_CREATED,
+                    "message": "Operation successful",
+                    "status": "success",
                     "message": "OTP sent successfully",
                     "token": token.key,
                     "to": {
@@ -613,12 +783,20 @@ class AdminUserEmailView(APIView):
                 response = add_no_cache_header_in_response(response)
                 return response
 
-            return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                "code": status.HTTP_400_BAD_REQUEST,
+                "message": "Invalid request",
+                "status": "failed",
+                "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
-            return Response({'errors': {
-                'server_error': [str(e)]
-            }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "error occurred",
+                "status": "failed",
+                'errors': {
+                    'server_error': [str(e)]
+                }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class AdminUserVerifyOtpView(APIView):
@@ -628,9 +806,13 @@ class AdminUserVerifyOtpView(APIView):
         try:
             data = request.data
             if request.user.club is None:
-                return Response({"errors": {
-                    'club': ["You are not associated in club"]
-                }}, status=status.HTTP_404_NOT_FOUND)
+                return Response({
+                    "code": status.HTTP_404_NOT_FOUND,
+                    "message": "Invalid request",
+                    "status": "failed",
+                    "errors": {
+                        'club': ["You are not associated in club"]
+                    }}, status=status.HTTP_404_NOT_FOUND)
             club_id = request.user.club.id
 
             serializer = AdminUserVerifyOtpSerializer(
@@ -644,30 +826,48 @@ class AdminUserVerifyOtpView(APIView):
                     VerifySuccessfulEmail.objects.create(email=email)
                 except Exception as e:
                     logger.exception(str(e))
-                    return Response({"errors": {
-                        'email': [str(e)]
-                    }}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response({
+                        "code": status.HTTP_400_BAD_REQUEST,
+                        "message": "Invalid request",
+                        "status": "failed",
+                        "errors": {
+                            'email': [str(e)]
+                        }}, status=status.HTTP_400_BAD_REQUEST)
 
                 try:
                     token = Token.objects.get(user=request.user)
                 except Token.DoesNotExist:
-                    return Response({"errors": {"token": ["Token not found "]}}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response({
+                        "code": status.HTTP_400_BAD_REQUEST,
+                        "message": "Invalid request",
+                        "status": "failed",
+                        "errors": {"token": ["Token not found "]}}, status=status.HTTP_400_BAD_REQUEST)
                 response = Response({
-                    "status": "Passed",
-                    "email": email,
-                    "token": token.key
+                                    "code": status.HTTP_200_OK,
+                                    "message": "Operation successful",
+                                    "status": "success",
+                                    "email": email,
+                                    "token": token.key
 
-                }, status=status.HTTP_200_OK)
+                                    }, status=status.HTTP_200_OK)
                 # Add no cache header in response
                 response = add_no_cache_header_in_response(response)
                 return response
 
-            return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                "code": status.HTTP_400_BAD_REQUEST,
+                "message": "Invalid request",
+                "status": "failed",
+                "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
-            return Response({'errors': {
-                'server_error': [str(e)]
-            }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
+                'errors': {
+                    'server_error': [str(e)]
+                }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class AdminUserRegistrationView(APIView):
@@ -677,7 +877,11 @@ class AdminUserRegistrationView(APIView):
         try:
             data = request.data
             if request.user.club is None:
-                return Response({"errors": "You are not associated in club"}, status=status.HTTP_404_NOT_FOUND)
+                return Response({
+                    "code": status.HTTP_404_NOT_FOUND,
+                    "message": "Invalid request",
+                    "status": "failed",
+                    "errors": "You are not associated in club"}, status=status.HTTP_404_NOT_FOUND)
 
             club_id = request.user.club.id
 
@@ -687,16 +891,26 @@ class AdminUserRegistrationView(APIView):
                 user = serializer.save()
                 username = serializer.validated_data["username"]
                 return Response({
+                    "code": status.HTTP_201_CREATED,
+                    "message": "Operation successful",
                     "status": "success",
                     "username": username
                 }, status=status.HTTP_201_CREATED)
 
-            return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                "code": status.HTTP_400_BAD_REQUEST,
+                "message": "Invalid request",
+                "status": "failed",
+                "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
-            return Response({'errors': {
-                'server_error': [str(e)]
-            }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
+                'errors': {
+                    'server_error': [str(e)]
+                }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class GetUserPermissionsView(APIView):
@@ -724,13 +938,21 @@ class GetUserPermissionsView(APIView):
                     }
                     user_info["groups"].append(group_info)
                 users_data.append(user_info)
-            response = Response({"data": users_data},
-                                status=status.HTTP_200_OK)
+            response = Response({
+                "code": status.HTTP_200_OK,
+                "message": "Operation successful",
+                "status": "success",
+                "data": users_data},
+                status=status.HTTP_200_OK)
             # add no cache header to response
             response = add_no_cache_header_in_response(response)
             return response
         except Exception as e:
             logger.exception(str(e))
-            return Response({"errors": {
-                'server_error': [str(e)]
-            }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({
+                "code": status.HTTP_400_BAD_REQUEST,
+                "message": "Invalid request",
+                "status": "failed",
+                "errors": {
+                    'server_error': [str(e)]
+                }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

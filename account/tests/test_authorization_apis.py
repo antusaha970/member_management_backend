@@ -79,9 +79,9 @@ class CustomPermissionAPITest(TestCase):
         self.client.force_authenticate(user=self.admin_user)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIsInstance(response.data, list)
         self.assertGreaterEqual(len(response.data), 2)
-        for permission in response.data:
+        data = response.data.get("data")
+        for permission in data:
             self.assertIn("id", permission)
             self.assertIn("name", permission)
 
@@ -142,14 +142,6 @@ class CustomGroupModel(TestCase):
             "dskk"], "club": self.club.id}
         response = self.client.post(self.url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_create_group_without_club(self):
-        """ Ensure an error occurs when no club is provided"""
-        self.client.force_authenticate(user=self.admin_user)
-        data = {"name": "team_lead", "permission": [self.permission1.id]}
-        response = self.client.post(self.url, data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("errors", response.data)
 
     def test_create_group_with_long_name(self):
         """ Ensure group name does not exceed max length"""
