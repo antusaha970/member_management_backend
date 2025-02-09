@@ -178,7 +178,6 @@ class GroupModelSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=250, required=True)
     permission = serializers.PrimaryKeyRelatedField(
         queryset=PermissonModel.objects.all(), many=True, required=True)
-    club = serializers.PrimaryKeyRelatedField(queryset=Club.objects.all())
 
     def validate_name(self, value):
         if self.instance:
@@ -198,16 +197,10 @@ class GroupModelSerializer(serializers.Serializer):
 
         return name
 
-    def validate_club(self, value):
-        user = self.context.get('user')
-        if user.club != value:
-            raise serializers.ValidationError(
-                f"You can't add group to this club")
-        return value
-
     def create(self, validated_data):
+        user = self.context.get('user')
         permissions_data = validated_data.pop('permission')
-        group = GroupModel.objects.create(**validated_data)
+        group = GroupModel.objects.create(**validated_data, club=user.club)
         group.permission.set(permissions_data)
         return group
 
@@ -320,12 +313,12 @@ class AdminUserEmailSerializer(serializers.Serializer):
     def create(self, validated_data):
         email = validated_data.get('email')
         otp = randint(1000, 9999)
-        is_exists=OTP.objects.filter(email=email).exists()
+        is_exists = OTP.objects.filter(email=email).exists()
         if is_exists:
-            otp_instance=OTP.objects.get(email=email)
-            otp_instance.otp=otp
+            otp_instance = OTP.objects.get(email=email)
+            otp_instance.otp = otp
             otp_instance.save(update_fields=["otp"])
-        else:    
+        else:
             otp_instance = OTP.objects.create(email=email, otp=otp)
         return otp_instance
 
@@ -349,7 +342,7 @@ class AdminUserVerifyOtpSerializer(serializers.Serializer):
         if verified_email:
             raise ValidationError(
                 {'email': ["Email already verified."]})
-        
+
         is_valid = OTP.objects.filter(otp=otp, email=email).exists()
         if not is_valid:
             raise ValidationError(
