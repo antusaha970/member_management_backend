@@ -320,7 +320,13 @@ class AdminUserEmailSerializer(serializers.Serializer):
     def create(self, validated_data):
         email = validated_data.get('email')
         otp = randint(1000, 9999)
-        otp_instance = OTP.objects.create(email=email, otp=otp)
+        is_exists=OTP.objects.filter(email=email).exists()
+        if is_exists:
+            otp_instance=OTP.objects.get(email=email)
+            otp_instance.otp=otp
+            otp_instance.save(update_fields=["otp"])
+        else:    
+            otp_instance = OTP.objects.create(email=email, otp=otp)
         return otp_instance
 
 
@@ -343,6 +349,7 @@ class AdminUserVerifyOtpSerializer(serializers.Serializer):
         if verified_email:
             raise ValidationError(
                 {'email': ["Email already verified."]})
+        
         is_valid = OTP.objects.filter(otp=otp, email=email).exists()
         if not is_valid:
             raise ValidationError(
