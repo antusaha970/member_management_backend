@@ -298,3 +298,58 @@ class AssignGroupUserAPIsTEST(APITestCase):
         # assert
         self.assertEqual(_response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertNotIn('data', _response.json())
+
+    def test_assign_group_user_delete_method_with_valid_data(self):
+        """
+        Endpoint: "/api/account/v1/authorization/assign_group_user/"
+        Test for deleting a user from a group with valid data
+        """
+        # arrange
+        group_name = self.faker.name()
+        permissions = PermissonModel.objects.create(name="register_account")
+        group = GroupModel.objects.create(
+            name=group_name, club=self.club)
+        group.permission.add(permissions)
+        group.save()
+        assign_grp = AssignGroupPermission.objects.create(user=self.user)
+        assign_grp.group.add(group)
+
+        # act
+        _data = {
+            'user_id': self.user.id,
+            'group_id': group.id
+        }
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {str(self.token)}")
+        _response = self.client.delete(
+            "/api/account/v1/authorization/assign_group_user/", data=_data)
+
+        # assert
+        self.assertEqual(_response.status_code, status.HTTP_200_OK)
+        self.assertFalse(AssignGroupPermission.objects.filter(
+            user=self.user, group=group).exists())
+
+    def test_assign_group_user_delete_method_with_valid_data(self):
+        """
+        Endpoint: "/api/account/v1/authorization/assign_group_user/"
+        Test for deleting a user from a group with invalid data
+        """
+        # arrange
+        group_name = self.faker.name()
+        permissions = PermissonModel.objects.create(name="register_account")
+        group = GroupModel.objects.create(
+            name=group_name, club=self.club)
+        group.permission.add(permissions)
+        group.save()
+        assign_grp = AssignGroupPermission.objects.create(user=self.user)
+
+        # act
+        _data = {
+            'user_id': self.user.id,
+            'group_id': group.id
+        }
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {str(self.token)}")
+        _response = self.client.delete(
+            "/api/account/v1/authorization/assign_group_user/", data=_data)
+
+        # assert
+        self.assertEqual(_response.status_code, status.HTTP_400_BAD_REQUEST)
