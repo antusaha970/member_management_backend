@@ -459,14 +459,14 @@ class AdminUserModel(TestCase):
     @patch.object(RegisterUserPermission, "has_permission", return_value=True)
     def test_create_admin_user_email_success(self, mock_permission):
         self.client.force_authenticate(user=self.admin_user)
-        data = {"club": self.club.id, "email": "ahmedsalauddin677785@gmail.com"}
+        data = {"email": "ahmedsalauddin677785@gmail.com"}
         response = self.client.post(self.url, data, format="json")
         self.assertEqual(response.status_code, 201)
         self.assertIn("token", response.data)
         self.assertIn("ahmedsalauddin677785@gmail.com",
                       response.data["to"]["email"])
 
-        data2 = {"club": self.club.id,
+        data2 = {
                  "email": "ahmedsalauddin677785@gmail.com"}
         response2 = self.client.post(self.url, data2, format="json")
         # pdb.set_trace()
@@ -479,7 +479,7 @@ class AdminUserModel(TestCase):
         otp_instance = OTP.objects.create(
             email="ahmedsalauddin677785@gmail.com", otp=otp)
 
-        data = {"club": self.club.id,
+        data = {
                 "email": "ahmedsalauddin677785@gmail.com", "otp": otp_instance.otp}
         response = self.client.post(self.url, data, format="json")
 
@@ -488,7 +488,7 @@ class AdminUserModel(TestCase):
         self.assertIn("status", response.data)
         self.assertIn("ahmedsalauddin677785@gmail.com", response.data["email"])
 
-        data2 = {"club": self.club.id, "email": "antu@gmail.com", "otp": 123}
+        data2 = { "email": "antu@gmail.com", "otp": 123}
         response2 = self.client.post(self.url, data2, format="json")
         # pdb.set_trace()
 
@@ -498,7 +498,7 @@ class AdminUserModel(TestCase):
         self.client.force_authenticate(user=self.admin_user)
 
         data = {
-            "club": self.club.id,
+            
             "email": "ahmedsalauddin677785@gmail.com",
             "username": "salauddin85",
             "name": "salauddin",
@@ -518,7 +518,7 @@ class AdminUserModel(TestCase):
         self.assertTrue(verify_success)
 
         data2 = {
-            "club": self.club.id,
+           
             "email": "ahmedsalauddin67778556565@gmail.com",
             "username": "salauddin85565",
             "name": "salauddin",

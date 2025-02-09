@@ -499,9 +499,7 @@ class AssignGroupPermissionView(APIView):
 
     def get(self, request):
         try:
-            current_user = request.user
-            data = AssignGroupPermission.objects.filter(
-                user__club=current_user.club)
+            data = AssignGroupPermission.objects.all()
             users_data = []
             for assign_group in data:
                 user_info = {
@@ -570,7 +568,7 @@ class AssignGroupPermissionView(APIView):
 
 
 class AdminUserEmailView(APIView):
-    permission_classes = [IsAuthenticated, RegisterUserPermission]
+    permission_classes = [IsAuthenticated,RegisterUserPermission]
 
     def post(self, request):
         try:
@@ -580,9 +578,8 @@ class AdminUserEmailView(APIView):
                     'club': ["You are not associated in club"]
                 }}, status=status.HTTP_404_NOT_FOUND)
 
-            club_id = request.user.club.id
             serializer = AdminUserEmailSerializer(
-                data=data, context={"club_id": club_id})
+                data=data)
             if serializer.is_valid():
                 instance = serializer.save()
                 email = serializer.validated_data["email"]
@@ -622,7 +619,7 @@ class AdminUserEmailView(APIView):
 
 
 class AdminUserVerifyOtpView(APIView):
-    permission_classes = [IsAuthenticated, RegisterUserPermission]
+    permission_classes = [IsAuthenticated,RegisterUserPermission]
 
     def post(self, request):
         try:
@@ -631,10 +628,9 @@ class AdminUserVerifyOtpView(APIView):
                 return Response({"errors": {
                     'club': ["You are not associated in club"]
                 }}, status=status.HTTP_404_NOT_FOUND)
-            club_id = request.user.club.id
 
             serializer = AdminUserVerifyOtpSerializer(
-                data=data, context={"club_id": club_id})
+                data=data)
             if serializer.is_valid():
                 email = serializer.validated_data["email"]
                 otp = serializer.validated_data["otp"]
@@ -671,16 +667,14 @@ class AdminUserVerifyOtpView(APIView):
 
 
 class AdminUserRegistrationView(APIView):
-    permission_classes = [IsAuthenticated, RegisterUserPermission]
+    permission_classes = [IsAuthenticated,RegisterUserPermission]
 
     def post(self, request):
         try:
             data = request.data
             if request.user.club is None:
                 return Response({"errors": "You are not associated in club"}, status=status.HTTP_404_NOT_FOUND)
-
             club_id = request.user.club.id
-
             serializer = AdminUserRegistrationSerializer(
                 data=data, context={"club_id": club_id})
             if serializer.is_valid():
