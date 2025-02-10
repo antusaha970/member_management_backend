@@ -89,14 +89,14 @@ class LoginSerializer(serializers.Serializer):
 
         if not user:
             raise serializers.ValidationError({
-                'username': f"user {username} doesn't exist"
+                'username': [f"user {username} doesn't exist"]
             })
 
         else:
             user = authenticate(username=username, password=password)
             if not user:
                 raise serializers.ValidationError({
-                    'password': f"password didn't matched"
+                    'password': [f"password didn't matched"]
                 })
 
         return super().validate(attrs)
@@ -111,7 +111,7 @@ class ForgetPasswordSerializer(serializers.Serializer):
             email=email).exists()
         if not is_user_exist_with_email:
             raise serializers.ValidationError({
-                'email': f"No user exist with {email}"
+                'email': [f"No user exist with {email}"]
             })
         return super().validate(attrs)
 
@@ -128,13 +128,14 @@ class ResetPasswordSerializer(serializers.Serializer):
             email=email).exists()
         if not is_user_exist:
             raise serializers.ValidationError({
-                'email': f"No user exist with {email}"
+                'email': [f"No user exist with {email}"]
             })
         if len(password) < 6:
             raise serializers.ValidationError({
-                'password': "Password must be 6 character long"
+                'password': ["Password must be 6 character long"]
             })
         return super().validate(attrs)
+
 
 class UpdatePasswordSerializer(serializers.Serializer):
     current_password = serializers.CharField(max_length=128, write_only=True)
@@ -148,15 +149,19 @@ class UpdatePasswordSerializer(serializers.Serializer):
         confirm_password = attrs.get("confirm_password")
 
         if not user.check_password(current_password):
-            raise serializers.ValidationError({"current_password": ["Invalid current password"]})
-        if current_password==new_password:
-            raise serializers.ValidationError({"current_password": ["current password and new password are same.please choose a different password"]})
+            raise serializers.ValidationError(
+                {"current_password": ["Invalid current password"]})
+        if current_password == new_password:
+            raise serializers.ValidationError({"current_password": [
+                                              "current password and new password are same.please choose a different password"]})
 
         if new_password != confirm_password:
-            raise serializers.ValidationError({"confirm_password": ["Passwords do not match"]})
+            raise serializers.ValidationError(
+                {"confirm_password": ["Passwords do not match"]})
 
         if len(new_password) < 6:
-            raise serializers.ValidationError({"new_password": ["Password must be at least 6 characters long"]})
+            raise serializers.ValidationError(
+                {"new_password": ["Password must be at least 6 characters long"]})
 
         return attrs
 
@@ -165,7 +170,6 @@ class UpdatePasswordSerializer(serializers.Serializer):
         instance.save()
         return instance
 
-       
 
 class VerifyOtpSerializer(serializers.Serializer):
     otp = serializers.IntegerField()
@@ -397,17 +401,17 @@ class AdminUserRegistrationSerializer(serializers.ModelSerializer):
         password = attrs.get('password')
         is_exist = get_user_model().objects.filter(email=email)
         if is_exist:
-            raise ValidationError({"errors": "email already exist"})
+            raise ValidationError({"email": ["email already exist"]})
 
         is_email_exists = VerifySuccessfulEmail.objects.filter(
             email=email).exists()
         if not is_email_exists:
             raise serializers.ValidationError({
-                'email': f"{email} not found in VerifySuccessfulEmail.Please first of all verify user email. ",
+                'email': [f"{email} not found in VerifySuccessfulEmail.Please first of all verify user email. "],
             })
         if len(password) < 6:
             raise serializers.ValidationError({
-                'password': f"Password must be at least 6 character. Current length {len(password)}"
+                'password': [f"Password must be at least 6 character. Current length {len(password)}"]
             })
 
         return super().validate(attrs)
