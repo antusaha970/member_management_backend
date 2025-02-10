@@ -1,3 +1,4 @@
+from rest_framework.exceptions import NotAuthenticated, PermissionDenied
 from .tasks import send_otp_email
 from .serializers import RegistrationSerializer, LoginSerializer, ForgetPasswordSerializer, VerifyOtpSerializer
 from django.core.mail import send_mail
@@ -33,7 +34,6 @@ environ.Env.read_env()
 env = environ.Env()
 # Set logger
 logger = logging.getLogger("myapp")
-from rest_framework.exceptions import NotAuthenticated,PermissionDenied
 # Authentication views
 
 
@@ -834,8 +834,6 @@ class AssignGroupPermissionView(APIView):
 class AdminUserEmailView(APIView):
     permission_classes = [IsAuthenticated, RegisterUserPermission]
 
-    
-        
     def post(self, request):
         try:
             data = request.data
@@ -867,22 +865,11 @@ class AdminUserEmailView(APIView):
                             'otp': ["OTP for the provided email does not exist."]
                         }}, status=status.HTTP_404_NOT_FOUND)
 
-                try:
-                    token = Token.objects.get(user=request.user)
-                except Token.DoesNotExist:
-                    return Response({
-                        "code": status.HTTP_400_BAD_REQUEST,
-                        "message": "Invalid request",
-                        "status": "failed",
-                        "errors": {
-                            'token': ["Token not found."]
-                        }}, status=status.HTTP_400_BAD_REQUEST)
                 response = Response({
                     "code": status.HTTP_201_CREATED,
                     "message": "Operation successful",
                     "status": "success",
                     "message": "OTP sent successfully",
-                    "token": token.key,
                     "to": {
                         "email": email,
                     }
@@ -941,21 +928,11 @@ class AdminUserVerifyOtpView(APIView):
                             'email': [str(e)]
                         }}, status=status.HTTP_400_BAD_REQUEST)
 
-                try:
-                    token = Token.objects.get(user=request.user)
-                except Token.DoesNotExist:
-                    return Response({
-                        "code": status.HTTP_400_BAD_REQUEST,
-                        "message": "Invalid request",
-                        "status": "failed",
-                        "errors": {"token": ["Token not found "]}}, status=status.HTTP_400_BAD_REQUEST)
                 response = Response({
                                     "code": status.HTTP_200_OK,
                                     "message": "Operation successful",
                                     "status": "success",
                                     "email": email,
-                                    "token": token.key
-
                                     }, status=status.HTTP_200_OK)
                 # Add no cache header in response
                 response = add_no_cache_header_in_response(response)
@@ -1023,7 +1000,7 @@ class AdminUserRegistrationView(APIView):
 
 
 class GetUserPermissionsView(APIView):
-    permission_classes = [IsAuthenticated,RegisterUserPermission]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         try:
