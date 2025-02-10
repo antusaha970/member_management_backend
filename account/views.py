@@ -27,7 +27,7 @@ environ.Env.read_env()
 env = environ.Env()
 # Set logger
 logger = logging.getLogger("myapp")
-
+from rest_framework.exceptions import NotAuthenticated,PermissionDenied
 # Authentication views
 
 
@@ -727,6 +727,8 @@ class AssignGroupPermissionView(APIView):
 class AdminUserEmailView(APIView):
     permission_classes = [IsAuthenticated, RegisterUserPermission]
 
+    
+        
     def post(self, request):
         try:
             data = request.data
@@ -914,7 +916,7 @@ class AdminUserRegistrationView(APIView):
 
 
 class GetUserPermissionsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated,RegisterUserPermission]
 
     def get(self, request):
         try:
