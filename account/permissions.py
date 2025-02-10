@@ -8,6 +8,9 @@ class HasCustomPermission(BasePermission):
     required_permission = None
 
     def has_permission(self, request, view):
+        if not request.user or request.user.is_anonymous:
+            return False
+        
         if self.required_permission is None:
             return False
         user = request.user
