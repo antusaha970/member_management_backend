@@ -22,6 +22,7 @@ from django.shortcuts import get_object_or_404
 from django.db import transaction
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.conf import settings
+from rest_framework_simplejwt.views import TokenRefreshView
 from .utils.permissions_classes import RegisterUserPermission
 import logging
 # set env
@@ -364,6 +365,38 @@ class VerifyOtpView(APIView):
                 'errors': serializer.errors
             }, status=status.HTTP_400_BAD_REQUEST)
 
+
+class CustomTokenRefreshView(TokenRefreshView):
+    """
+    Custom refresh view to set the new refresh token in cookies
+    """
+
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+
+        # Extract new access & refresh tokens
+        data = response.data
+        if "refresh" in data:
+            response.set_cookie(
+                settings.SIMPLE_JWT["AUTH_COOKIE_REFRESH"],
+                data["refresh"],
+                httponly=settings.SIMPLE_JWT["AUTH_COOKIE_HTTP_ONLY"],
+                secure=env("COOKIE_SECURE") == "True",
+                max_age=timedelta(
+                    days=7).total_seconds()
+            )
+
+        if "access" in data:
+            response.set_cookie(
+                settings.SIMPLE_JWT["AUTH_COOKIE"],
+                data["access"],
+                httponly=settings.SIMPLE_JWT["AUTH_COOKIE_HTTP_ONLY"],
+                secure=env("COOKIE_SECURE") == "True",
+                max_age=timedelta(
+                    days=7).total_seconds()
+            )
+
+        return response
 
 # Authentication views
 

@@ -1,10 +1,14 @@
 from django.urls import path
 from . import views
+from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
+
 urlpatterns = [
     path('v1/register/', views.AccountRegistrationView.as_view(),
          name="account_registration"),
     path('v1/login/', views.AccountLoginLogoutView.as_view(),
          name="account_login"),
+    path('v1/token/refresh/', views.CustomTokenRefreshView.as_view(),
+         name="token_refresh"),
     path('v1/logout/', views.AccountLoginLogoutView.as_view(),
          name="account_logout"),
     path('v1/forget_password/', views.ForgetPasswordView.as_view(),
@@ -30,5 +34,6 @@ urlpatterns = [
          views.AdminUserRegistrationView.as_view(), name="admin_user_register"),
     path('v1/authorization/get_user_all_permissions/',
          views.GetUserPermissionsView.as_view(), name="get_user_all_permissions"),
+
 
 ]
