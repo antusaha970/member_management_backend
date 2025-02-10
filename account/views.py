@@ -739,9 +739,8 @@ class AdminUserEmailView(APIView):
                         'club': ["You are not associated in club"]
                     }}, status=status.HTTP_404_NOT_FOUND)
 
-            club_id = request.user.club.id
             serializer = AdminUserEmailSerializer(
-                data=data, context={"club_id": club_id})
+                data=data)
             if serializer.is_valid():
                 instance = serializer.save()
                 email = serializer.validated_data["email"]
@@ -813,10 +812,9 @@ class AdminUserVerifyOtpView(APIView):
                     "errors": {
                         'club': ["You are not associated in club"]
                     }}, status=status.HTTP_404_NOT_FOUND)
-            club_id = request.user.club.id
 
             serializer = AdminUserVerifyOtpSerializer(
-                data=data, context={"club_id": club_id})
+                data=data)
             if serializer.is_valid():
                 email = serializer.validated_data["email"]
                 otp = serializer.validated_data["otp"]
@@ -881,7 +879,9 @@ class AdminUserRegistrationView(APIView):
                     "code": status.HTTP_404_NOT_FOUND,
                     "message": "Invalid request",
                     "status": "failed",
-                    "errors": "You are not associated in club"}, status=status.HTTP_404_NOT_FOUND)
+                    "errors": {
+                        "club": ["You are not associated in club"]
+                    }}, status=status.HTTP_404_NOT_FOUND)
 
             club_id = request.user.club.id
 
