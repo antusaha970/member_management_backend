@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from datetime import timedelta
 import environ
 environ.Env.read_env()
 
@@ -32,6 +33,7 @@ INSTALLED_APPS = [
     # 3rd party
     'rest_framework',
     'rest_framework.authtoken',
+    'rest_framework_simplejwt',
     'django_cleanup',
     'django_celery_results',
     # Custom application
@@ -49,6 +51,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # custom
+    'account.middleware.JWTMiddleware'
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -117,9 +121,27 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Auth settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
 }
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=7),  # Short-lived access token
+    # Refresh token valid for 15 days
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=15),
+    "ROTATE_REFRESH_TOKENS": True,  # Generates new refresh tokens on every refresh
+    "BLACKLIST_AFTER_ROTATION": True,  # Old refresh tokens become invalid
+    "ALGORITHM": "HS256",  # Secure hashing algorithm
+    "SIGNING_KEY": env("SECRET_KEY"),  # Use Django's SECRET_KEY to sign JWTs
+    "AUTH_HEADER_TYPES": ("Bearer",),  # JWTs can still be passed in headers
+    "AUTH_COOKIE": "access_token",  # Name of the cookie storing the access token
+    # Name of the cookie storing the refresh token
+    "AUTH_COOKIE_REFRESH": "refresh_token",
+    "AUTH_COOKIE_HTTP_ONLY": True,  # Prevent JavaScript from accessing cookies
+    # Send cookies only over HTTPS (for production)
+    "AUTH_COOKIE_SECURE": env("COOKIE_SECURE"),
+}
+
 
 ## SMTP settings ##
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

@@ -20,6 +20,8 @@ from account.utils.functions import clear_user_permissions_cache, add_no_cache_h
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from django.db import transaction
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.conf import settings
 from .utils.permissions_classes import RegisterUserPermission
 import logging
 # set env
@@ -40,12 +42,13 @@ class AccountRegistrationView(APIView):
             data = request.data
             serializer = RegistrationSerializer(data=data)
             if serializer.is_valid():
+                remember_me = serializer.validated_data['remember_me']
                 user = serializer.save()
-                token, _ = Token.objects.get_or_create(user=user)
-
+                refresh = RefreshToken.for_user(user)
                 response = Response({
                     "status": "success",
-                    "token": str(token)
+                    "access_token": str(refresh.access_token),
+                    "refresh_token": str(refresh)
                 }, status=status.HTTP_201_CREATED)
 
                 # Add headers to prevent caching
@@ -53,13 +56,23 @@ class AccountRegistrationView(APIView):
                 response["Pragma"] = "no-cache"
                 response["Expires"] = "0"
                 # set cookie
+                time_limit_for_cookie = 30 if remember_me == True else 7
 
                 response.set_cookie(
-                    'auth_token',
-                    str(token),
-                    httponly=True,
+                    settings.SIMPLE_JWT["AUTH_COOKIE"],
+                    str(refresh.access_token),
+                    httponly=settings.SIMPLE_JWT["AUTH_COOKIE_HTTP_ONLY"],
                     secure=env("COOKIE_SECURE") == "True",
-                    max_age=timedelta(days=7).total_seconds()
+                    max_age=timedelta(
+                        days=time_limit_for_cookie).total_seconds()
+                )
+                response.set_cookie(
+                    settings.SIMPLE_JWT["AUTH_COOKIE_REFRESH"],
+                    str(refresh),
+                    httponly=settings.SIMPLE_JWT["AUTH_COOKIE_HTTP_ONLY"],
+                    secure=env("COOKIE_SECURE") == "True",
+                    max_age=timedelta(
+                        days=time_limit_for_cookie).total_seconds()
                 )
 
                 return response
@@ -99,19 +112,17 @@ class AccountLoginLogoutView(APIView):
                 user = get_user_model().objects.get(username=username)
                 user.set_password(password)
                 user.save()
-                # Generate a new token on every login session
-                is_token_exist = Token.objects.filter(user=user).exists()
-                if is_token_exist:
-                    Token.objects.filter(user=user).delete()
 
-                token, _ = Token.objects.get_or_create(user=user)
+                # Generate a new token on every login session
+                refresh = RefreshToken.for_user(user)
 
                 # Response with no-cache headers
                 response = Response({
                     "status": "success",
                     "code": status.HTTP_200_OK,
                     "message": "Token was created successfully",
-                    "token": str(token)
+                    "access_token": str(refresh.access_token),
+                    "refresh_token": str(refresh)
                 }, status=status.HTTP_200_OK)
 
                 # Add headers to prevent caching
@@ -121,9 +132,17 @@ class AccountLoginLogoutView(APIView):
                 # set cookie
                 time_limit_for_cookie = 30 if remember_me == True else 7
                 response.set_cookie(
-                    'auth_token',
-                    str(token),
-                    httponly=True,
+                    settings.SIMPLE_JWT["AUTH_COOKIE"],
+                    str(refresh.access_token),
+                    httponly=settings.SIMPLE_JWT["AUTH_COOKIE_HTTP_ONLY"],
+                    secure=env("COOKIE_SECURE") == "True",
+                    max_age=timedelta(
+                        days=time_limit_for_cookie).total_seconds()
+                )
+                response.set_cookie(
+                    settings.SIMPLE_JWT["AUTH_COOKIE_REFRESH"],
+                    str(refresh),
+                    httponly=settings.SIMPLE_JWT["AUTH_COOKIE_HTTP_ONLY"],
                     secure=env("COOKIE_SECURE") == "True",
                     max_age=timedelta(
                         days=time_limit_for_cookie).total_seconds()
@@ -156,7 +175,8 @@ class AccountLoginLogoutView(APIView):
                  'status': "success",
                  'message': "Logout successful", 'detail': "Logout successful"}, status=status.HTTP_200_OK)
             # Delete the 'auth_token' cookie
-            response.delete_cookie('auth_token')
+            response.delete_cookie(settings.SIMPLE_JWT["AUTH_COOKIE"])
+            response.delete_cookie(settings.SIMPLE_JWT["AUTH_COOKIE_REFRESH"])
 
             # Add headers to prevent caching
             response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
@@ -240,19 +260,34 @@ class ResetPasswordView(APIView):
                         user = get_user_model().objects.get(email=email)
                         user.set_password(password)  # Change password
                         user.save()
-                        token_exist = Token.objects.filter(user=user).exists()
-                        if token_exist:  # Delete previous token if exist
-                            token = Token.objects.get(user=user)
-                            token.delete()
                         # Create new token and return
-                        token = Token.objects.create(user=user)
+                        refresh = RefreshToken.for_user(user)
                         forget_password_otp_obj.delete()
-                        return Response({
+                        response = Response({
+                            "status": "success",
                             "code": status.HTTP_200_OK,
                             "message": "Operation successful",
-                            "status": "success",
-                            "token": str(token)
+                            "access_token": str(refresh.access_token),
+                            "refresh_token": str(refresh)
                         }, status=status.HTTP_200_OK)
+                        # set cookie
+                        response.set_cookie(
+                            settings.SIMPLE_JWT["AUTH_COOKIE"],
+                            str(refresh.access_token),
+                            httponly=settings.SIMPLE_JWT["AUTH_COOKIE_HTTP_ONLY"],
+                            secure=env("COOKIE_SECURE") == "True",
+                            max_age=timedelta(
+                                days=7).total_seconds()
+                        )
+                        response.set_cookie(
+                            settings.SIMPLE_JWT["AUTH_COOKIE_REFRESH"],
+                            str(refresh),
+                            httponly=settings.SIMPLE_JWT["AUTH_COOKIE_HTTP_ONLY"],
+                            secure=env("COOKIE_SECURE") == "True",
+                            max_age=timedelta(
+                                days=7).total_seconds()
+                        )
+                        return response
                 except Exception as e:
                     logger.exception(str(e))
                     return Response({
