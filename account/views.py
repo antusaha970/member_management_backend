@@ -23,6 +23,9 @@ from django.db import transaction
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.conf import settings
 from rest_framework_simplejwt.views import TokenRefreshView
+from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
+from rest_framework_simplejwt.exceptions import InvalidToken
+from django.utils.datastructures import MultiValueDict
 from .utils.permissions_classes import RegisterUserPermission
 import logging
 # set env
@@ -372,31 +375,67 @@ class CustomTokenRefreshView(TokenRefreshView):
     """
 
     def post(self, request, *args, **kwargs):
+
+        # Extract the refresh token from the request cookies
+        refresh_token = request.COOKIES.get(
+            settings.SIMPLE_JWT["AUTH_COOKIE_REFRESH"])
+
+        if not refresh_token:
+            return Response({
+                "code": 400,
+                "status": "failed",
+                "message": "Error while getting refresh token",
+                "errors": {
+                    "refresh_token": ["No refresh token provided"]
+                }}, status=status.HTTP_400_BAD_REQUEST)
+
+        request.data.update({'refresh': refresh_token})
+        # Proceed with refresh process (generates new access & refresh tokens)
         response = super().post(request, *args, **kwargs)
 
-        # Extract new access & refresh tokens
-        data = response.data
-        if "refresh" in data:
+        # If refresh token is generated, blacklist the old one
+        if "refresh" in response.data:
             response.set_cookie(
                 settings.SIMPLE_JWT["AUTH_COOKIE_REFRESH"],
-                data["refresh"],
+                response.data["refresh"],
                 httponly=settings.SIMPLE_JWT["AUTH_COOKIE_HTTP_ONLY"],
                 secure=env("COOKIE_SECURE") == "True",
                 max_age=timedelta(
-                    days=7).total_seconds()
+                    days=15).total_seconds()
             )
 
-        if "access" in data:
+        # Set the new access token in cookie
+        if "access" in response.data:
             response.set_cookie(
                 settings.SIMPLE_JWT["AUTH_COOKIE"],
-                data["access"],
+                response.data['access'],
                 httponly=settings.SIMPLE_JWT["AUTH_COOKIE_HTTP_ONLY"],
                 secure=env("COOKIE_SECURE") == "True",
                 max_age=timedelta(
                     days=7).total_seconds()
             )
 
+        response.data.pop("access")
+        response.data.pop("refresh")
+        response.data.update(
+            {"code": 200, "status": "success", "message": "new access token given in cookie"})
+
         return response
+
+    def handle_exception(self, exc):
+        """
+        Modify error messages for invalid/blacklisted tokens.
+        """
+        if isinstance(exc, InvalidToken):
+            return Response({
+                "code": 401,
+                "status": "failed",
+                "message": "invalid request",
+                "errors": {
+                    "token": ["Your refresh token is invalid or has been blacklisted."]
+                }
+            }, status=status.HTTP_401_UNAUTHORIZED)
+        return super().handle_exception(exc)
 
 # Authentication views
 
