@@ -238,6 +238,11 @@ class ForgetPasswordView(APIView):
 
 
 class ResetPasswordView(APIView):
+    def get_permissions(self):
+        if self.request.method == "PATCH":
+            return [IsAuthenticated()]
+        else:
+            return [AllowAny()]
     def post(self, request):
         """
             Reset password for valid user with valid email address
@@ -307,7 +312,25 @@ class ResetPasswordView(APIView):
                 'errors': serializer.errors
             }, status=status.HTTP_400_BAD_REQUEST)
 
+    def patch(self, request):
+        
+        user = request.user
+        serializer = UpdatePasswordSerializer(data=request.data, context={"user": user})
 
+        if serializer.is_valid():
+            serializer.update(user, serializer.validated_data)
+            return Response({
+                "code": status.HTTP_200_OK,
+                "message": "Password Updated successfully",
+                "status": "success"
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({
+                "code": status.HTTP_400_BAD_REQUEST,
+                "message": "Invalid request data",
+                "status": "failed",
+                "errors": serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
 class VerifyOtpView(APIView):
     def post(self, request):
         """

@@ -136,6 +136,36 @@ class ResetPasswordSerializer(serializers.Serializer):
             })
         return super().validate(attrs)
 
+class UpdatePasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(max_length=128, write_only=True)
+    new_password = serializers.CharField(max_length=128, write_only=True)
+    confirm_password = serializers.CharField(max_length=128, write_only=True)
+
+    def validate(self, attrs):
+        user = self.context.get('user')
+        current_password = attrs.get("current_password")
+        new_password = attrs.get("new_password")
+        confirm_password = attrs.get("confirm_password")
+
+        if not user.check_password(current_password):
+            raise serializers.ValidationError({"current_password": ["Invalid current password"]})
+        if current_password==new_password:
+            raise serializers.ValidationError({"current_password": ["current password and new password are same.please choose a different password"]})
+
+        if new_password != confirm_password:
+            raise serializers.ValidationError({"confirm_password": ["Passwords do not match"]})
+
+        if len(new_password) < 6:
+            raise serializers.ValidationError({"new_password": ["Password must be at least 6 characters long"]})
+
+        return attrs
+
+    def update(self, instance, validated_data):
+        instance.set_password(validated_data["new_password"])
+        instance.save()
+        return instance
+
+       
 
 class VerifyOtpSerializer(serializers.Serializer):
     otp = serializers.IntegerField()
