@@ -163,7 +163,9 @@ class AccountLoginLogoutView(APIView):
                 'code': status.HTTP_400_BAD_REQUEST,
                 'status': "failed",
                 'message': "Error occurred",
-                'server_error': [str(e)]
+                'errors': {
+                    "server_error": [str(e)]
+                }
             }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def delete(self, request):
