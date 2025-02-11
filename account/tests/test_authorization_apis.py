@@ -47,7 +47,7 @@ class CustomPermissionAPITest(TestCase):
         data = {"name": "view_permission"}
         response = self.client.post(self.url, data)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-        self.assertIn("detail", response.data)
+        self.assertIn("errors", response.data)
 
     def test_create_permission_non_admin(self):
         """Test that a normal user (non-admin) cannot create permissions and validate response"""
@@ -55,7 +55,7 @@ class CustomPermissionAPITest(TestCase):
         data = {"name": "view_member"}
         response = self.client.post(self.url, data)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertIn("detail", response.data)
+        self.assertIn("errors", response.data)
 
     def test_create_permission_duplicate_name(self):
         """Test that duplicate permission names are not allowed"""
@@ -90,14 +90,14 @@ class CustomPermissionAPITest(TestCase):
         """Test that an unauthenticated user cannot fetch permissions"""
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-        self.assertIn("detail", response.data)
+        self.assertIn("errors", response.data)
 
     def test_get_permissions_non_admin(self):
         """Test that a non-admin user cannot fetch permissions"""
         self.client.force_authenticate(user=self.normal_user)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertIn("detail", response.data)
+        self.assertIn("errors", response.data)
 
 
 class CustomGroupModel(TestCase):
@@ -452,8 +452,9 @@ class AdminUserModel(TestCase):
         self.permission2 = PermissonModel.objects.create(name="view_member")
         self.admin_user.club = self.club
 
-        self.token = Token.objects.create(user=self.admin_user)
-        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.token.key}')
+        self.token = RefreshToken.for_user(self.admin_user)
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f'Bearer {self.token.access_token}')
 
         self.url = "/api/account/v1/authorization/admin_user_email/"
 
@@ -463,7 +464,6 @@ class AdminUserModel(TestCase):
         data = {"club": self.club.id, "email": "ahmedsalauddin677785@gmail.com"}
         response = self.client.post(self.url, data, format="json")
         self.assertEqual(response.status_code, 201)
-        self.assertIn("token", response.data)
         self.assertIn("ahmedsalauddin677785@gmail.com",
                       response.data["to"]["email"])
 
@@ -485,7 +485,6 @@ class AdminUserModel(TestCase):
         response = self.client.post(self.url, data, format="json")
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn("token", response.data)
         self.assertIn("status", response.data)
         self.assertIn("ahmedsalauddin677785@gmail.com", response.data["email"])
 
