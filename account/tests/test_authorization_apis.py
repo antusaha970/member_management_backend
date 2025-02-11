@@ -15,6 +15,7 @@ from rest_framework.authtoken.models import Token
 from unittest.mock import patch
 from account.utils.permissions_classes import RegisterUserPermission
 from random import randint
+from rest_framework_simplejwt.tokens import RefreshToken
 
 
 class CustomPermissionAPITest(TestCase):
@@ -201,7 +202,7 @@ class AssignGroupUserAPIsTEST(APITestCase):
         admin_email = self.faker.email()
         self.admin = get_user_model().objects.create_superuser(
             username=admin_username, password=admin_password, email=admin_email, club=self.club)
-        self.token, _ = Token.objects.get_or_create(user=self.admin)
+        self.token = RefreshToken.for_user(self.admin)
 
     def test_assign_group_user_post_method_with_valid_data(self):
         """
@@ -223,7 +224,8 @@ class AssignGroupUserAPIsTEST(APITestCase):
                 group.id
             ]
         }
-        self.client.credentials(HTTP_AUTHORIZATION=f"Token {str(self.token)}")
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {str(self.token.access_token)}")
         _response = self.client.post(
             "/api/account/v1/authorization/assign_group_user/", data=_data)
 
@@ -259,7 +261,8 @@ class AssignGroupUserAPIsTEST(APITestCase):
                 group.id
             ]
         }
-        self.client.credentials(HTTP_AUTHORIZATION=f"Token {str(self.token)}")
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {str(self.token.access_token)}")
         _response = self.client.post(
             "/api/account/v1/authorization/assign_group_user/", data=_data)
 
@@ -274,7 +277,8 @@ class AssignGroupUserAPIsTEST(APITestCase):
             Test for getting all the groups with user for valid admin token
         """
         # act
-        self.client.credentials(HTTP_AUTHORIZATION=f"Token {str(self.token)}")
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {str(self.token.access_token)}")
         _response = self.client.get(
             "/api/account/v1/authorization/assign_group_user/")
         # assert
@@ -287,9 +291,10 @@ class AssignGroupUserAPIsTEST(APITestCase):
             Test for getting all the groups with user for invalid admin token
         """
         # arrange
-        token, _ = Token.objects.get_or_create(user=self.user)
+        token = RefreshToken.for_user(self.user)
         # act
-        self.client.credentials(HTTP_AUTHORIZATION=f"Token {str(token)}")
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {str(token.access_token)}")
         _response = self.client.get(
             "/api/account/v1/authorization/assign_group_user/")
         # assert
@@ -316,7 +321,8 @@ class AssignGroupUserAPIsTEST(APITestCase):
             'user_id': self.user.id,
             'group_id': group.id
         }
-        self.client.credentials(HTTP_AUTHORIZATION=f"Token {str(self.token)}")
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {str(self.token.access_token)}")
         _response = self.client.delete(
             "/api/account/v1/authorization/assign_group_user/", data=_data)
 
@@ -344,7 +350,8 @@ class AssignGroupUserAPIsTEST(APITestCase):
             'user_id': self.user.id,
             'group_id': group.id
         }
-        self.client.credentials(HTTP_AUTHORIZATION=f"Token {str(self.token)}")
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {str(self.token.access_token)}")
         _response = self.client.delete(
             "/api/account/v1/authorization/assign_group_user/", data=_data)
 
@@ -380,7 +387,8 @@ class AssignGroupUserAPIsTEST(APITestCase):
                 group_2.id,
             ]
         }
-        self.client.credentials(HTTP_AUTHORIZATION=f"Token {str(self.token)}")
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {str(self.token.access_token)}")
         _response = self.client.patch(
             "/api/account/v1/authorization/assign_group_user/", data=_data)
 
@@ -422,7 +430,8 @@ class AssignGroupUserAPIsTEST(APITestCase):
                 group_2.id,
             ]
         }
-        self.client.credentials(HTTP_AUTHORIZATION=f"Token {str(self.token)}")
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {str(self.token.access_token)}")
         _response = self.client.patch(
             "/api/account/v1/authorization/assign_group_user/", data=_data)
 
