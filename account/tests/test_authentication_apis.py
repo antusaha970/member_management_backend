@@ -163,7 +163,7 @@ class ResetPasswordAPITest(APITestCase):
     def test_forget_password_api_with_invalid_email(self):
         """
             Endpoint : /api/account/v1/forget_password/
-            check if OTP is not going with invalid email 
+            check if OTP is not going with invalid email
         """
         # arrange
         _data = {
@@ -181,7 +181,7 @@ class ResetPasswordAPITest(APITestCase):
     def test_verify_otp_endpoint_with_valid_otp(self):
         """
             Endpoint: /api/account/v1/verify_otp/
-            Test the OTP verification with valid OTP 
+            Test the OTP verification with valid OTP
         """
 
         # arrange
@@ -206,7 +206,7 @@ class ResetPasswordAPITest(APITestCase):
     def test_verify_otp_endpoint_with_invalid_otp(self):
         """
             Endpoint: /api/account/v1/verify_otp/
-            Test the OTP verification with invalid OTP 
+            Test the OTP verification with invalid OTP
         """
 
         # arrange
@@ -250,7 +250,8 @@ class ResetPasswordAPITest(APITestCase):
             "/api/account/v1/reset_password/", data=_data)
 
         # assert
-        self.assertIn("token", _response.json())
+        self.assertIn("access_token", _response.json())
+        self.assertIn("refresh_token", _response.json())
         self.assertEqual(_response.status_code, status.HTTP_200_OK)
 
     def test_reset_password_endpoint_with_invalid_token(self):
@@ -275,5 +276,6 @@ class ResetPasswordAPITest(APITestCase):
             "/api/account/v1/reset_password/", data=_data)
 
         # assert
-        self.assertNotIn("token", _response.json())
+        self.assertNotIn("access_token", _response.json())
+        self.assertNotIn("refresh_token", _response.json())
         self.assertEqual(_response.status_code, status.HTTP_400_BAD_REQUEST)
