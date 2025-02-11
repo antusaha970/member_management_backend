@@ -2,7 +2,7 @@ from rest_framework.views import exception_handler
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.exceptions import NotAuthenticated, PermissionDenied
-from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError, AuthenticationFailed
 
 
 def custom_exception_handler(exc, context):
@@ -30,7 +30,7 @@ def custom_exception_handler(exc, context):
         }, status=status.HTTP_403_FORBIDDEN)
 
     # Handle invalid or expired tokens
-    elif isinstance(exc, (InvalidToken, TokenError)):
+    elif isinstance(exc, (InvalidToken, TokenError, AuthenticationFailed)):
         return Response({
             "code": 401,
             "status": "failed",
