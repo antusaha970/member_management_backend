@@ -50,6 +50,8 @@ class AccountRegistrationView(APIView):
                 user = serializer.save()
                 refresh = RefreshToken.for_user(user)
                 response = Response({
+                    "code": 201,
+                    "message": "Operation successful",
                     "status": "success",
                     "access_token": str(refresh.access_token),
                     "refresh_token": str(refresh)
