@@ -34,6 +34,7 @@ environ.Env.read_env()
 env = environ.Env()
 # Set logger
 logger = logging.getLogger("myapp")
+from activity_log.tasks import get_location,get_client_ip,log_activity_task
 # Authentication views
 
 
@@ -1061,6 +1062,26 @@ class AdminUserRegistrationView(APIView):
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+
+def request_data_activity_log(request):
+    client_ip = get_client_ip(request) 
+    # client_ip = "8.8.8.8" 
+    
+    data = {
+        "user_id": request.user.id,
+        "method": request.method,
+        "path": request.path,
+        "ip": client_ip,
+        "location": get_location(client_ip), 
+        "user_agent": request.META.get("HTTP_USER_AGENT", "Unknown"),
+        "device": request.META.get("COMPUTERNAME", "Unknown Device"),
+        "referrer_url": request.META.get("HTTP_REFERER", "None"),
+        
+    }
+    return data
+    
+
+
 class GetUserPermissionsView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -1086,6 +1107,16 @@ class GetUserPermissionsView(APIView):
                     }
                     user_info["groups"].append(group_info)
                 users_data.append(user_info)
+            
+
+            log_activity_task.delay_on_commit(
+                            request_data_activity_log(request),
+                            verb="retrieved user permissions",
+                            severity_level="info",
+                            description="retrieve permission get completed",
+                            )
+                        
+            
             response = Response({
                 "code": status.HTTP_200_OK,
                 "message": "Operation successful",
@@ -1098,7 +1129,7 @@ class GetUserPermissionsView(APIView):
         except Exception as e:
             logger.exception(str(e))
             return Response({
-                "code": status.HTTP_400_BAD_REQUEST,
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
                 "message": "Invalid request",
                 "status": "failed",
                 "errors": {

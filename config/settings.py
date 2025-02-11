@@ -41,7 +41,8 @@ INSTALLED_APPS = [
     'account',
     'club',
     'core',
-    'member'
+    'member',
+    'activity_log'
 ]
 
 MIDDLEWARE = [

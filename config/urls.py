@@ -9,6 +9,7 @@ urlpatterns = [
     path('api/club/', include('club.urls')),
     path('api/member/', include('member.urls')),
     path('api/core/', include('core.urls')),
+    path('api/activity_log/', include('activity_log.urls')),
 ]
 
 # Serve media files during development
