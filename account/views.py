@@ -96,11 +96,8 @@ class AccountRegistrationView(APIView):
 
 
 class AccountLoginLogoutView(APIView):
-    def get_permissions(self):
-        if self.request.method == "DELETE":
-            return [IsAuthenticated()]
-        else:
-            return [AllowAny()]
+    authentication_classes = []
+    permission_classes = []
 
     def post(self, request):
         """
@@ -195,7 +192,9 @@ class AccountLoginLogoutView(APIView):
                 'code': status.HTTP_500_INTERNAL_SERVER_ERROR,
                 'status': "failed",
                 'message': "Error occurred",
-                'server_error': [str(e)]
+                'errors': {
+                    "server_error": [str(e)]
+                }
             }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -419,6 +418,17 @@ class CustomTokenRefreshView(TokenRefreshView):
         request.data.update({'refresh': refresh_token})
         # Proceed with refresh process (generates new access & refresh tokens)
         response = super().post(request, *args, **kwargs)
+
+        # Handle error responses (e.g., invalid or expired token)
+        if response.status_code == 400:
+            return Response({
+                "code": 400,
+                "status": "failed",
+                "message": response.data,
+                "errors": {
+                    "token": ["failed to get refresh token"]
+                }
+            }, status=status.HTTP_400_BAD_REQUEST)
 
         # If refresh token is generated, blacklist the old one
         if "refresh" in response.data:
