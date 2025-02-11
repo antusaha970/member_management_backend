@@ -251,70 +251,81 @@ class ResetPasswordView(APIView):
         """
             Reset password for valid user with valid email address
         """
-        data = request.data
-        serializer = ResetPasswordSerializer(data=data)  # validate the request
-        if serializer.is_valid():
-            email = serializer.validated_data['email']
-            password = serializer.validated_data['password']
-            pass_change_token = serializer.validated_data['token']
-            forget_password_otp_obj = get_object_or_404(
-                ForgetPasswordOTP, email=email)
+        try:
+            data = request.data
+            serializer = ResetPasswordSerializer(
+                data=data)  # validate the request
+            if serializer.is_valid():
+                email = serializer.validated_data['email']
+                password = serializer.validated_data['password']
+                pass_change_token = serializer.validated_data['token']
+                forget_password_otp_obj = get_object_or_404(
+                    ForgetPasswordOTP, email=email)
 
-            if pass_change_token != forget_password_otp_obj.token:
-                return Response({
-                    'code': status.HTTP_400_BAD_REQUEST,
-                    'status': 'failed',
-                    'message': "Error while matching token",
-                    'detail': 'Token did not match',
-                }, status=status.HTTP_400_BAD_REQUEST)
-            else:
-                try:
-                    with transaction.atomic():
-                        user = get_user_model().objects.get(email=email)
-                        user.set_password(password)  # Change password
-                        user.save()
-                        # Create new token and return
-                        refresh = RefreshToken.for_user(user)
-                        forget_password_otp_obj.delete()
-                        response = Response({
-                            "status": "success",
-                            "code": status.HTTP_200_OK,
-                            "message": "Operation successful",
-                            "access_token": str(refresh.access_token),
-                            "refresh_token": str(refresh)
-                        }, status=status.HTTP_200_OK)
-                        # set cookie
-                        response.set_cookie(
-                            settings.SIMPLE_JWT["AUTH_COOKIE"],
-                            str(refresh.access_token),
-                            httponly=settings.SIMPLE_JWT["AUTH_COOKIE_HTTP_ONLY"],
-                            secure=env("COOKIE_SECURE") == "True",
-                            max_age=timedelta(
-                                days=7).total_seconds()
-                        )
-                        response.set_cookie(
-                            settings.SIMPLE_JWT["AUTH_COOKIE_REFRESH"],
-                            str(refresh),
-                            httponly=settings.SIMPLE_JWT["AUTH_COOKIE_HTTP_ONLY"],
-                            secure=env("COOKIE_SECURE") == "True",
-                            max_age=timedelta(
-                                days=7).total_seconds()
-                        )
-                        return response
-                except Exception as e:
-                    logger.exception(str(e))
+                if pass_change_token != forget_password_otp_obj.token:
                     return Response({
-                        "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        "message": "Error occurred",
-                        'status': 'failed', 'detail': str(e)
-                    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        else:
+                        'code': status.HTTP_400_BAD_REQUEST,
+                        'status': 'failed',
+                        'message': "Error while matching token",
+                        'detail': 'Token did not match',
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                else:
+                    try:
+                        with transaction.atomic():
+                            user = get_user_model().objects.get(email=email)
+                            user.set_password(password)  # Change password
+                            user.save()
+                            # Create new token and return
+                            refresh = RefreshToken.for_user(user)
+                            forget_password_otp_obj.delete()
+                            response = Response({
+                                "status": "success",
+                                "code": status.HTTP_200_OK,
+                                "message": "Operation successful",
+                                "access_token": str(refresh.access_token),
+                                "refresh_token": str(refresh)
+                            }, status=status.HTTP_200_OK)
+                            # set cookie
+                            response.set_cookie(
+                                settings.SIMPLE_JWT["AUTH_COOKIE"],
+                                str(refresh.access_token),
+                                httponly=settings.SIMPLE_JWT["AUTH_COOKIE_HTTP_ONLY"],
+                                secure=env("COOKIE_SECURE") == "True",
+                                max_age=timedelta(
+                                    days=7).total_seconds()
+                            )
+                            response.set_cookie(
+                                settings.SIMPLE_JWT["AUTH_COOKIE_REFRESH"],
+                                str(refresh),
+                                httponly=settings.SIMPLE_JWT["AUTH_COOKIE_HTTP_ONLY"],
+                                secure=env("COOKIE_SECURE") == "True",
+                                max_age=timedelta(
+                                    days=7).total_seconds()
+                            )
+                            return response
+                    except Exception as e:
+                        logger.exception(str(e))
+                        return Response({
+                            "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            "message": "Error occurred",
+                            'status': 'failed', 'detail': str(e)
+                        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            else:
+                return Response({
+                    "code": status.HTTP_400_BAD_REQUEST,
+                    "message": "Invalid request",
+                    'status': "failed",
+                    'errors': serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
             return Response({
-                "code": status.HTTP_400_BAD_REQUEST,
-                "message": "Invalid request",
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Something went wrong",
                 'status': "failed",
-                'errors': serializer.errors
-            }, status=status.HTTP_400_BAD_REQUEST)
+                'errors': {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def patch(self, request):
 
@@ -343,60 +354,70 @@ class VerifyOtpView(APIView):
         """
             Verify OTP with given email here
         """
-        data = request.data
-        serializer = VerifyOtpSerializer(data=data)
-        if serializer.is_valid():
-            email = serializer.validated_data["email"]
-            otp = serializer.validated_data['otp']
-            forget_password_otp_obj = get_object_or_404(
-                ForgetPasswordOTP, email=email)
-            if forget_password_otp_obj.otp != otp:  # check if OTP matched
+        try:
+            data = request.data
+            serializer = VerifyOtpSerializer(data=data)
+            if serializer.is_valid():
+                email = serializer.validated_data["email"]
+                otp = serializer.validated_data['otp']
+                forget_password_otp_obj = get_object_or_404(
+                    ForgetPasswordOTP, email=email)
+                if forget_password_otp_obj.otp != otp:  # check if OTP matched
+                    return Response({
+                        "code": status.HTTP_400_BAD_REQUEST,
+                        "message": "Failed while verifying OTP",
+                        "status": "failed",
+                        "can_change_pass": False,
+                        "details": "OTP didn't match"
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+                if forget_password_otp_obj.is_expired():  # check if OTP has expired
+                    return Response({
+                        "code": status.HTTP_400_BAD_REQUEST,
+                        "message": "Failed while verifying OTP",
+                        "status": "failed",
+                        "can_change_pass": False,
+                        "details": "OTP expired generate a new OTP"
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+                try:
+                    token = generate_random_token()
+                    forget_password_otp_obj.token = token
+                    forget_password_otp_obj.save(update_fields=['token'])
+                    return Response({
+                        "code": status.HTTP_200_OK,
+                        "message": "Operation successful",
+                        "status": "success",
+                        "can_change_pass": True,
+                        "details": "Generated new Token for changing password",
+                        "token": token
+                    }, status=status.HTTP_200_OK)
+                except Exception as e:
+                    logger.exception(str(e))
+                    return Response({
+                        "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        "message": "Error occurred",
+                        "status": "failed",
+                        'errors': {'server_error': [str(e)]}
+
+                    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            else:
                 return Response({
                     "code": status.HTTP_400_BAD_REQUEST,
-                    "message": "Failed while verifying OTP",
+                    "message": "Invalid request",
                     "status": "failed",
-                    "can_change_pass": False,
-                    "details": "OTP didn't match"
+                    'errors': serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
-
-            if forget_password_otp_obj.is_expired():  # check if OTP has expired
-                return Response({
-                    "code": status.HTTP_400_BAD_REQUEST,
-                    "message": "Failed while verifying OTP",
-                    "status": "failed",
-                    "can_change_pass": False,
-                    "details": "OTP expired generate a new OTP"
-                }, status=status.HTTP_400_BAD_REQUEST)
-
-            try:
-                token = generate_random_token()
-                forget_password_otp_obj.token = token
-                forget_password_otp_obj.save(update_fields=['token'])
-                return Response({
-                    "code": status.HTTP_200_OK,
-                    "message": "Operation successful",
-                    "status": "success",
-                    "can_change_pass": True,
-                    "details": "Generated new Token for changing password",
-                    "token": token
-                }, status=status.HTTP_200_OK)
-            except Exception as e:
-                logger.exception(str(e))
-                return Response({
-                    "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    "message": "Error occurred",
-                    "status": "failed",
-                    'errors': {'server_error': [str(e)]}
-
-                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        else:
+        except Exception as e:
             return Response({
-                "code": status.HTTP_400_BAD_REQUEST,
-                "message": "Invalid request",
-                "status": "failed",
-                'errors': serializer.errors
-            }, status=status.HTTP_400_BAD_REQUEST)
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Something went wrong",
+                'status': "failed",
+                'errors': {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class CustomTokenRefreshView(TokenRefreshView):
@@ -571,8 +592,8 @@ class GroupPermissionView(APIView):
 
     def patch(self, request, group_id):
         """Update a group with required permissions at least one permission"""
-        group = get_object_or_404(GroupModel, pk=group_id)
         try:
+            group = get_object_or_404(GroupModel, pk=group_id)
             user = request.user
             serializer = GroupModelSerializer(
                 group, data=request.data, context={'user': user})
@@ -605,8 +626,8 @@ class GroupPermissionView(APIView):
 
     def delete(self, request, group_id):
         """Delete a group"""
-        group = get_object_or_404(GroupModel, pk=group_id)
         try:
+            group = get_object_or_404(GroupModel, pk=group_id)
             group.delete()
             # clear permissions cache for all users after a group deletion
             clear_user_permissions_cache()
