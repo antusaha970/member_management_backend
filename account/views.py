@@ -362,12 +362,24 @@ class ResetPasswordView(APIView):
                             return response
                     except Exception as e:
                         logger.exception(str(e))
+                        log_activity_task.delay_on_commit(
+                            request_data_activity_log(request),
+                            verb="Error occurred",
+                            severity_level="warning",
+                            description="Error occurred while resetting password",
+                        )
                         return Response({
                             "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
                             "message": "Error occurred",
                             'status': 'failed', 'detail': str(e)
                         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Error occurred",
+                    severity_level="warning",
+                    description="Error occurred while resetting password",
+                )
                 return Response({
                     "code": status.HTTP_400_BAD_REQUEST,
                     "message": "Invalid request",
@@ -375,6 +387,12 @@ class ResetPasswordView(APIView):
                     'errors': serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Error occurred",
+                severity_level="warning",
+                description="Error occurred while resetting password",
+            )
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
                 "message": "Something went wrong",
@@ -392,12 +410,24 @@ class ResetPasswordView(APIView):
 
         if serializer.is_valid():
             serializer.update(user, serializer.validated_data)
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Password change",
+                severity_level="info",
+                description="Password changed successfully",
+            )
             return Response({
                 "code": status.HTTP_200_OK,
                 "message": "Password Updated successfully",
                 "status": "success"
             }, status=status.HTTP_200_OK)
         else:
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Password change failed",
+                severity_level="warning",
+                description="Password changed failed because of validation error",
+            )
             return Response({
                 "code": status.HTTP_400_BAD_REQUEST,
                 "message": "Invalid request data",
@@ -420,6 +450,12 @@ class VerifyOtpView(APIView):
                 forget_password_otp_obj = get_object_or_404(
                     ForgetPasswordOTP, email=email)
                 if forget_password_otp_obj.otp != otp:  # check if OTP matched
+                    log_activity_task.delay_on_commit(
+                        request_data_activity_log(request),
+                        verb="OTP verify failed",
+                        severity_level="warning",
+                        description="OTP verification failed",
+                    )
                     return Response({
                         "code": status.HTTP_400_BAD_REQUEST,
                         "message": "Failed while verifying OTP",
@@ -429,6 +465,12 @@ class VerifyOtpView(APIView):
                     }, status=status.HTTP_400_BAD_REQUEST)
 
                 if forget_password_otp_obj.is_expired():  # check if OTP has expired
+                    log_activity_task.delay_on_commit(
+                        request_data_activity_log(request),
+                        verb="OTP verify failed",
+                        severity_level="warning",
+                        description="OTP verification failed because OTP has expired",
+                    )
                     return Response({
                         "code": status.HTTP_400_BAD_REQUEST,
                         "message": "Failed while verifying OTP",
@@ -441,6 +483,12 @@ class VerifyOtpView(APIView):
                     token = generate_random_token()
                     forget_password_otp_obj.token = token
                     forget_password_otp_obj.save(update_fields=['token'])
+                    log_activity_task.delay_on_commit(
+                        request_data_activity_log(request),
+                        verb="OTP verify success",
+                        severity_level="info",
+                        description="OTP verification successfully done",
+                    )
                     return Response({
                         "code": status.HTTP_200_OK,
                         "message": "Operation successful",
@@ -451,6 +499,12 @@ class VerifyOtpView(APIView):
                     }, status=status.HTTP_200_OK)
                 except Exception as e:
                     logger.exception(str(e))
+                    log_activity_task.delay_on_commit(
+                        request_data_activity_log(request),
+                        verb="OTP verify failed",
+                        severity_level="warning",
+                        description="OTP verification failed",
+                    )
                     return Response({
                         "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
                         "message": "Error occurred",
@@ -460,6 +514,12 @@ class VerifyOtpView(APIView):
                     }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
             else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="OTP verify failed",
+                    severity_level="warning",
+                    description="OTP verification failed",
+                )
                 return Response({
                     "code": status.HTTP_400_BAD_REQUEST,
                     "message": "Invalid request",
@@ -467,6 +527,12 @@ class VerifyOtpView(APIView):
                     'errors': serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="OTP verify failed",
+                severity_level="warning",
+                description="OTP verification failed",
+            )
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
                 "message": "Something went wrong",
@@ -503,6 +569,12 @@ class CustomTokenRefreshView(TokenRefreshView):
 
         # Handle error responses (e.g., invalid or expired token)
         if response.status_code == 400:
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Refresh token generation failed",
+                severity_level="warning",
+                description="Response token generation failed",
+            )
             return Response({
                 "code": 400,
                 "status": "failed",
@@ -538,7 +610,12 @@ class CustomTokenRefreshView(TokenRefreshView):
         response.data.pop("refresh")
         response.data.update(
             {"code": 200, "status": "success", "message": "new access token given in cookie"})
-
+        log_activity_task.delay_on_commit(
+            request_data_activity_log(request),
+            verb="Refresh token generation",
+            severity_level="info",
+            description="Response token generated successfully",
+        )
         return response
 
     def handle_exception(self, exc):
@@ -546,6 +623,12 @@ class CustomTokenRefreshView(TokenRefreshView):
         Modify error messages for invalid/blacklisted tokens.
         """
         if isinstance(exc, InvalidToken):
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(self.request),
+                verb="Refresh token generation failed",
+                severity_level="info",
+                description="Response token generated successfully",
+            )
             return Response({
                 "code": 401,
                 "status": "failed",
@@ -569,9 +652,21 @@ class UserView(APIView):
             user = request.user
             data = get_user_model().objects.filter(club=user.club)
             serializer = UserSerializer(data, many=True)
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Tried to view all users",
+                severity_level="info",
+                description="Viewed all users",
+            )
             return Response(serializer.data)
         except Exception as e:
             logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Error while viewing all users",
+                severity_level="error",
+                description="Error while viewing all users",
+            )
             return Response({
                 'errors': {
                     "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -598,7 +693,12 @@ class GroupPermissionView(APIView):
                 group = serializer.save()
                 permissions = group.permission.all()
                 permission_ids = [perm.id for perm in permissions]
-
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Creating group",
+                    severity_level="Info",
+                    description="created a new group",
+                )
                 return Response({
                     "code": status.HTTP_201_CREATED,
                     "message": "Operation successfully",
@@ -608,6 +708,12 @@ class GroupPermissionView(APIView):
                     "permission": permission_ids
                 }, status=status.HTTP_201_CREATED)
             else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Creating group error",
+                    severity_level="warning",
+                    description="Bed request while creating a group",
+                )
                 return Response({
                     "code": status.HTTP_400_BAD_REQUEST,
                     "message": "invalid request",
@@ -616,6 +722,12 @@ class GroupPermissionView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Creating group error",
+                severity_level="warning",
+                description="error occurred while creating a group",
+            )
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
                 "message": "invalid request",
@@ -630,6 +742,12 @@ class GroupPermissionView(APIView):
             user = request.user
             data = GroupModel.objects.filter(club=user.club)
             serializer = GroupSerializerForViewAllGroups(data, many=True)
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="View all groups",
+                severity_level="info",
+                description="Made a request to view all the groups",
+            )
             return Response({
                 "code": status.HTTP_200_OK,
                 "message": "operation successful",
@@ -638,6 +756,12 @@ class GroupPermissionView(APIView):
             }, status=status.HTTP_200_OK)
         except Exception as e:
             logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Error viewing groups",
+                severity_level="warning",
+                description="Error occurred while viewing groups",
+            )
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
                 "message": "Error occurred",
@@ -658,6 +782,12 @@ class GroupPermissionView(APIView):
                 serializer.save()
                 # after updating the group delete the permissions cache
                 clear_user_permissions_cache()
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Updated a group",
+                    severity_level="info",
+                    description="Updated a group with required permissions",
+                )
                 return Response({
                     "code": status.HTTP_200_OK,
                     "message": "Operation successful",
@@ -665,6 +795,12 @@ class GroupPermissionView(APIView):
                     'data': serializer.data
                 })
             else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Bad request in update group",
+                    severity_level="warning",
+                    description="Made a bad request for updating a group",
+                )
                 return Response({
                     "code": status.HTTP_400_BAD_REQUEST,
                     "message": "Invalid request",
@@ -672,6 +808,12 @@ class GroupPermissionView(APIView):
                     'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Error",
+                severity_level="info",
+                description="Error while Updated a group with required permissions",
+            )
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
                 "message": "Error occurred",
@@ -688,6 +830,12 @@ class GroupPermissionView(APIView):
             group.delete()
             # clear permissions cache for all users after a group deletion
             clear_user_permissions_cache()
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Deleted a group",
+                severity_level="info",
+                description="Deleted a group with required permissions",
+            )
             return Response({
                 "code": status.HTTP_200_OK,
                 "message": "Operation successful",
@@ -696,6 +844,12 @@ class GroupPermissionView(APIView):
             }, status=status.HTTP_200_OK)
         except Exception as e:
             logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Error while deleting a group",
+                severity_level="warning",
+                description="Error occurred while deleting a group",
+            )
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
                 "message": "Error occurred",
@@ -717,7 +871,12 @@ class CustomPermissionView(APIView):
             if serializer.is_valid():
                 permission = serializer.save()
                 name = serializer.validated_data["name"]
-
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Creating a custom permission",
+                    severity_level="info",
+                    description="Just created a custom permission",
+                )
                 return Response({
                     "code": status.HTTP_201_CREATED,
                     "message": "Operation successful",
@@ -725,7 +884,12 @@ class CustomPermissionView(APIView):
                     "id": permission.id,
                     "permission_name": name
                 }, status=status.HTTP_201_CREATED)
-
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Error while creating a custom permission",
+                severity_level="warning",
+                description="Error occurred while creating a custom permission",
+            )
             return Response(
                 {
                     "code": status.HTTP_400_BAD_REQUEST,
@@ -735,6 +899,12 @@ class CustomPermissionView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Error while creating a custom permission",
+                severity_level="warning",
+                description="Error occurred while creating a custom permission",
+            )
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
                 "message": "Error occurred",
@@ -750,7 +920,12 @@ class CustomPermissionView(APIView):
 
             serializer = CustomPermissionSerializerForView(
                 all_permission, many=True)
-
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Getting all permissions",
+                severity_level="info",
+                description="Requested for viewing all permissions",
+            )
             return Response(
                 {
                     "code": status.HTTP_200_OK,
@@ -761,6 +936,12 @@ class CustomPermissionView(APIView):
 
         except Exception as e:
             logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="error while getting all permissions",
+                severity_level="warning",
+                description="Requested for viewing all permissions but an error occurred",
+            )
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
                 "message": "Error occurred",
@@ -788,6 +969,12 @@ class AssignGroupPermissionView(APIView):
                     groups_data.append(
                         {"group_id": gro.id, "group_name": gro.name})
                 clear_user_permissions_cache()
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Assigned a user to the group",
+                    severity_level="info",
+                    description="Assigned a user to the group with some permissions",
+                )
                 return Response({
                     "code": status.HTTP_201_CREATED,
                     "message": "Operation successful",
@@ -797,6 +984,12 @@ class AssignGroupPermissionView(APIView):
                 }, status=status.HTTP_201_CREATED)
 
             else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Bad request in assign group",
+                    severity_level="warning",
+                    description="Bad request for Assigning a user to the group with some permissions",
+                )
                 return Response({
                     "code": status.HTTP_400_BAD_REQUEST,
                     "message": "Invalid request",
@@ -805,6 +998,12 @@ class AssignGroupPermissionView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Error occurred assign group",
+                severity_level="error",
+                description="Error occurred while adding a user in a group",
+            )
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
                 "message": "Error occurred",
@@ -822,6 +1021,12 @@ class AssignGroupPermissionView(APIView):
                 assign_group.group.remove(group)
                 assign_group.save()
                 clear_user_permissions_cache()
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Deleted an user a group",
+                    severity_level="info",
+                    description="Made a request to delete an user from a group",
+                )
                 return Response({
                     "code": status.HTTP_200_OK,
                     "message": "Operation successful",
@@ -829,6 +1034,12 @@ class AssignGroupPermissionView(APIView):
                     "detail": "User removed from group successfully."
                 }, status=status.HTTP_200_OK)
             else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Error while deleting user from group",
+                    severity_level="error",
+                    description="Error occurred while deleting a user from a group",
+                )
                 return Response({
                     "code": status.HTTP_400_BAD_REQUEST,
                     "message": "Invalid request",
@@ -837,6 +1048,12 @@ class AssignGroupPermissionView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Error while deleting user from group",
+                severity_level="error",
+                description="Error occurred while deleting a user from a group",
+            )
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
                 "message": "Error occurred",
@@ -868,6 +1085,12 @@ class AssignGroupPermissionView(APIView):
                     }
                     user_info["groups"].append(group_info)
                 users_data.append(user_info)
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Viewed all user with groups",
+                severity_level="info",
+                description="Made a request for viewing all user with their assigned groups",
+            )
             return Response({
                 "code": status.HTTP_200_OK,
                 "message": "Operation successful",
@@ -876,6 +1099,12 @@ class AssignGroupPermissionView(APIView):
             }, status=status.HTTP_200_OK)
         except Exception as e:
             logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Error while viewing all users and their group",
+                severity_level="error",
+                description="Made a request for viewing all user with their assigned groups and an error occurred",
+            )
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
                 "message": "Error occurred",
@@ -890,6 +1119,12 @@ class AssignGroupPermissionView(APIView):
             user = data.get("user")
             group = data.get("group")
             if not user:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Bad request while updating permission",
+                    severity_level="error",
+                    description="Made a request for updating user permission with their assigned groups and an error occurred",
+                )
                 return Response({
                     "code": status.HTTP_400_BAD_REQUEST,
                     "message": "Invalid request",
@@ -899,6 +1134,12 @@ class AssignGroupPermissionView(APIView):
                     }
                 }, status=status.HTTP_400_BAD_REQUEST)
             if not group:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Bad request while updating permission",
+                    severity_level="error",
+                    description="Made a request for updating user permission with their assigned groups and an error occurred",
+                )
                 return Response({
                     "code": status.HTTP_400_BAD_REQUEST,
                     "message": "Invalid request",
@@ -917,6 +1158,12 @@ class AssignGroupPermissionView(APIView):
                 groups_data = [{"group_id": gro.id,
                                 "group_name": gro.name} for gro in groups]
                 clear_user_permissions_cache()
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="request for updating permission",
+                    severity_level="info",
+                    description="Made a request for updating user permission with their assigned groups",
+                )
                 return Response({
                     "code": status.HTTP_200_OK,
                     "message": "Operation successful",
@@ -925,6 +1172,12 @@ class AssignGroupPermissionView(APIView):
                     "updated_groups": groups_data
                 }, status=status.HTTP_200_OK)
             else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Bad request while updating permission",
+                    severity_level="error",
+                    description="Made a request for updating user permission with their assigned groups and an error occurred",
+                )
                 return Response({
                     "code": status.HTTP_400_BAD_REQUEST,
                     "message": "Invalid request",
@@ -932,6 +1185,12 @@ class AssignGroupPermissionView(APIView):
                     "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
         except AssignGroupPermission.DoesNotExist:
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Bad request while updating permission",
+                severity_level="error",
+                description="Made a request for updating user permission with their assigned groups and an error occurred",
+            )
             return Response({
                 "code": status.HTTP_400_BAD_REQUEST,
                 "message": "Invalid request",
@@ -939,6 +1198,12 @@ class AssignGroupPermissionView(APIView):
                 "errors": {"user": ["User not found in AssignGroupPermission"]}}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Bad request while updating permission",
+                severity_level="error",
+                description="Made a request for updating user permission with their assigned groups and an error occurred",
+            )
             return Response({
                 "code": status.HTTP_400_BAD_REQUEST,
                 "message": "Invalid request",
@@ -957,6 +1222,12 @@ class AdminUserEmailView(APIView):
         try:
             data = request.data
             if request.user.club is None:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Bad request while registering user",
+                    severity_level="warning",
+                    description="Made a request for registering user and the request was invalid",
+                )
                 return Response({
                     "code": status.HTTP_404_NOT_FOUND,
                     "message": "Invalid request",
@@ -976,6 +1247,12 @@ class AdminUserEmailView(APIView):
                     send_otp_email.delay_on_commit(email, otp_value)
 
                 except OTP.DoesNotExist:
+                    log_activity_task.delay_on_commit(
+                        request_data_activity_log(request),
+                        verb="Bad request while registering user",
+                        severity_level="warning",
+                        description="Made a request for registering user and the request was invalid",
+                    )
                     return Response({
                         "code": status.HTTP_404_NOT_FOUND,
                         "message": "Invalid request",
@@ -983,7 +1260,12 @@ class AdminUserEmailView(APIView):
                         "errors": {
                             'otp': ["OTP for the provided email does not exist."]
                         }}, status=status.HTTP_404_NOT_FOUND)
-
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Request for OTP sending",
+                    severity_level="info",
+                    description="Made a request for sending OTP",
+                )
                 response = Response({
                     "code": status.HTTP_201_CREATED,
                     "message": "Operation successful",
@@ -996,7 +1278,12 @@ class AdminUserEmailView(APIView):
                 # Add no cache header in response
                 response = add_no_cache_header_in_response(response)
                 return response
-
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Bad request while registering user",
+                severity_level="warning",
+                description="Made a request for registering user and the request was invalid",
+            )
             return Response({
                 "code": status.HTTP_400_BAD_REQUEST,
                 "message": "Invalid request",
@@ -1004,6 +1291,12 @@ class AdminUserEmailView(APIView):
                 "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Bad request while registering user",
+                severity_level="error",
+                description="Made a request for registering user and the request got an error",
+            )
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
                 "message": "error occurred",
@@ -1020,6 +1313,12 @@ class AdminUserVerifyOtpView(APIView):
         try:
             data = request.data
             if request.user.club is None:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Bad request while verifying user OTP",
+                    severity_level="warning",
+                    description="Made a request for verifying user OTP and request was invalid",
+                )
                 return Response({
                     "code": status.HTTP_404_NOT_FOUND,
                     "message": "Invalid request",
@@ -1039,6 +1338,12 @@ class AdminUserVerifyOtpView(APIView):
                     VerifySuccessfulEmail.objects.create(email=email)
                 except Exception as e:
                     logger.exception(str(e))
+                    log_activity_task.delay_on_commit(
+                        request_data_activity_log(request),
+                        verb="Bad request while verifying user OTP",
+                        severity_level="warning",
+                        description="Made a request for verifying user OTP and request was invalid",
+                    )
                     return Response({
                         "code": status.HTTP_400_BAD_REQUEST,
                         "message": "Invalid request",
@@ -1055,8 +1360,19 @@ class AdminUserVerifyOtpView(APIView):
                                     }, status=status.HTTP_200_OK)
                 # Add no cache header in response
                 response = add_no_cache_header_in_response(response)
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="OTP verified",
+                    severity_level="info",
+                    description="Made a request for verifying user OTP",
+                )
                 return response
-
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Bad request while verifying user OTP",
+                severity_level="warning",
+                description="Made a request for verifying user OTP and request was invalid",
+            )
             return Response({
                 "code": status.HTTP_400_BAD_REQUEST,
                 "message": "Invalid request",
@@ -1064,6 +1380,12 @@ class AdminUserVerifyOtpView(APIView):
                 "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Bad request while verifying user OTP",
+                severity_level="error",
+                description="Made a request for verifying user OTP and request was invalid",
+            )
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
                 "message": "Error occurred",
@@ -1080,6 +1402,12 @@ class AdminUserRegistrationView(APIView):
         try:
             data = request.data
             if request.user.club is None:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Bad request while Registering an user",
+                    severity_level="warning",
+                    description="Made a request for registering an user and the request was invalid",
+                )
                 return Response({
                     "code": status.HTTP_404_NOT_FOUND,
                     "message": "Invalid request",
@@ -1095,13 +1423,24 @@ class AdminUserRegistrationView(APIView):
             if serializer.is_valid():
                 user = serializer.save()
                 username = serializer.validated_data["username"]
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Request for Registering an user",
+                    severity_level="info",
+                    description="Made a request for registering an user.",
+                )
                 return Response({
                     "code": status.HTTP_201_CREATED,
                     "message": "Operation successful",
                     "status": "success",
                     "username": username
                 }, status=status.HTTP_201_CREATED)
-
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Bad request while Registering an user",
+                severity_level="warning",
+                description="Made a request for registering an user and the request was invalid",
+            )
             return Response({
                 "code": status.HTTP_400_BAD_REQUEST,
                 "message": "Invalid request",
@@ -1109,6 +1448,12 @@ class AdminUserRegistrationView(APIView):
                 "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Bad request while Registering an user",
+                severity_level="warning",
+                description="Made a request for registering an user and the request was invalid",
+            )
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
                 "message": "Error occurred",

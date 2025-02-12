@@ -20,7 +20,7 @@ class ActivityLog(models.Model):
     device = models.CharField(
         max_length=255, default="Unknown Device", blank=True)
     path = models.CharField(max_length=255, default="/", blank=True)
-    verb = models.CharField(max_length=50, default="", blank=True)
+    verb = models.CharField(max_length=250, default="", blank=True)
     description = models.TextField(default="", blank=True)
     timestamp = models.DateTimeField(default="")
 

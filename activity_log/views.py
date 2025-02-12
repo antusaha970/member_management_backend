@@ -46,7 +46,7 @@ class ActivityLogAPIView(APIView):
                 "status": "success",
                 "data": serializer.data
 
-            }, status=201)
+            }, status=200)
 
         except Exception as e:
             logger.exception(str(e))
