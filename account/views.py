@@ -679,7 +679,7 @@ class UserView(APIView):
 
 class GroupPermissionView(APIView):
     def get_permissions(self):
-        if self.request.method == "POST":
+        if self.request.method == "POST" or self.request.method == "PATCH" or self.request.method == "DELETE":
             return [IsAdminUser()]
         else:
             return [IsAuthenticated()]
