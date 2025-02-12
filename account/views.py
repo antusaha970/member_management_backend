@@ -258,6 +258,12 @@ class ForgetPasswordView(APIView):
                 ForgetPasswordOTP.objects.create(email=email, otp=otp)
                 # initiate CELERY to send mail
             send_otp_mail_to_email.delay_on_commit(otp, email)
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Forget password request",
+                severity_level="info",
+                description="User requested for forgot password request",
+            )
             return Response({
                 "status": "success",
                 'code': status.HTTP_200_OK,
@@ -265,6 +271,12 @@ class ForgetPasswordView(APIView):
                 "details": "OTP send successful"
             }, status=status.HTTP_200_OK)
         else:
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="invalid request",
+                severity_level="warning",
+                description="User request was invalid due forgot password request",
+            )
             return Response({
                 "status": "failed",
                 'code': status.HTTP_400_BAD_REQUEST,
@@ -296,6 +308,12 @@ class ResetPasswordView(APIView):
                     ForgetPasswordOTP, email=email)
 
                 if pass_change_token != forget_password_otp_obj.token:
+                    log_activity_task.delay_on_commit(
+                        request_data_activity_log(request),
+                        verb="invalid request",
+                        severity_level="warning",
+                        description="User request was invalid because pass change_token and forgot password token didn't match",
+                    )
                     return Response({
                         'code': status.HTTP_400_BAD_REQUEST,
                         'status': 'failed',
@@ -334,6 +352,12 @@ class ResetPasswordView(APIView):
                                 secure=env("COOKIE_SECURE") == "True",
                                 max_age=timedelta(
                                     days=7).total_seconds()
+                            )
+                            log_activity_task.delay_on_commit(
+                                request_data_activity_log(request),
+                                verb="Password reset",
+                                severity_level="info",
+                                description="password was reset successfully",
                             )
                             return response
                     except Exception as e:

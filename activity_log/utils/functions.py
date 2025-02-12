@@ -50,9 +50,12 @@ def get_location(ip):
 def request_data_activity_log(request):
     client_ip = get_client_ip(request)
     # client_ip = "8.8.8.8"
-
+    if request.user is not None:
+        user_id = request.user.id
+    else:
+        user_id = None
     data = {
-        "user_id": request.user.id,
+        "user_id": user_id,
         "method": request.method,
         "path": request.path,
         "ip": client_ip,
