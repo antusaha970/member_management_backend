@@ -176,7 +176,7 @@ class CustomGroupModel(TestCase):
 
     def test_delete_group(self):
         """ Test deleting a group"""
-        self.client.force_authenticate(user=self.normal_user)
+        self.client.force_authenticate(user=self.admin_user)
         group_id = self.groupname.id
         url = f"{self.url}{group_id}/"
         response = self.client.delete(url)
