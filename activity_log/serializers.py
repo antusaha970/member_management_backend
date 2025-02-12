@@ -13,4 +13,11 @@ class AdminActivityLogSerializer(serializers.ModelSerializer):
 class NormalUserActivityLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = ActivityLog
-        fields = ['user', 'timestamp', 'ip_address', 'location','description']
+        fields = ['user', 'timestamp', 'ip_address', 'location','description','path']
+
+class AllUserActivityLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ActivityLog
+        fields = ['user', 'timestamp', 'ip_address', 'location', 'user_agent', 
+                  'request_method', 'referrer_url', 'device', 'path', 'verb', 
+                'severity_level', 'description']
