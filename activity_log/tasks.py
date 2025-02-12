@@ -40,7 +40,21 @@ def log_activity_task(data, verb, severity_level, description):
         )
         return {"status": "success", "activity_log_id": activity_log.id}
     except get_user_model().DoesNotExist:
-        return {"status": "error", "error": "User does not exist"}
+        activity_log = ActivityLog.objects.create(
+            user=None,
+            ip_address=ip,
+            location=location,
+            user_agent=user_agent,
+            request_method=method,
+            referrer_url=referrer_url,
+            device=device,
+            path=path,
+            verb=verb,
+            severity_level=severity_level,
+            description=description,
+            timestamp=timestamp,
+        )
+        return {"status": "success", "message": "Logged with anonymous user"}
     except Exception as e:
         logger.exception(str(e))
         return {"status": "error", "error": str(e)}

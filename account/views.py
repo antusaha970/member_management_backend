@@ -154,9 +154,21 @@ class AccountLoginLogoutView(APIView):
                     max_age=timedelta(
                         days=time_limit_for_cookie).total_seconds()
                 )
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Logged in",
+                    severity_level="info",
+                    description="User logged in to the system",
+                )
                 return response
 
             else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Logged in failure",
+                    severity_level="warning",
+                    description="Tried to log in to the system but failed to login",
+                )
                 return Response({
                     'code': status.HTTP_400_BAD_REQUEST,
                     'status': "failed",
@@ -165,6 +177,12 @@ class AccountLoginLogoutView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Error Occurred while login",
+                severity_level="critical",
+                description="Tried to log in to the system but failed to login",
+            )
             return Response({'errors': {
                 'code': status.HTTP_400_BAD_REQUEST,
                 'status': "failed",
@@ -191,11 +209,22 @@ class AccountLoginLogoutView(APIView):
             response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
             response["Pragma"] = "no-cache"
             response["Expires"] = "0"
-
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Logged out from system",
+                severity_level="info",
+                description="User logged out from system",
+            )
             return response
 
         except Exception as e:
             logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Failure while logout",
+                severity_level="info",
+                description="User tried to logout but failure occurred",
+            )
             return Response({'errors': {
                 'code': status.HTTP_500_INTERNAL_SERVER_ERROR,
                 'status': "failed",
@@ -1109,6 +1138,12 @@ class GetUserPermissionsView(APIView):
             return response
         except Exception as e:
             logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Error Occurred",
+                severity_level="error",
+                description="Error while getting user permissions",
+            )
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
                 "message": "Invalid request",
