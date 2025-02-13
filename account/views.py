@@ -18,7 +18,7 @@ from datetime import timedelta
 from .permissions import HasCustomPermission
 from .serializers import *
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
-from account.utils.functions import clear_user_permissions_cache, add_no_cache_header_in_response, generate_random_token
+from account.utils.functions import clear_user_permissions_cache, add_no_cache_header_in_response, generate_random_token, set_blocking_system
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from django.db import transaction
@@ -30,8 +30,8 @@ from rest_framework_simplejwt.exceptions import InvalidToken
 from django.utils.datastructures import MultiValueDict
 from .utils.permissions_classes import RegisterUserPermission
 from activity_log.utils.functions import request_data_activity_log
-
-
+from .utils.rate_limiting_classes import LoginRateThrottle
+from django.core.cache import cache
 import logging
 # set env
 environ.Env.read_env()
@@ -105,11 +105,38 @@ class AccountLoginLogoutView(APIView):
     authentication_classes = []
     permission_classes = []
 
+    def get_client_ip(self, request):
+        """Get client IP address"""
+        x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(",")[0]
+        else:
+            ip = request.META.get("REMOTE_ADDR")
+        return ip
+
+    def get_throttles(self):
+        """Apply throttle only for POST requests"""
+        if self.request.method == "POST":
+            return [LoginRateThrottle()]
+        return []
+
     def post(self, request):
         """
         Login to an account with valid data.
         """
         try:
+            ip = self.get_client_ip(request)
+            cache_key = f"failed_login_attempts_{ip}"
+            block_key = f"block_time_{ip}"
+            block_time = cache.get(block_key)
+            if block_time:
+                return Response({
+                    "code": 429,
+                    "status": "failed",
+                    "message": f"Try again in {block_time} seconds.",
+                    "errors": {
+                        "request": ["To many requests"]}, }, status=status.HTTP_429_TOO_MANY_REQUESTS,)
+
             data = request.data
             serializer = LoginSerializer(data=data)
             if serializer.is_valid():
@@ -160,6 +187,9 @@ class AccountLoginLogoutView(APIView):
                     severity_level="info",
                     description="User logged in to the system",
                 )
+                #  Reset counters on successful login
+                cache.delete(cache_key)
+                cache.delete(block_key)
                 return response
 
             else:
@@ -169,6 +199,25 @@ class AccountLoginLogoutView(APIView):
                     severity_level="warning",
                     description="Tried to log in to the system but failed to login",
                 )
+                failed_attempts = cache.get(cache_key, 0) + 1
+                print(failed_attempts)
+                if int(failed_attempts) >= 10:
+                    if int(failed_attempts) == 10:
+                        set_blocking_system(
+                            cache_key, failed_attempts, block_key)
+                    elif int(failed_attempts) >= 11 and int(failed_attempts) <= 15:
+                        cache.set(cache_key, failed_attempts)
+                    elif int(failed_attempts) == 16:
+                        set_blocking_system(
+                            cache_key, failed_attempts, block_key)
+                    elif int(failed_attempts) >= 17 and int(failed_attempts) <= 19:
+                        cache.set(cache_key, failed_attempts)
+                    else:
+                        set_blocking_system(
+                            cache_key, failed_attempts, block_key)
+                else:
+                    cache.set(cache_key, failed_attempts)
+
                 return Response({
                     'code': status.HTTP_400_BAD_REQUEST,
                     'status': "failed",

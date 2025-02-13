@@ -1,7 +1,7 @@
 from rest_framework.views import exception_handler
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.exceptions import NotAuthenticated, PermissionDenied
+from rest_framework.exceptions import NotAuthenticated, PermissionDenied, Throttled
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError, AuthenticationFailed
 
 
@@ -39,5 +39,17 @@ def custom_exception_handler(exc, context):
                 "token": ["Token is invalid or expired"]
             }
         }, status=status.HTTP_401_UNAUTHORIZED)
+
+    # Handle Throttling Errors (Rate Limiting)
+    elif isinstance(exc, Throttled):
+        return Response({
+            "code": 429,
+            "status": "failed",
+            "message": "Too many requests. Please try again later.",
+            "errors": {
+                "request": ["Rate limit exceeded"]
+            },
+            "retry_after": exc.wait  # Include the wait time before retrying
+        }, status=status.HTTP_429_TOO_MANY_REQUESTS)
 
     return response

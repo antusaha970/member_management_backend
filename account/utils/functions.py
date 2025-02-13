@@ -30,3 +30,21 @@ def generate_random_token(length=20):
     """Generate a secure random token of given length"""
     characters = string.ascii_letters + string.digits  # a-z, A-Z, 0-9
     return ''.join(secrets.choice(characters) for _ in range(length))
+
+
+def set_blocking_system(cache_key, failed_attempts, block_key):
+    cache.set(cache_key, failed_attempts,
+              timeout=1800)  # Store for 30 mins
+    if int(failed_attempts) == 10:
+        cache.set(block_key, 120,
+                  timeout=120)
+    elif int(failed_attempts) >= 11 and int(failed_attempts) <= 15:
+        pass
+    elif int(failed_attempts) == 16:
+        cache.set(block_key, 300,
+                  timeout=300)
+    elif int(failed_attempts) >= 17 and int(failed_attempts) <= 19:
+        pass
+    else:
+        cache.set(block_key, 600,
+                  timeout=600)
