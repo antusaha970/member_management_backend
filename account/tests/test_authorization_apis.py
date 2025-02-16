@@ -108,18 +108,18 @@ class CustomGroupModel(TestCase):
         self.normal_user = get_user_model().objects.create_user(
             username="salauddin_85", password="root25809#")
 
-        self.club = Club.objects.create(name="golpokotha")
-        self.groupname = GroupModel.objects.create(name="test", club=self.club)
+     
+        self.groupname = GroupModel.objects.create(name="test")
         self.permission1 = PermissonModel.objects.create(name="add_member")
         self.permission2 = PermissonModel.objects.create(name="view_member")
-        self.admin_user.club = self.club
+       
         self.url = "/api/account/v1/authorization/group_permissions/"
 
     def test_create_group_success(self):
         """Ensure that an admin user can create a group with permissions"""
         self.client.force_authenticate(user=self.admin_user)
         data = {"name": "moderator", "permission": [
-            self.permission1.id, self.permission2.id], "club": 1}
+            self.permission1.id, self.permission2.id]}
         response = self.client.post(self.url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn("group_id", response.data)
@@ -132,7 +132,7 @@ class CustomGroupModel(TestCase):
     def test_create_group_without_permissions(self):
         """ Ensure a group cannot be created without permissions"""
         self.client.force_authenticate(user=self.admin_user)
-        data = {"name": "moderator", "permission": [], "club": self.club.id}
+        data = {"name": "moderator", "permission": []}
         response = self.client.post(self.url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(GroupModel.objects.filter(name="moderator").exists())
@@ -140,7 +140,7 @@ class CustomGroupModel(TestCase):
     def test_create_group_with_invalid_permission(self):
         self.client.force_authenticate(user=self.admin_user)
         data = {"name": "moderator", "permission": [
-            "dskk"], "club": self.club.id}
+            "dskk"]}
         response = self.client.post(self.url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -149,7 +149,7 @@ class CustomGroupModel(TestCase):
         self.client.force_authenticate(user=self.admin_user)
         long_name = "A" * 300
         data = {"name": long_name, "permission": [
-            self.permission1.id], "club": self.club.id}
+            self.permission1.id]}
         response = self.client.post(self.url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("errors", response.data)
@@ -168,7 +168,7 @@ class CustomGroupModel(TestCase):
         url = f"{self.url}{group_id}/"
 
         payload = {"name": "updated_moderator", "permission": [
-            self.permission1.id], "club": self.club.id}
+            self.permission1.id]}
         response = self.client.patch(url, data=payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.groupname.refresh_from_db()
@@ -192,16 +192,16 @@ class AssignGroupUserAPIsTEST(APITestCase):
         username = self.faker.user_name()
         password = self.faker.password(length=8)
         email = self.faker.email()
-        club_name = self.faker.name()
-        self.club = Club.objects.create(name=club_name)
+       
+  
         self.user = get_user_model().objects.create_user(
-            username=username, password=password, email=email, club=self.club)
+            username=username, password=password, email=email)
 
         admin_username = self.faker.user_name()
         admin_password = self.faker.password(length=8)
         admin_email = self.faker.email()
         self.admin = get_user_model().objects.create_superuser(
-            username=admin_username, password=admin_password, email=admin_email, club=self.club)
+            username=admin_username, password=admin_password, email=admin_email)
         self.token = RefreshToken.for_user(self.admin)
 
     def test_assign_group_user_post_method_with_valid_data(self):
@@ -213,7 +213,7 @@ class AssignGroupUserAPIsTEST(APITestCase):
         group_name = self.faker.name()
         permissions = PermissonModel.objects.create(name="register_account")
         group = GroupModel.objects.create(
-            name=group_name, club=self.club)
+            name=group_name)
         group.permission.add(permissions)
         group.save()
 
@@ -244,22 +244,21 @@ class AssignGroupUserAPIsTEST(APITestCase):
         Test for assigning a user to a group with invalid information. Like the user does belongs to the admin group
         """
         # arrange
+        club = Club.objects.create(name=self.faker.name())
         group_name = self.faker.name()
         permissions = PermissonModel.objects.create(name="register_account")
         group = GroupModel.objects.create(
-            name=group_name, club=self.club)
+            name=group_name,club=club)
         group.permission.add(permissions)
         group.save()
-        new_club = Club.objects.create(name=self.faker.name())
-        self.user.club = new_club
-        self.user.save()
-
+        
         # act
         _data = {
             'user': self.user.id,
             'group': [
                 group.id
             ]
+            
         }
         self.client.credentials(
             HTTP_AUTHORIZATION=f"Bearer {str(self.token.access_token)}")
@@ -310,7 +309,7 @@ class AssignGroupUserAPIsTEST(APITestCase):
         group_name = self.faker.name()
         permissions = PermissonModel.objects.create(name="register_account")
         group = GroupModel.objects.create(
-            name=group_name, club=self.club)
+            name=group_name)
         group.permission.add(permissions)
         group.save()
         assign_grp = AssignGroupPermission.objects.create(user=self.user)
@@ -340,7 +339,7 @@ class AssignGroupUserAPIsTEST(APITestCase):
         group_name = self.faker.name()
         permissions = PermissonModel.objects.create(name="register_account")
         group = GroupModel.objects.create(
-            name=group_name, club=self.club)
+            name=group_name)
         group.permission.add(permissions)
         group.save()
         assign_grp = AssignGroupPermission.objects.create(user=self.user)
@@ -367,11 +366,11 @@ class AssignGroupUserAPIsTEST(APITestCase):
         group_name = self.faker.name()
         permissions = PermissonModel.objects.create(name="register_account")
         group = GroupModel.objects.create(
-            name=group_name, club=self.club)
+            name=group_name)
         group.permission.add(permissions)
         group.save()
         group_2 = GroupModel.objects.create(
-            name=self.faker.name(), club=self.club)
+            name=self.faker.name())
         group.permission.add(permissions)
         group_2.permission.add(permissions)
         group.save()
