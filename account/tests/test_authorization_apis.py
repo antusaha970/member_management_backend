@@ -192,16 +192,14 @@ class AssignGroupUserAPIsTEST(APITestCase):
         username = self.faker.user_name()
         password = self.faker.password(length=8)
         email = self.faker.email()
-        club_name = self.faker.name()
-        self.club = Club.objects.create(name=club_name)
         self.user = get_user_model().objects.create_user(
-            username=username, password=password, email=email, club=self.club)
+            username=username, password=password, email=email)
 
         admin_username = self.faker.user_name()
         admin_password = self.faker.password(length=8)
         admin_email = self.faker.email()
         self.admin = get_user_model().objects.create_superuser(
-            username=admin_username, password=admin_password, email=admin_email, club=self.club)
+            username=admin_username, password=admin_password, email=admin_email)
         self.token = RefreshToken.for_user(self.admin)
 
     def test_assign_group_user_post_method_with_valid_data(self):
@@ -213,7 +211,7 @@ class AssignGroupUserAPIsTEST(APITestCase):
         group_name = self.faker.name()
         permissions = PermissonModel.objects.create(name="register_account")
         group = GroupModel.objects.create(
-            name=group_name, club=self.club)
+            name=group_name)
         group.permission.add(permissions)
         group.save()
 
@@ -247,11 +245,9 @@ class AssignGroupUserAPIsTEST(APITestCase):
         group_name = self.faker.name()
         permissions = PermissonModel.objects.create(name="register_account")
         group = GroupModel.objects.create(
-            name=group_name, club=self.club)
+            name=group_name)
         group.permission.add(permissions)
         group.save()
-        new_club = Club.objects.create(name=self.faker.name())
-        self.user.club = new_club
         self.user.save()
 
         # act
@@ -310,7 +306,7 @@ class AssignGroupUserAPIsTEST(APITestCase):
         group_name = self.faker.name()
         permissions = PermissonModel.objects.create(name="register_account")
         group = GroupModel.objects.create(
-            name=group_name, club=self.club)
+            name=group_name)
         group.permission.add(permissions)
         group.save()
         assign_grp = AssignGroupPermission.objects.create(user=self.user)
@@ -340,7 +336,7 @@ class AssignGroupUserAPIsTEST(APITestCase):
         group_name = self.faker.name()
         permissions = PermissonModel.objects.create(name="register_account")
         group = GroupModel.objects.create(
-            name=group_name, club=self.club)
+            name=group_name)
         group.permission.add(permissions)
         group.save()
         assign_grp = AssignGroupPermission.objects.create(user=self.user)
@@ -367,11 +363,11 @@ class AssignGroupUserAPIsTEST(APITestCase):
         group_name = self.faker.name()
         permissions = PermissonModel.objects.create(name="register_account")
         group = GroupModel.objects.create(
-            name=group_name, club=self.club)
+            name=group_name)
         group.permission.add(permissions)
         group.save()
         group_2 = GroupModel.objects.create(
-            name=self.faker.name(), club=self.club)
+            name=self.faker.name())
         group.permission.add(permissions)
         group_2.permission.add(permissions)
         group.save()
@@ -410,11 +406,11 @@ class AssignGroupUserAPIsTEST(APITestCase):
         group_name = self.faker.name()
         permissions = PermissonModel.objects.create(name="register_account")
         group = GroupModel.objects.create(
-            name=group_name, club=self.club)
+            name=group_name)
         group.permission.add(permissions)
         group.save()
         group_2 = GroupModel.objects.create(
-            name=self.faker.name(), club=club)
+            name=self.faker.name())
         group.permission.add(permissions)
         group_2.permission.add(permissions)
         group.save()

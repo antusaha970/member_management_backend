@@ -42,8 +42,6 @@ COUNTRY_CHOICES.append(('XX', 'Unknown'))
 
 class MembershipType(models.Model):
     name = models.CharField(max_length=10, unique=True)
-    club = models.ForeignKey(
-        Club, on_delete=models.RESTRICT, related_name="membership_type_club")
 
     def __str__(self):
         return self.name
@@ -51,8 +49,6 @@ class MembershipType(models.Model):
 
 class InstituteName(models.Model):
     name = models.CharField(max_length=255, unique=True)
-    club = models.ForeignKey(
-        Club, on_delete=models.RESTRICT, related_name="institution_name_club")
 
     def __str__(self):
         return self.name
@@ -60,8 +56,6 @@ class InstituteName(models.Model):
 
 class MembershipStatusChoice(models.Model):
     name = models.CharField(max_length=255, unique=True)
-    club = models.ForeignKey(
-        Club, on_delete=models.RESTRICT, related_name="membership_status_choice_club")
 
     def __str__(self):
         return self.name
@@ -76,8 +70,6 @@ class MaritalStatusChoice(models.Model):
 
 class EmploymentTypeChoice(models.Model):
     name = models.CharField(max_length=255, unique=True)
-    club = models.ForeignKey(
-        Club, on_delete=models.RESTRICT, related_name="employment_type_choice_club")
 
     def __str__(self):
         return self.name

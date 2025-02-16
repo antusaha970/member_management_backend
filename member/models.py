@@ -4,8 +4,6 @@ from club.models import Club
 
 
 class Member(models.Model):
-    club = models.ForeignKey(
-        Club, on_delete=models.SET_NULL, null=True, blank=True)
     member_ID = models.CharField(
         max_length=200, unique=True)  # mandatory field
     first_name = models.CharField(
@@ -68,8 +66,6 @@ class MembersFinancialBasics(models.Model):
     # relations
     member = models.ForeignKey(
         Member, related_name='members_financial_basics', on_delete=models.RESTRICT)
-    club = models.ForeignKey(Club, related_name="member_financial_basics_club",
-                             on_delete=models.RESTRICT)
     # Record keeping
     status = models.IntegerField(choices=STATUS_CHOICES, default=0)
     created_at = models.DateTimeField(auto_now_add=True)
