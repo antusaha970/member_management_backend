@@ -734,189 +734,6 @@ class UserView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class GroupPermissionView(APIView):
-    def get_permissions(self):
-        if self.request.method == "POST" or self.request.method == "PATCH" or self.request.method == "DELETE":
-            return [IsAdminUser()]
-        else:
-            return [IsAuthenticated()]
-
-    def post(self, request):
-        try:
-            data = request.data
-            serializer = GroupModelSerializer(
-                data=data, context={'user': request.user})
-            if serializer.is_valid():
-                group = serializer.save()
-                permissions = group.permission.all()
-                permission_ids = [perm.id for perm in permissions]
-                log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),
-                    verb="Creating group",
-                    severity_level="Info",
-                    description="created a new group",
-                )
-                return Response({
-                    "code": status.HTTP_201_CREATED,
-                    "message": "Operation successfully",
-                    "status": "success",
-                    "group_id": group.id,
-                    "name": group.name,
-                    "permission": permission_ids
-                }, status=status.HTTP_201_CREATED)
-            else:
-                log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),
-                    verb="Creating group error",
-                    severity_level="warning",
-                    description="Bed request while creating a group",
-                )
-                return Response({
-                    "code": status.HTTP_400_BAD_REQUEST,
-                    "message": "invalid request",
-                    "status": "failed",
-                    "errors": serializer.errors
-                }, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            logger.exception(str(e))
-            log_activity_task.delay_on_commit(
-                request_data_activity_log(request),
-                verb="Creating group error",
-                severity_level="warning",
-                description="error occurred while creating a group",
-            )
-            return Response({
-                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
-                "message": "invalid request",
-                "status": "failed",
-                'errors': {
-                    'server_error': [str(e)]
-                }
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    def get(self, request):
-        try:
-            user = request.user
-            data = GroupModel.objects.filter(club=user.club)
-            serializer = GroupSerializerForViewAllGroups(data, many=True)
-            log_activity_task.delay_on_commit(
-                request_data_activity_log(request),
-                verb="View all groups",
-                severity_level="info",
-                description="Made a request to view all the groups",
-            )
-            return Response({
-                "code": status.HTTP_200_OK,
-                "message": "operation successful",
-                "status": "success",
-                'data': serializer.data
-            }, status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.exception(str(e))
-            log_activity_task.delay_on_commit(
-                request_data_activity_log(request),
-                verb="Error viewing groups",
-                severity_level="warning",
-                description="Error occurred while viewing groups",
-            )
-            return Response({
-                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
-                "message": "Error occurred",
-                "status": "failed",
-                'errors': {
-                    'server_error': [str(e)]
-                }
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    def patch(self, request, group_id):
-        """Update a group with required permissions at least one permission"""
-        try:
-            group = get_object_or_404(GroupModel, pk=group_id)
-            user = request.user
-            serializer = GroupModelSerializer(
-                group, data=request.data, context={'user': user})
-            if serializer.is_valid():
-                serializer.save()
-                # after updating the group delete the permissions cache
-                clear_user_permissions_cache()
-                log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),
-                    verb="Updated a group",
-                    severity_level="info",
-                    description="Updated a group with required permissions",
-                )
-                return Response({
-                    "code": status.HTTP_200_OK,
-                    "message": "Operation successful",
-                    "status": "success",
-                    'data': serializer.data
-                })
-            else:
-                log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),
-                    verb="Bad request in update group",
-                    severity_level="warning",
-                    description="Made a bad request for updating a group",
-                )
-                return Response({
-                    "code": status.HTTP_400_BAD_REQUEST,
-                    "message": "Invalid request",
-                    "status": "failed",
-                    'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            logger.exception(str(e))
-            log_activity_task.delay_on_commit(
-                request_data_activity_log(request),
-                verb="Error",
-                severity_level="info",
-                description="Error while Updated a group with required permissions",
-            )
-            return Response({
-                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
-                "message": "Error occurred",
-                "status": "failed",
-                'errors': {
-                    'server_error': [str(e)]
-                }
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    def delete(self, request, group_id):
-        """Delete a group"""
-        try:
-            group = get_object_or_404(GroupModel, pk=group_id)
-            group.delete()
-            # clear permissions cache for all users after a group deletion
-            clear_user_permissions_cache()
-            log_activity_task.delay_on_commit(
-                request_data_activity_log(request),
-                verb="Deleted a group",
-                severity_level="info",
-                description="Deleted a group with required permissions",
-            )
-            return Response({
-                "code": status.HTTP_200_OK,
-                "message": "Operation successful",
-                "status": "success",
-                'detail': f"Group deleted successfully"
-            }, status=status.HTTP_200_OK)
-        except Exception as e:
-            logger.exception(str(e))
-            log_activity_task.delay_on_commit(
-                request_data_activity_log(request),
-                verb="Error while deleting a group",
-                severity_level="warning",
-                description="Error occurred while deleting a group",
-            )
-            return Response({
-                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
-                "message": "Error occurred",
-                "status": "failed",
-                'errors': {
-                    'server_error': [str(e)]
-                }
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
 class CustomPermissionView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
 
@@ -1007,7 +824,186 @@ class CustomPermissionView(APIView):
                     'server_error': [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+class GroupPermissionView(APIView):
+    def get_permissions(self):
+        if self.request.method == "POST" or self.request.method == "PATCH" or self.request.method == "DELETE":
+            return [IsAdminUser()]
+        else:
+            return [IsAuthenticated()]
 
+    def post(self, request):
+        try:
+            data = request.data
+            serializer = GroupModelSerializer(
+                data=data)
+            if serializer.is_valid():
+                group = serializer.save()
+                permissions = group.permission.all()
+                permission_ids = [perm.id for perm in permissions]
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Creating group",
+                    severity_level="Info",
+                    description="created a new group",
+                )
+                return Response({
+                    "code": status.HTTP_201_CREATED,
+                    "message": "Operation successfully",
+                    "status": "success",
+                    "group_id": group.id,
+                    "name": group.name,
+                    "permission": permission_ids
+                }, status=status.HTTP_201_CREATED)
+            else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Creating group error",
+                    severity_level="warning",
+                    description="Bed request while creating a group",
+                )
+                return Response({
+                    "code": status.HTTP_400_BAD_REQUEST,
+                    "message": "invalid request",
+                    "status": "failed",
+                    "errors": serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Creating group error",
+                severity_level="warning",
+                description="error occurred while creating a group",
+            )
+            return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "invalid request",
+                "status": "failed",
+                'errors': {
+                    'server_error': [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def get(self, request):
+        try:
+            
+            data = GroupModel.objects.all()
+            serializer = GroupSerializerForViewAllGroups(data, many=True)
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="View all groups",
+                severity_level="info",
+                description="Made a request to view all the groups",
+            )
+            return Response({
+                "code": status.HTTP_200_OK,
+                "message": "operation successful",
+                "status": "success",
+                'data': serializer.data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Error viewing groups",
+                severity_level="warning",
+                description="Error occurred while viewing groups",
+            )
+            return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
+                'errors': {
+                    'server_error': [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def patch(self, request, group_id):
+        """Update a group with required permissions at least one permission"""
+        try:
+            group = get_object_or_404(GroupModel, pk=group_id)
+            serializer = GroupModelSerializer(
+                group, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                # after updating the group delete the permissions cache
+                clear_user_permissions_cache()
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Updated a group",
+                    severity_level="info",
+                    description="Updated a group with required permissions",
+                )
+                return Response({
+                    "code": status.HTTP_200_OK,
+                    "message": "Operation successful",
+                    "status": "success",
+                    'data': serializer.data
+                })
+            else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Bad request in update group",
+                    severity_level="warning",
+                    description="Made a bad request for updating a group",
+                )
+                return Response({
+                    "code": status.HTTP_400_BAD_REQUEST,
+                    "message": "Invalid request",
+                    "status": "failed",
+                    'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Error",
+                severity_level="info",
+                description="Error while Updated a group with required permissions",
+            )
+            return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
+                'errors': {
+                    'server_error': [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def delete(self, request, group_id):
+        """Delete a group"""
+        try:
+            group = get_object_or_404(GroupModel, pk=group_id)
+            group.delete()
+            # clear permissions cache for all users after a group deletion
+            clear_user_permissions_cache()
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Deleted a group",
+                severity_level="info",
+                description="Deleted a group with required permissions",
+            )
+            return Response({
+                "code": status.HTTP_200_OK,
+                "message": "Operation successful",
+                "status": "success",
+                'detail': f"Group deleted successfully"
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Error while deleting a group",
+                severity_level="warning",
+                description="Error occurred while deleting a group",
+            )
+            return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
+                'errors': {
+                    'server_error': [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class AssignGroupPermissionView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
@@ -1121,9 +1117,8 @@ class AssignGroupPermissionView(APIView):
 
     def get(self, request):
         try:
-            current_user = request.user
-            data = AssignGroupPermission.objects.filter(
-                user__club=current_user.club)
+           
+            data = AssignGroupPermission.objects.all()
             users_data = []
             for assign_group in data:
                 user_info = {
@@ -1212,8 +1207,7 @@ class AssignGroupPermissionView(APIView):
                 serializer.save()
                 user_id = serializer.validated_data["user"].id
                 groups = serializer.validated_data["group"]
-                groups_data = [{"group_id": gro.id,
-                                "group_name": gro.name} for gro in groups]
+                groups_data = [{"group_id": gro.id,"group_name": gro.name} for gro in groups]
                 clear_user_permissions_cache()
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),

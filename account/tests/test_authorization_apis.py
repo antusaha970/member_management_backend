@@ -108,18 +108,18 @@ class CustomGroupModel(TestCase):
         self.normal_user = get_user_model().objects.create_user(
             username="salauddin_85", password="root25809#")
 
-        self.club = Club.objects.create(name="golpokotha")
-        self.groupname = GroupModel.objects.create(name="test", club=self.club)
+     
+        self.groupname = GroupModel.objects.create(name="test")
         self.permission1 = PermissonModel.objects.create(name="add_member")
         self.permission2 = PermissonModel.objects.create(name="view_member")
-        self.admin_user.club = self.club
+       
         self.url = "/api/account/v1/authorization/group_permissions/"
 
     def test_create_group_success(self):
         """Ensure that an admin user can create a group with permissions"""
         self.client.force_authenticate(user=self.admin_user)
         data = {"name": "moderator", "permission": [
-            self.permission1.id, self.permission2.id], "club": 1}
+            self.permission1.id, self.permission2.id]}
         response = self.client.post(self.url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn("group_id", response.data)
@@ -132,7 +132,7 @@ class CustomGroupModel(TestCase):
     def test_create_group_without_permissions(self):
         """ Ensure a group cannot be created without permissions"""
         self.client.force_authenticate(user=self.admin_user)
-        data = {"name": "moderator", "permission": [], "club": self.club.id}
+        data = {"name": "moderator", "permission": []}
         response = self.client.post(self.url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(GroupModel.objects.filter(name="moderator").exists())
@@ -140,7 +140,7 @@ class CustomGroupModel(TestCase):
     def test_create_group_with_invalid_permission(self):
         self.client.force_authenticate(user=self.admin_user)
         data = {"name": "moderator", "permission": [
-            "dskk"], "club": self.club.id}
+            "dskk"]}
         response = self.client.post(self.url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -149,7 +149,7 @@ class CustomGroupModel(TestCase):
         self.client.force_authenticate(user=self.admin_user)
         long_name = "A" * 300
         data = {"name": long_name, "permission": [
-            self.permission1.id], "club": self.club.id}
+            self.permission1.id]}
         response = self.client.post(self.url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("errors", response.data)
@@ -168,7 +168,7 @@ class CustomGroupModel(TestCase):
         url = f"{self.url}{group_id}/"
 
         payload = {"name": "updated_moderator", "permission": [
-            self.permission1.id], "club": self.club.id}
+            self.permission1.id]}
         response = self.client.patch(url, data=payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.groupname.refresh_from_db()
@@ -236,36 +236,6 @@ class AssignGroupUserAPIsTEST(APITestCase):
         self.assertEqual(group_name, _group_name)
         self.assertEqual(_user_id, self.user.id)
 
-    def test_assign_group_user_post_method_with_invalid_data(self):
-        """
-        Endpoint: "/api/account/v1/authorization/assign_group_user/"
-        Test for assigning a user to a group with invalid information. Like the user does belongs to the admin group
-        """
-        # arrange
-        group_name = self.faker.name()
-        permissions = PermissonModel.objects.create(name="register_account")
-        group = GroupModel.objects.create(
-            name=group_name)
-        group.permission.add(permissions)
-        group.save()
-        self.user.save()
-
-        # act
-        _data = {
-            'user': self.user.id,
-            'group': [
-                group.id
-            ]
-        }
-        self.client.credentials(
-            HTTP_AUTHORIZATION=f"Bearer {str(self.token.access_token)}")
-        _response = self.client.post(
-            "/api/account/v1/authorization/assign_group_user/", data=_data)
-
-        # assert
-        data = _response.json()
-        self.assertEqual(_response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('errors', data)
 
     def test_assign_group_user_get_method_with_valid_data(self):
         """
@@ -396,44 +366,7 @@ class AssignGroupUserAPIsTEST(APITestCase):
         self.assertTrue(AssignGroupPermission.objects.filter(
             user=self.user, group=group_2).exists())
 
-    def test_assign_group_user_patch_method_with_invalid_data(self):
-        """
-        Endpoint: "/api/account/v1/authorization/assign_group_user/"
-        Test for updating a user to another group with invalid information
-        """
-        # arrange
-        club = Club.objects.create(name=self.faker.name())
-        group_name = self.faker.name()
-        permissions = PermissonModel.objects.create(name="register_account")
-        group = GroupModel.objects.create(
-            name=group_name)
-        group.permission.add(permissions)
-        group.save()
-        group_2 = GroupModel.objects.create(
-            name=self.faker.name())
-        group.permission.add(permissions)
-        group_2.permission.add(permissions)
-        group.save()
-        group_2.save()
-        assign_grp = AssignGroupPermission.objects.create(user=self.user)
-        assign_grp.group.add(group)
-
-        # act
-        _data = {
-            'user': self.user.id,
-            'group': [
-                group.id,
-                group_2.id,
-            ]
-        }
-        self.client.credentials(
-            HTTP_AUTHORIZATION=f"Bearer {str(self.token.access_token)}")
-        _response = self.client.patch(
-            "/api/account/v1/authorization/assign_group_user/", data=_data)
-
-        # assert
-        data = _response.json()
-        self.assertEqual(_response.status_code, status.HTTP_400_BAD_REQUEST)
+    
 
 
 class AdminUserModel(TestCase):
