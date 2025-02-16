@@ -25,7 +25,7 @@ class MemberView(APIView):
                 with transaction.atomic():
                     member = member_serializer.save()
                     member_financial_basics_serializer.save(
-                        member_ID=member.member_ID, club=member.club.id)
+                        member_ID=member.member_ID)
 
                     return Response({
                         'data': {
@@ -128,7 +128,7 @@ class MemberView(APIView):
 
 
 class MemberIdView(APIView):
-    permission_classes = [IsAuthenticated, ViewMemberPermission]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         try:
