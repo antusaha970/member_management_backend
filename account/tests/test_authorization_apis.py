@@ -192,8 +192,6 @@ class AssignGroupUserAPIsTEST(APITestCase):
         username = self.faker.user_name()
         password = self.faker.password(length=8)
         email = self.faker.email()
-       
-  
         self.user = get_user_model().objects.create_user(
             username=username, password=password, email=email)
 
@@ -238,37 +236,6 @@ class AssignGroupUserAPIsTEST(APITestCase):
         self.assertEqual(group_name, _group_name)
         self.assertEqual(_user_id, self.user.id)
 
-    def test_assign_group_user_post_method_with_invalid_data(self):
-        """
-        Endpoint: "/api/account/v1/authorization/assign_group_user/"
-        Test for assigning a user to a group with invalid information. Like the user does belongs to the admin group
-        """
-        # arrange
-        club = Club.objects.create(name=self.faker.name())
-        group_name = self.faker.name()
-        permissions = PermissonModel.objects.create(name="register_account")
-        group = GroupModel.objects.create(
-            name=group_name,club=club)
-        group.permission.add(permissions)
-        group.save()
-        
-        # act
-        _data = {
-            'user': self.user.id,
-            'group': [
-                group.id
-            ]
-            
-        }
-        self.client.credentials(
-            HTTP_AUTHORIZATION=f"Bearer {str(self.token.access_token)}")
-        _response = self.client.post(
-            "/api/account/v1/authorization/assign_group_user/", data=_data)
-
-        # assert
-        data = _response.json()
-        self.assertEqual(_response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('errors', data)
 
     def test_assign_group_user_get_method_with_valid_data(self):
         """
@@ -399,44 +366,7 @@ class AssignGroupUserAPIsTEST(APITestCase):
         self.assertTrue(AssignGroupPermission.objects.filter(
             user=self.user, group=group_2).exists())
 
-    def test_assign_group_user_patch_method_with_invalid_data(self):
-        """
-        Endpoint: "/api/account/v1/authorization/assign_group_user/"
-        Test for updating a user to another group with invalid information
-        """
-        # arrange
-        club = Club.objects.create(name=self.faker.name())
-        group_name = self.faker.name()
-        permissions = PermissonModel.objects.create(name="register_account")
-        group = GroupModel.objects.create(
-            name=group_name, club=self.club)
-        group.permission.add(permissions)
-        group.save()
-        group_2 = GroupModel.objects.create(
-            name=self.faker.name(), club=club)
-        group.permission.add(permissions)
-        group_2.permission.add(permissions)
-        group.save()
-        group_2.save()
-        assign_grp = AssignGroupPermission.objects.create(user=self.user)
-        assign_grp.group.add(group)
-
-        # act
-        _data = {
-            'user': self.user.id,
-            'group': [
-                group.id,
-                group_2.id,
-            ]
-        }
-        self.client.credentials(
-            HTTP_AUTHORIZATION=f"Bearer {str(self.token.access_token)}")
-        _response = self.client.patch(
-            "/api/account/v1/authorization/assign_group_user/", data=_data)
-
-        # assert
-        data = _response.json()
-        self.assertEqual(_response.status_code, status.HTTP_400_BAD_REQUEST)
+    
 
 
 class AdminUserModel(TestCase):

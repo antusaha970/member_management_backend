@@ -29,7 +29,7 @@ class RegistrationSerializer(serializers.ModelSerializer):
     class Meta:
         model = get_user_model()
         fields = ['username', 'password', 'email',
-                  'name', 'club', 'remember_me']
+                  'name', 'remember_me']
         extra_kwargs = {
             "name": {
                 "required": True,
@@ -41,9 +41,6 @@ class RegistrationSerializer(serializers.ModelSerializer):
                 "required": True,
             },
             "password": {
-                "required": True,
-            },
-            "club": {
                 "required": True,
             }
         }
@@ -69,10 +66,9 @@ class RegistrationSerializer(serializers.ModelSerializer):
         email = validated_data.get('email')
         password = validated_data.get('password')
         name = validated_data.get('name')
-        club = validated_data.get('club')
 
         user = get_user_model().objects.create_user(
-            username=username, password=password, email=email, first_name=name, club=club)
+            username=username, password=password, email=email, first_name=name)
         return user
 
 
@@ -400,17 +396,10 @@ class AdminUserRegistrationSerializer(serializers.ModelSerializer):
         return super().validate(attrs)
 
     def create(self, validated_data):
-        request_club_id = self.context.get("club_id")
         username = validated_data.get('username')
         email = validated_data.get('email')
         password = validated_data.get('password')
         name = validated_data.get('name')
-        try:
-            club = Club.objects.get(id=request_club_id)
-        except Club.DoesNotExist:
-            raise serializers.ValidationError({
-                'club': ["club not found"]
-            })
         user = get_user_model().objects.create_user(
-            username=username, password=password, email=email, first_name=name, club=club)
+            username=username, password=password, email=email, first_name=name)
         return user

@@ -7,7 +7,6 @@ import pdb
 
 
 class MemberSerializer(serializers.Serializer):
-    club = serializers.IntegerField()
     member_ID = serializers.CharField()
     first_name = serializers.CharField()
     last_name = serializers.CharField(required=False)
@@ -87,13 +86,12 @@ class MemberSerializer(serializers.Serializer):
         return value
 
     def create(self, validated_data):
-        club_data = validated_data.pop('club')
+
         gender_data = validated_data.pop('gender')
         membership_type_data = validated_data.pop('membership_type')
         institute_name_data = validated_data.pop('institute_name')
         membership_status_data = validated_data.pop('membership_status')
         marital_status_data = validated_data.pop('marital_status')
-        club = Club.objects.get(pk=club_data)
         gender = Gender.objects.get(name=gender_data)
         membership_type = MembershipType.objects.get(name=membership_type_data)
         institute_name = InstituteName.objects.get(name=institute_name_data)
@@ -101,12 +99,11 @@ class MemberSerializer(serializers.Serializer):
             name=membership_status_data)
         marital_status = MaritalStatusChoice.objects.get(
             name=marital_status_data)
-        member = Member.objects.create(club=club, gender=gender, membership_type=membership_type, institute_name=institute_name,
+        member = Member.objects.create(gender=gender, membership_type=membership_type, institute_name=institute_name,
                                        membership_status=membership_status, marital_status=marital_status, **validated_data)
         return member
 
     def update(self, instance, validated_data):
-        club = validated_data.get('club', instance.club)
         first_name = validated_data.get('first_name', instance.first_name)
         last_name = validated_data.get('last_name', instance.last_name)
         gender = validated_data.get('gender', instance.gender)
@@ -128,7 +125,6 @@ class MemberSerializer(serializers.Serializer):
             'marital_status', instance.marital_status)
 
         # get dependencies
-        club = Club.objects.get(pk=club)
         gender = Gender.objects.get(name=gender)
         institute_name = InstituteName.objects.get(name=institute_name)
         membership_status = MembershipStatusChoice.objects.get(
@@ -147,7 +143,6 @@ class MemberSerializer(serializers.Serializer):
         instance.blood_group = blood_group
         instance.nationality = nationality
         instance.marital_status = marital_status
-        instance.club = club
         instance.institute_name = institute_name
         instance.membership_status = membership_status
 
@@ -173,10 +168,8 @@ class MembersFinancialBasicsSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         member_ID = validated_data.pop("member_ID")
-        club = validated_data.pop("club")
-        club = Club.objects.get(pk=club)
         member = Member.objects.get(member_ID=member_ID)
-        member_financial_basics = MembersFinancialBasics.objects.create(club=club, member=member,
+        member_financial_basics = MembersFinancialBasics.objects.create(member=member,
                                                                         **validated_data)
 
         return member_financial_basics
