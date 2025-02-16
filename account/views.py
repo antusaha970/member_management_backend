@@ -32,6 +32,7 @@ from .utils.permissions_classes import RegisterUserPermission
 from activity_log.utils.functions import request_data_activity_log
 from .utils.rate_limiting_classes import LoginRateThrottle
 from django.core.cache import cache
+from core.utils.pagination import CustomPageNumberPagination
 import logging
 # set env
 environ.Env.read_env()
@@ -698,16 +699,23 @@ class UserView(APIView):
 
     def get(self, request):
         try:
-            user = request.user
-            data = get_user_model().objects.filter(club=user.club)
-            serializer = UserSerializer(data, many=True)
+            data = get_user_model().objects.all()
+            paginator = CustomPageNumberPagination()
+            paginated_queryset = paginator.paginate_queryset(
+                data, request, view=self)
+            serializer = UserSerializer(paginated_queryset, many=True)
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
                 verb="Tried to view all users",
                 severity_level="info",
                 description="Viewed all users",
             )
-            return Response(serializer.data)
+            return paginator.get_paginated_response({
+                'code': 200,
+                'status': 'success',
+                'message': "Viewing all available users",
+                'data': serializer.data
+            }, status=200)
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -717,10 +725,10 @@ class UserView(APIView):
                 description="Error while viewing all users",
             )
             return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
                 'errors': {
-                    "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    "message": "Error occurred",
-                    "status": "failed",
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -1270,21 +1278,6 @@ class AdminUserEmailView(APIView):
     def post(self, request):
         try:
             data = request.data
-            if request.user.club is None:
-                log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),
-                    verb="Bad request while registering user",
-                    severity_level="warning",
-                    description="Made a request for registering user and the request was invalid",
-                )
-                return Response({
-                    "code": status.HTTP_404_NOT_FOUND,
-                    "message": "Invalid request",
-                    "status": "failed",
-                    "errors": {
-                        'club': ["You are not associated in club"]
-                    }}, status=status.HTTP_404_NOT_FOUND)
-
             serializer = AdminUserEmailSerializer(
                 data=data)
             if serializer.is_valid():
@@ -1361,21 +1354,6 @@ class AdminUserVerifyOtpView(APIView):
     def post(self, request):
         try:
             data = request.data
-            if request.user.club is None:
-                log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),
-                    verb="Bad request while verifying user OTP",
-                    severity_level="warning",
-                    description="Made a request for verifying user OTP and request was invalid",
-                )
-                return Response({
-                    "code": status.HTTP_404_NOT_FOUND,
-                    "message": "Invalid request",
-                    "status": "failed",
-                    "errors": {
-                        'club': ["You are not associated in club"]
-                    }}, status=status.HTTP_404_NOT_FOUND)
-
             serializer = AdminUserVerifyOtpSerializer(
                 data=data)
             if serializer.is_valid():
@@ -1450,25 +1428,8 @@ class AdminUserRegistrationView(APIView):
     def post(self, request):
         try:
             data = request.data
-            if request.user.club is None:
-                log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),
-                    verb="Bad request while Registering an user",
-                    severity_level="warning",
-                    description="Made a request for registering an user and the request was invalid",
-                )
-                return Response({
-                    "code": status.HTTP_404_NOT_FOUND,
-                    "message": "Invalid request",
-                    "status": "failed",
-                    "errors": {
-                        "club": ["You are not associated in club"]
-                    }}, status=status.HTTP_404_NOT_FOUND)
-
-            club_id = request.user.club.id
-
             serializer = AdminUserRegistrationSerializer(
-                data=data, context={"club_id": club_id})
+                data=data)
             if serializer.is_valid():
                 user = serializer.save()
                 username = serializer.validated_data["username"]
