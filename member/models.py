@@ -73,3 +73,287 @@ class MembersFinancialBasics(models.Model):
 
     def __str__(self):
         return self.member.member_ID
+
+
+# Member other information Models
+
+class ContactTypeChoice(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+
+    def __str__(self):
+        return self.name
+
+
+class ContactNumber(models.Model):
+    number = models.CharField(max_length=20, blank=True, null=True)
+    is_primary = models.BooleanField(default=False)
+    # Relations
+    member = models.ForeignKey(Member, related_name='contact_numbers',
+                               on_delete=models.RESTRICT)
+    contact_type = models.ForeignKey(
+        ContactTypeChoice, related_name='contact_type_choice', on_delete=models.RESTRICT, default='present')
+    # Record keeping
+    status = models.IntegerField(choices=STATUS_CHOICES, default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.member.member_ID
+
+    def save(self, *args, **kwargs):
+        # Ensure only one primary contact per member
+        if self.is_primary:
+            # Set other contacts for this member to non-primary
+            ContactNumber.objects.filter(
+                member=self.member, is_primary=True).update(is_primary=False)
+        elif not ContactNumber.objects.filter(member=self.member, is_primary=True).exists():
+            # If no primary contact exists, set this one as primary by default
+            self.is_primary = True
+        super().save(*args, **kwargs)
+
+
+class EmailTypeChoice(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+
+    def __str__(self):
+        return self.name
+
+
+class Email(models.Model):
+    email = models.EmailField(unique=True, max_length=50)
+    is_primary = models.BooleanField(default=False)
+    # relations
+    member = models.ForeignKey(
+        Member, related_name='emails', on_delete=models.RESTRICT)
+    email_type = models.ForeignKey(
+        EmailTypeChoice, related_name='email_type_choice', on_delete=models.RESTRICT)
+    # Record keeping
+    status = models.IntegerField(choices=STATUS_CHOICES, default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.member.member_ID
+
+    def save(self, *args, **kwargs):
+        # Ensure only one primary email per user
+        if self.is_primary:
+            # Set other emails for this user to non-primary
+            Email.objects.filter(member=self.member,
+                                 is_primary=True).update(is_primary=False)
+        elif not Email.objects.filter(member=self.member, is_primary=True).exists():
+            # If no primary email exists, set this one as primary by default
+            self.is_primary = True
+        super().save(*args, **kwargs)
+
+
+class AddressTypeChoice(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+
+    def __str__(self):
+        return self.name
+
+
+class Address(models.Model):
+    title = models.CharField(max_length=100)
+    address = models.TextField()
+    is_primary = models.BooleanField(default=False)
+    member = models.ForeignKey(
+        Member, related_name='addresses', on_delete=models.RESTRICT)
+    address_type = models.ForeignKey(
+        AddressTypeChoice, related_name='address_type_choice', on_delete=models.RESTRICT)
+
+    # Record keeping
+    status = models.IntegerField(choices=STATUS_CHOICES, default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.member.member_ID
+
+    def save(self, *args, **kwargs):
+        # Ensure only one primary address per member
+        if self.is_primary:
+            # Set other addresses for this member to non-primary
+            Address.objects.filter(
+                member=self.member, is_primary=True).update(is_primary=False)
+        elif not Address.objects.filter(member=self.member, is_primary=True).exists():
+            # If no primary address exists, set this one as primary by default
+            self.is_primary = True
+        super().save(*args, **kwargs)
+
+
+class SpouseStatusChoice(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+
+    def __str__(self):
+        return self.name
+
+
+class Spouse(models.Model):
+    spouse_name = models.CharField(max_length=100)
+    spouse_contact_number = models.CharField(
+        max_length=20, blank=True, null=True)
+    spouse_dob = models.DateField(blank=True, null=True)
+    image = models.ImageField(upload_to='spouse_images/')
+    # relations
+    member = models.OneToOneField(
+        Member, related_name='spouse', on_delete=models.RESTRICT)
+    current_status = models.ForeignKey(
+        SpouseStatusChoice, related_name='spouse_current_status', on_delete=models.RESTRICT, default="present")
+    # Record keeping
+    status = models.IntegerField(choices=STATUS_CHOICES, default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.member.member_ID
+
+
+class DescendantRelationChoice(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+
+    def __str__(self):
+        return self.name
+
+
+class Descendant(models.Model):
+    name = models.CharField(max_length=100)
+    descendant_contact_number = models.CharField(max_length=20)
+    dob = models.DateField(null=True, blank=True)
+    image = models.ImageField(upload_to='descendant_images/')
+    # relations
+    member = models.ForeignKey(
+        Member, related_name='descendants', on_delete=models.RESTRICT)
+    relation_type = models.ForeignKey(
+        DescendantRelationChoice, related_name='descendant_relation_choice', on_delete=models.RESTRICT)
+    # Record keeping
+    status = models.IntegerField(choices=STATUS_CHOICES, default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.member.member_ID
+
+
+class EmploymentTypeChoice(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+
+    def __str__(self):
+        return self.name
+
+
+class Profession(models.Model):
+    title = models.CharField(max_length=100)
+    organization_name = models.CharField(
+        max_length=150, blank=True, null=True, default="")
+    job_description = models.TextField(blank=True, null=True, default="")
+    location = models.CharField(
+        max_length=100, blank=True, null=True, default="")
+
+    # relations
+    member = models.ForeignKey(
+        Member, on_delete=models.RESTRICT, related_name='professions')
+
+    # Record keeping
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    status = models.IntegerField(choices=STATUS_CHOICES, default=0)
+
+    def __str__(self):
+        return self.title
+
+
+class EmergencyContact(models.Model):
+    contact_name = models.CharField(max_length=100)
+    contact_number = models.CharField(max_length=20)
+    relation_with_member = models.CharField(max_length=50)
+    # relations
+    member = models.ForeignKey(Member, related_name='emergency_contacts',
+                               on_delete=models.RESTRICT)
+    # Record keeping
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    status = models.IntegerField(choices=STATUS_CHOICES, default=0)
+
+    def __str__(self):
+        return self.member.member_ID
+
+
+class CompanionInformation(models.Model):
+    companion_name = models.CharField(max_length=100)
+    companion_image = models.ImageField(upload_to='companion_images/')
+    companion_dob = models.DateField(blank=True, null=True)
+    companion_contact_number = models.CharField(max_length=20)
+    companion_card_number = models.CharField(
+        max_length=50, blank=True, null=True)
+    relation_with_member = models.CharField(max_length=100)
+    # relations
+    member = models.ForeignKey(
+        Member, related_name='companions', on_delete=models.RESTRICT)
+    # Record keeping
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    status = models.IntegerField(choices=STATUS_CHOICES, default=0)
+
+    def __str__(self):
+        return self.member.member_ID
+
+
+class DocumentTypeChoice(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+
+    def __str__(self):
+        return self.name
+
+
+class Documents(models.Model):
+    document_number = models.CharField(
+        max_length=50, blank=True, null=True, unique=True)
+    document_document = models.FileField(upload_to='credentials/')
+    # relations
+    member = models.ForeignKey(
+        Member, related_name='credentials', on_delete=models.RESTRICT)
+    document_type = models.ForeignKey(
+        DocumentTypeChoice, related_name='document_type_choice', on_delete=models.RESTRICT)
+
+    # Record keeping
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    status = models.IntegerField(choices=STATUS_CHOICES, default=0)
+
+    def __str__(self):
+        return self.member.member_ID
+
+
+class Certificate(models.Model):
+    title = models.CharField(max_length=100)
+    certificate_number = models.CharField(
+        max_length=100, blank=True, null=True, unique=True)
+    certificate_document = models.FileField(upload_to='certificates/')
+    # Relations
+    member = models.ForeignKey(
+        Member, related_name='certificates', on_delete=models.RESTRICT)
+    # Record keeping
+    status = models.IntegerField(choices=STATUS_CHOICES, default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.member.member_ID
+
+
+class SpecialDay(models.Model):
+    title = models.CharField(max_length=100)
+    date = models.DateField(null=True, blank=True)
+
+    # relations
+    member = models.ForeignKey(
+        Member, related_name='special_days', on_delete=models.RESTRICT)
+    # Record keeping
+    status = models.IntegerField(choices=STATUS_CHOICES, default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.member.member_ID
