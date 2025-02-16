@@ -824,6 +824,8 @@ class CustomPermissionView(APIView):
                     'server_error': [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 class GroupPermissionView(APIView):
     def get_permissions(self):
         if self.request.method == "POST" or self.request.method == "PATCH" or self.request.method == "DELETE":
@@ -886,7 +888,7 @@ class GroupPermissionView(APIView):
 
     def get(self, request):
         try:
-            
+
             data = GroupModel.objects.all()
             serializer = GroupSerializerForViewAllGroups(data, many=True)
             log_activity_task.delay_on_commit(
@@ -1005,6 +1007,7 @@ class GroupPermissionView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 class AssignGroupPermissionView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
 
@@ -1117,7 +1120,7 @@ class AssignGroupPermissionView(APIView):
 
     def get(self, request):
         try:
-           
+
             data = AssignGroupPermission.objects.all()
             users_data = []
             for assign_group in data:
@@ -1207,7 +1210,8 @@ class AssignGroupPermissionView(APIView):
                 serializer.save()
                 user_id = serializer.validated_data["user"].id
                 groups = serializer.validated_data["group"]
-                groups_data = [{"group_id": gro.id,"group_name": gro.name} for gro in groups]
+                groups_data = [{"group_id": gro.id,
+                                "group_name": gro.name} for gro in groups]
                 clear_user_permissions_cache()
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),
