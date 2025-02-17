@@ -1,7 +1,7 @@
 from core.models import Gender
-from core.models import Gender, MembershipType, InstituteName, MembershipStatusChoice, MaritalStatusChoice, BLOOD_GROUPS, COUNTRY_CHOICES, ContactTypeChoice
+from core.models import Gender, MembershipType, InstituteName, MembershipStatusChoice, MaritalStatusChoice, BLOOD_GROUPS, COUNTRY_CHOICES, ContactTypeChoice, EmailTypeChoice
 from rest_framework import serializers
-from .models import Member, MembersFinancialBasics, ContactNumber
+from .models import Member, MembersFinancialBasics, ContactNumber, Email
 from club.models import Club
 import pdb
 
@@ -264,5 +264,48 @@ class MemberContactNumberSerializer(serializers.Serializer):
             created_instances.append({
                 "status": "created",
                 "contact_number_id": ins.id
+            })
+        return created_instances
+
+
+class EmailAddressSerializer(serializers.Serializer):
+    email_type = serializers.PrimaryKeyRelatedField(
+        queryset=EmailTypeChoice.objects.all())
+    email = serializers.EmailField()
+    is_primary = serializers.BooleanField()
+
+
+class MemberEmailAddressSerializer(serializers.Serializer):
+    member_ID = serializers.CharField(required=True)
+    data = serializers.ListSerializer(
+        child=EmailAddressSerializer(), required=True)
+
+    def validate_member_ID(self, value):
+        is_exist = Member.objects.filter(member_ID=value).exists()
+        if not is_exist:
+            raise serializers.ValidationError(
+                f"{value} is not a valid member id")
+        return value
+
+    def validate_data(self, value):
+        """Ensure only one item in data has is_primary=True"""
+        primary_count = sum(
+            1 for item in value if item.get("is_primary", False))
+
+        if primary_count > 1:
+            raise serializers.ValidationError(
+                "Only one contact can be marked as primary.")
+        return value
+
+    def create(self, validated_data):
+        member_ID = validated_data["member_ID"]
+        data = validated_data["data"]
+        member = Member.objects.get(member_ID=member_ID)
+        created_instances = []
+        for item in data:
+            ins = Email.objects.create(**item, member=member)
+            created_instances.append({
+                "status": "created",
+                "email_address_id": ins.id
             })
         return created_instances
