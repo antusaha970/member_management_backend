@@ -1,7 +1,7 @@
 from core.models import Gender
-from core.models import Gender, MembershipType, InstituteName, MembershipStatusChoice, MaritalStatusChoice, BLOOD_GROUPS, COUNTRY_CHOICES, ContactTypeChoice, EmailTypeChoice, AddressTypeChoice, SpouseStatusChoice
+from core.models import Gender, MembershipType, InstituteName, MembershipStatusChoice, MaritalStatusChoice, BLOOD_GROUPS, COUNTRY_CHOICES, ContactTypeChoice, EmailTypeChoice, AddressTypeChoice, SpouseStatusChoice, DescendantRelationChoice
 from rest_framework import serializers
-from .models import Member, MembersFinancialBasics, ContactNumber, Email, Address, Spouse
+from .models import Member, MembersFinancialBasics, ContactNumber, Email, Address, Spouse, Descendant
 from club.models import Club
 import pdb
 
@@ -380,4 +380,26 @@ class MemberSpouseSerializer(serializers.Serializer):
         member = Member.objects.get(member_ID=member_ID)
         instance = Spouse.objects.create(spouse_name=spouse_name, spouse_contact_number=contact_number,
                                          spouse_dob=spouse_dob, image=image, current_status=current_status, member=member)
+        return instance
+
+
+class MemberDescendantsSerializer(serializers.Serializer):
+    member_ID = serializers.CharField()
+    descendant_contact_number = serializers.CharField(max_length=20)
+    dob = serializers.DateField()
+    image = serializers.ImageField()
+    relation_type = serializers.PrimaryKeyRelatedField(
+        queryset=DescendantRelationChoice.objects.all())
+
+    def validate_member_ID(self, value):
+        is_exist = Member.objects.filter(member_ID=value).exists()
+        if not is_exist:
+            raise serializers.ValidationError(
+                f"{value} is not a valid member id")
+        return value
+
+    def create(self, validated_data):
+        member_ID = validated_data.pop("member_ID")
+        member = Member.objects.get(member_ID=member_ID)
+        instance = Descendant.objects.create(**validated_data, member=member)
         return instance
