@@ -11,7 +11,7 @@ local_settings.py
 db.sqlite3
 db.sqlite3-journal
 media
-
+backups
 #static Files
 profile_photos/
 initial_payment_doc/
