@@ -253,3 +253,37 @@ class MemberEmailAddressView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class MemberAddressView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            data = request.data
+            serializer = serializers.MemberAddressSerializer(data=data)
+            if serializer.is_valid():
+                with transaction.atomic():
+                    instance = serializer.save()
+                return Response({
+                    "code": 201,
+                    "message": "Member address has been created successfully",
+                    "status": "success",
+                    "data": instance
+                }, status=status.HTTP_201_CREATED)
+            else:
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Invalid request",
+                    "errors": serializer.errors,
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
