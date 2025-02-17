@@ -8,6 +8,7 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404
 from .models import Member, MembersFinancialBasics
 from .utils.permission_classes import ViewMemberPermission
+import pdb
 
 
 class MemberView(APIView):
@@ -182,5 +183,39 @@ class MemberIdView(APIView):
                 "message": "Something went wrong",
                 "errors": {
                     "server_error": [str(server_error)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class MemberContactNumberView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            data = request.data
+            serializer = serializers.MemberContactNumberSerializer(data=data)
+            if serializer.is_valid():
+                with transaction.atomic():
+                    instance = serializer.save()
+                return Response({
+                    "code": 201,
+                    "message": "Member contact number has been created successfully",
+                    "status": "success",
+                    "data": instance
+                }, status=status.HTTP_201_CREATED)
+            else:
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Invalid request",
+                    "errors": serializer.errors,
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

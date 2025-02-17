@@ -1,7 +1,7 @@
 from core.models import Gender
-from core.models import Gender, MembershipType, InstituteName, MembershipStatusChoice, MaritalStatusChoice, BLOOD_GROUPS, COUNTRY_CHOICES
+from core.models import Gender, MembershipType, InstituteName, MembershipStatusChoice, MaritalStatusChoice, BLOOD_GROUPS, COUNTRY_CHOICES, ContactTypeChoice
 from rest_framework import serializers
-from .models import Member, MembersFinancialBasics
+from .models import Member, MembersFinancialBasics, ContactNumber
 from club.models import Club
 import pdb
 
@@ -223,3 +223,46 @@ class MembersFinancialBasicsSerializerForViewSingleMember(serializers.ModelSeria
     class Meta:
         model = MembersFinancialBasics
         exclude = ['id', 'member', 'status', 'created_at', 'updated_at']
+
+
+class ContactDetailSerializer(serializers.Serializer):
+    contact_type = serializers.PrimaryKeyRelatedField(
+        queryset=ContactTypeChoice.objects.all())
+    number = serializers.CharField(max_length=20)
+    is_primary = serializers.BooleanField()
+
+
+class MemberContactNumberSerializer(serializers.Serializer):
+    member_ID = serializers.CharField(required=True)
+    data = serializers.ListSerializer(
+        child=ContactDetailSerializer(), required=True)
+
+    def validate_member_ID(self, value):
+        is_exist = Member.objects.filter(member_ID=value).exists()
+        if not is_exist:
+            raise serializers.ValidationError(
+                f"{value} is not a valid member id")
+        return value
+
+    def validate_data(self, value):
+        """Ensure only one item in data has is_primary=True"""
+        primary_count = sum(
+            1 for item in value if item.get("is_primary", False))
+
+        if primary_count > 1:
+            raise serializers.ValidationError(
+                "Only one contact can be marked as primary.")
+        return value
+
+    def create(self, validated_data):
+        member_ID = validated_data["member_ID"]
+        data = validated_data["data"]
+        member = Member.objects.get(member_ID=member_ID)
+        created_instances = []
+        for item in data:
+            ins = ContactNumber.objects.create(**item, member=member)
+            created_instances.append({
+                "status": "created",
+                "contact_number_id": ins.id
+            })
+        return created_instances
