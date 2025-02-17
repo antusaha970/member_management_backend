@@ -390,6 +390,7 @@ class MemberDescendantsSerializer(serializers.Serializer):
     image = serializers.ImageField()
     relation_type = serializers.PrimaryKeyRelatedField(
         queryset=DescendantRelationChoice.objects.all())
+    name = serializers.CharField(max_length=100)
 
     def validate_member_ID(self, value):
         is_exist = Member.objects.filter(member_ID=value).exists()
