@@ -1,5 +1,5 @@
 from django.db import models
-from core.models import Gender, BLOOD_GROUPS, COUNTRY_CHOICES, MembershipType, InstituteName, MembershipStatusChoice, MaritalStatusChoice, STATUS_CHOICES, ContactTypeChoice, EmailTypeChoice, EmploymentTypeChoice, DocumentTypeChoice, AddressTypeChoice, DescendantRelationChoice
+from core.models import Gender, BLOOD_GROUPS, COUNTRY_CHOICES, MembershipType, InstituteName, MembershipStatusChoice, MaritalStatusChoice, STATUS_CHOICES, ContactTypeChoice, EmailTypeChoice, EmploymentTypeChoice, DocumentTypeChoice, AddressTypeChoice, DescendantRelationChoice, SpouseStatusChoice
 from club.models import Club
 
 
@@ -161,13 +161,6 @@ class Address(models.Model):
             # If no primary address exists, set this one as primary by default
             self.is_primary = True
         super().save(*args, **kwargs)
-
-
-class SpouseStatusChoice(models.Model):
-    name = models.CharField(max_length=255, unique=True)
-
-    def __str__(self):
-        return self.name
 
 
 class Spouse(models.Model):
