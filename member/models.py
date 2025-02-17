@@ -1,5 +1,5 @@
 from django.db import models
-from core.models import Gender, BLOOD_GROUPS, COUNTRY_CHOICES, MembershipType, InstituteName, MembershipStatusChoice, MaritalStatusChoice, STATUS_CHOICES
+from core.models import Gender, BLOOD_GROUPS, COUNTRY_CHOICES, MembershipType, InstituteName, MembershipStatusChoice, MaritalStatusChoice, STATUS_CHOICES, ContactTypeChoice, EmailTypeChoice, EmploymentTypeChoice, DocumentTypeChoice, AddressTypeChoice, DescendantRelationChoice
 from club.models import Club
 
 
@@ -77,12 +77,6 @@ class MembersFinancialBasics(models.Model):
 
 # Member other information Models
 
-class ContactTypeChoice(models.Model):
-    name = models.CharField(max_length=255, unique=True)
-
-    def __str__(self):
-        return self.name
-
 
 class ContactNumber(models.Model):
     number = models.CharField(max_length=20, blank=True, null=True)
@@ -112,13 +106,6 @@ class ContactNumber(models.Model):
         super().save(*args, **kwargs)
 
 
-class EmailTypeChoice(models.Model):
-    name = models.CharField(max_length=255, unique=True)
-
-    def __str__(self):
-        return self.name
-
-
 class Email(models.Model):
     email = models.EmailField(unique=True, max_length=50)
     is_primary = models.BooleanField(default=False)
@@ -145,13 +132,6 @@ class Email(models.Model):
             # If no primary email exists, set this one as primary by default
             self.is_primary = True
         super().save(*args, **kwargs)
-
-
-class AddressTypeChoice(models.Model):
-    name = models.CharField(max_length=255, unique=True)
-
-    def __str__(self):
-        return self.name
 
 
 class Address(models.Model):
@@ -210,13 +190,6 @@ class Spouse(models.Model):
         return self.member.member_ID
 
 
-class DescendantRelationChoice(models.Model):
-    name = models.CharField(max_length=255, unique=True)
-
-    def __str__(self):
-        return self.name
-
-
 class Descendant(models.Model):
     name = models.CharField(max_length=100)
     descendant_contact_number = models.CharField(max_length=20)
@@ -234,13 +207,6 @@ class Descendant(models.Model):
 
     def __str__(self):
         return self.member.member_ID
-
-
-class EmploymentTypeChoice(models.Model):
-    name = models.CharField(max_length=255, unique=True)
-
-    def __str__(self):
-        return self.name
 
 
 class Profession(models.Model):
@@ -298,13 +264,6 @@ class CompanionInformation(models.Model):
 
     def __str__(self):
         return self.member.member_ID
-
-
-class DocumentTypeChoice(models.Model):
-    name = models.CharField(max_length=255, unique=True)
-
-    def __str__(self):
-        return self.name
 
 
 class Documents(models.Model):
