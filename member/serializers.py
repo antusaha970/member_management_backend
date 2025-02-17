@@ -1,7 +1,7 @@
 from core.models import Gender
 from core.models import Gender, MembershipType, InstituteName, MembershipStatusChoice, MaritalStatusChoice, BLOOD_GROUPS, COUNTRY_CHOICES, ContactTypeChoice, EmailTypeChoice, AddressTypeChoice, SpouseStatusChoice, DescendantRelationChoice
 from rest_framework import serializers
-from .models import Member, MembersFinancialBasics, ContactNumber, Email, Address, Spouse, Descendant, Profession
+from .models import Member, MembersFinancialBasics, ContactNumber, Email, Address, Spouse, Descendant, Profession, EmergencyContact
 from club.models import Club
 import pdb
 
@@ -423,4 +423,25 @@ class MemberJobSerializer(serializers.Serializer):
         member_ID = validated_data.pop('member_ID')
         member = Member.objects.get(member_ID=member_ID)
         instance = Profession.objects.create(**validated_data, member=member)
+        return instance
+
+
+class MemberEmergencyContactSerializer(serializers.Serializer):
+    member_ID = serializers.CharField()
+    contact_name = serializers.CharField(max_length=100)
+    contact_number = serializers.CharField(max_length=20)
+    relation_with_member = serializers.CharField(max_length=50)
+
+    def validate_member_ID(self, value):
+        is_exist = Member.objects.filter(member_ID=value).exists()
+        if not is_exist:
+            raise serializers.ValidationError(
+                f"{value} is not a valid member id")
+        return value
+
+    def create(self, validated_data):
+        member_ID = validated_data.pop("member_ID")
+        member = Member.objects.get(member_ID=member_ID)
+        instance = EmergencyContact.objects.create(
+            **validated_data, member=member)
         return instance
