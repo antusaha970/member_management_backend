@@ -1,7 +1,7 @@
 from core.models import Gender
-from core.models import Gender, MembershipType, InstituteName, MembershipStatusChoice, MaritalStatusChoice, BLOOD_GROUPS, COUNTRY_CHOICES, ContactTypeChoice, EmailTypeChoice, AddressTypeChoice, SpouseStatusChoice, DescendantRelationChoice
+from core.models import Gender, MembershipType, InstituteName, MembershipStatusChoice, MaritalStatusChoice, BLOOD_GROUPS, COUNTRY_CHOICES, ContactTypeChoice, EmailTypeChoice, AddressTypeChoice, SpouseStatusChoice, DescendantRelationChoice, DocumentTypeChoice
 from rest_framework import serializers
-from .models import Member, MembersFinancialBasics, ContactNumber, Email, Address, Spouse, Descendant, Profession, EmergencyContact, CompanionInformation
+from .models import Member, MembersFinancialBasics, ContactNumber, Email, Address, Spouse, Descendant, Profession, EmergencyContact, CompanionInformation, Documents
 from club.models import Club
 import pdb
 
@@ -467,5 +467,26 @@ class MemberCompanionInformationSerializer(serializers.Serializer):
         member_ID = validated_data.pop("member_ID")
         member = Member.objects.get(member_ID=member_ID)
         instance = CompanionInformation.objects.create(
+            **validated_data, member=member)
+        return instance
+
+
+class MemberDocumentSerializer(serializers.Serializer):
+    member_ID = serializers.CharField()
+    document_document = serializers.FileField()
+    document_type = serializers.PrimaryKeyRelatedField(
+        queryset=DocumentTypeChoice.objects.all())
+
+    def validate_member_ID(self, value):
+        is_exist = Member.objects.filter(member_ID=value).exists()
+        if not is_exist:
+            raise serializers.ValidationError(
+                f"{value} is not a valid member id")
+        return value
+
+    def create(self, validated_data):
+        member_ID = validated_data.pop("member_ID")
+        member = Member.objects.get(member_ID=member_ID)
+        instance = Documents.objects.create(
             **validated_data, member=member)
         return instance
