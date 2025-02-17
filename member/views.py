@@ -17,97 +17,113 @@ class MemberView(APIView):
         try:
             data = request.data
             member_serializer = serializers.MemberSerializer(data=data)
-            member_financial_basics_serializer = serializers.MembersFinancialBasicsSerializer(
-                data=data)
             is_member_serializer_valid = member_serializer.is_valid()
-            is_member_financial_serializer_valid = member_financial_basics_serializer.is_valid()
-            if is_member_serializer_valid and is_member_financial_serializer_valid:
+            if is_member_serializer_valid:
                 with transaction.atomic():
                     member = member_serializer.save()
-                    member_financial_basics_serializer.save(
-                        member_ID=member.member_ID)
-
                     return Response({
+                        'code': 201,
+                        'status': 'success',
+                        'message': "Member created successfully",
                         'data': {
                             'member_ID': member.member_ID,
                         },
-                        'status': 'created'
                     }, status=status.HTTP_201_CREATED)
             else:
                 # Merge errors from both serializers
-                merged_errors = {**member_serializer.errors, **
-                                 member_financial_basics_serializer.errors}
+                merged_errors = {**member_serializer.errors}
                 return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Member creation failed",
                     "errors": merged_errors,
-                    "status": "failed"
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as server_error:
-            return Response({'detail': "Internal Server Error", 'error_message': str(server_error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(server_error)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def patch(self, request, member_id):
-        member = get_object_or_404(Member, member_ID=member_id)
-        member_financial_basics = get_object_or_404(
-            MembersFinancialBasics, member=member)
         try:
+            member = get_object_or_404(Member, member_ID=member_id)
             data = request.data
             member_serializer = serializers.MemberSerializer(member, data=data)
-            member_financial_basics_serializer = serializers.MembersFinancialBasicsSerializer(
-                member_financial_basics,
-                data=data)
             is_member_serializer_valid = member_serializer.is_valid()
-            is_member_financial_serializer_valid = member_financial_basics_serializer.is_valid()
-            if is_member_serializer_valid and is_member_financial_serializer_valid:
+            if is_member_serializer_valid:
                 with transaction.atomic():
                     member = member_serializer.save()
-                    member_financial_basics_serializer.save(
-                        member_ID=member.member_ID)
-
                     return Response({
+                        'code': 200,
+                        'status': 'success',
+                        'message': "Member updated successfully",
                         'data': {
                             'member_ID': member.member_ID,
-                        },
-                        'status': 'updated'
+                        }
                     }, status=status.HTTP_200_OK)
             else:
                 # Merge errors from both serializers
-                merged_errors = {**member_serializer.errors, **
-                                 member_financial_basics_serializer.errors}
+                merged_errors = {**member_serializer.errors}
                 return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Member update failed",
                     "errors": merged_errors,
-                    "status": "failed"
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as server_error:
-            return Response({'detail': "Internal Server Error", 'error_message': str(server_error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(server_error)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def delete(self, request, member_id):
-        member = get_object_or_404(Member, member_ID=member_id)
         try:
+            member = get_object_or_404(Member, member_ID=member_id)
             # find the member
             if member.status == 2:
                 # if member is already deleted
                 return Response({
-                    'detail': "member already deleted",
-                    'status': "failed",
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Member is already deleted",
                 }, status=status.HTTP_400_BAD_REQUEST)
             # if not deleted then update the member status to delete
             with transaction.atomic():
                 member.status = 2
                 member.save(update_fields=['status'])
                 return Response({
-                    'detail': "member deleted",
-                    'status': "deleted",
+                    "code": 204,
+                    'message': "member deleted",
+                    'status': "success",
                 }, status=status.HTTP_204_NO_CONTENT)
         except Exception as server_error:
-            return Response({'detail': "Internal Server Error", 'error_message': str(server_error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(server_error)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def get(self, request, member_id):
-        member = get_object_or_404(Member, member_ID=member_id)  # get member
-        member_financial_basics = get_object_or_404(
-            MembersFinancialBasics, member=member)  # get member financial data
         try:
+            member = get_object_or_404(
+                Member, member_ID=member_id)  # get member
             # check if member status is deleted or not
             if member.status == 2:
                 return Response({
+                    "code": 204,
+                    "status": "failed",
+                    "message": "Member is already deleted",
                     'errors': {
                         'member_ID': [f"{member_id} member has been deleted"]
                     }
@@ -115,16 +131,23 @@ class MemberView(APIView):
             # pass the data to the serializers
             member_serializer = serializers.MemberSerializerForViewSingleMember(
                 member)
-            member_financial_basics_serializer = serializers.MembersFinancialBasicsSerializerForViewSingleMember(
-                member_financial_basics)
             # unwrap the data to make a single object using two serializers data
-            data = {**member_serializer.data, **
-                    member_financial_basics_serializer.data}
+            data = {**member_serializer.data}
             return Response({
+                "code": 200,
+                "status": "success",
+                "message": f"View member information for member {member_id}",
                 'data': data
-            })
+            }, status=status.HTTP_200_OK)
         except Exception as server_error:
-            return Response({'detail': "Internal Server Error", 'error_message': str(server_error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(server_error)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class MemberIdView(APIView):
@@ -138,11 +161,26 @@ class MemberIdView(APIView):
                 membership_type = serializer.validated_data['membership_type']
                 id = generate_member_id(membership_type)
                 return Response({
-                    'new_generated_id': id
+                    "code": 200,
+                    "status": "success",
+                    "message": "Generated Member Id successfully",
+                    "data": {
+                        'new_generated_id': id
+                    }
                 }, status=status.HTTP_200_OK)
             else:
                 return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Failed to generate member Id",
                     'errors': serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as server_error:
-            return Response({'detail': "Internal Server Error", 'error_message': str(server_error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(server_error)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
