@@ -1,7 +1,7 @@
 from core.models import Gender
-from core.models import Gender, MembershipType, InstituteName, MembershipStatusChoice, MaritalStatusChoice, BLOOD_GROUPS, COUNTRY_CHOICES, ContactTypeChoice, EmailTypeChoice, AddressTypeChoice
+from core.models import Gender, MembershipType, InstituteName, MembershipStatusChoice, MaritalStatusChoice, BLOOD_GROUPS, COUNTRY_CHOICES, ContactTypeChoice, EmailTypeChoice, AddressTypeChoice, SpouseStatusChoice
 from rest_framework import serializers
-from .models import Member, MembersFinancialBasics, ContactNumber, Email, Address
+from .models import Member, MembersFinancialBasics, ContactNumber, Email, Address, Spouse
 from club.models import Club
 import pdb
 
@@ -352,3 +352,32 @@ class MemberAddressSerializer(serializers.Serializer):
                 "address_id": ins.id
             })
         return created_instances
+
+
+class MemberSpouseSerializer(serializers.Serializer):
+    spouse_name = serializers.CharField(max_length=100)
+    contact_number = serializers.CharField(max_length=20)
+    spouse_dob = serializers.DateField()
+    image = serializers.ImageField()
+    current_status = serializers.PrimaryKeyRelatedField(
+        queryset=SpouseStatusChoice.objects.all())
+    member_ID = serializers.CharField()
+
+    def validate_member_ID(self, value):
+        is_exist = Member.objects.filter(member_ID=value).exists()
+        if not is_exist:
+            raise serializers.ValidationError(
+                f"{value} is not a valid member id")
+        return value
+
+    def create(self, validated_data):
+        spouse_name = validated_data['spouse_name']
+        contact_number = validated_data['contact_number']
+        spouse_dob = validated_data['spouse_dob']
+        image = validated_data['image']
+        current_status = validated_data['current_status']
+        member_ID = validated_data['member_ID']
+        member = Member.objects.get(member_ID=member_ID)
+        instance = Spouse.objects.create(spouse_name=spouse_name, spouse_contact_number=contact_number,
+                                         spouse_dob=spouse_dob, image=image, current_status=current_status, member=member)
+        return instance

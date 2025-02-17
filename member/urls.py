@@ -9,6 +9,8 @@ urlpatterns = [
          name="member_email_address_view"),
     path('v1/members/address/', views.MemberAddressView.as_view(),
          name="member_address_view"),
+    path('v1/members/spouse/', views.MemberSpouseView.as_view(),
+         name="member_spouse_view"),
     path('v1/members/get_latest_id/', views.MemberIdView.as_view(),
          name="member_id_view"),
     path('v1/members/<str:member_id>/', views.MemberView.as_view(),
