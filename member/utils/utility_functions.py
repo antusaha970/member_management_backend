@@ -8,7 +8,6 @@ def generate_member_id(membership_type):
     last_member = Member.objects.filter(
         membership_type__name=membership_type).aggregate(Max('member_ID'))
     last_member_id = last_member['member_ID__max']
-
     if last_member_id:
         # Separate the prefix (alphabetic part) and the numeric part
         prefix = ''.join(filter(str.isalpha, last_member_id))
@@ -23,5 +22,4 @@ def generate_member_id(membership_type):
 
     # Combine prefix and incremented numeric part for the new member ID
     member_ID = f"{prefix}{new_id_number}"
-
     return member_ID
