@@ -8,7 +8,9 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404
 from .models import Member, MembersFinancialBasics
 from .utils.permission_classes import ViewMemberPermission
+import logging
 import pdb
+logger = logging.getLogger("myapp")
 
 
 class MemberView(APIView):
@@ -40,6 +42,7 @@ class MemberView(APIView):
                     "errors": merged_errors,
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as server_error:
+            logger.exception(str(server_error))
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -76,6 +79,7 @@ class MemberView(APIView):
                     "errors": merged_errors,
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as server_error:
+            logger.exception(str(server_error))
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -106,6 +110,7 @@ class MemberView(APIView):
                     'status': "success",
                 }, status=status.HTTP_204_NO_CONTENT)
         except Exception as server_error:
+            logger.exception(str(server_error))
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -141,6 +146,7 @@ class MemberView(APIView):
                 'data': data
             }, status=status.HTTP_200_OK)
         except Exception as server_error:
+            logger.exception(str(server_error))
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -177,6 +183,7 @@ class MemberIdView(APIView):
                     'errors': serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as server_error:
+            logger.exception(str(server_error))
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -211,6 +218,7 @@ class MemberContactNumberView(APIView):
                     "errors": serializer.errors,
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            logger.exception(str(e))
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -245,6 +253,7 @@ class MemberEmailAddressView(APIView):
                     "errors": serializer.errors,
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            logger.exception(str(e))
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -279,6 +288,7 @@ class MemberAddressView(APIView):
                     "errors": serializer.errors,
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            logger.exception(str(e))
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -315,6 +325,7 @@ class MemberSpouseView(APIView):
                     "errors": serializer.errors,
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            logger.exception(str(e))
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -351,6 +362,7 @@ class MemberDescendsView(APIView):
                     "errors": serializer.errors,
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            logger.exception(str(e))
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -387,6 +399,7 @@ class MemberJobView(APIView):
                     "errors": serializer.errors,
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            logger.exception(str(e))
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -424,6 +437,7 @@ class MemberEmergencyContactView(APIView):
                     "errors": serializer.errors,
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            logger.exception(str(e))
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -461,6 +475,7 @@ class MemberCompanionView(APIView):
                     "errors": serializer.errors,
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            logger.exception(str(e))
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -498,6 +513,7 @@ class MemberDocumentView(APIView):
                     "errors": serializer.errors,
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            logger.exception(str(e))
             return Response({
                 "code": 500,
                 "status": "failed",
