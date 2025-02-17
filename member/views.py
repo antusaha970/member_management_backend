@@ -9,6 +9,8 @@ from django.shortcuts import get_object_or_404
 from .models import Member, MembersFinancialBasics
 from .utils.permission_classes import ViewMemberPermission
 import logging
+from activity_log.tasks import log_activity_task
+from activity_log.utils.functions import request_data_activity_log
 import pdb
 logger = logging.getLogger("myapp")
 
@@ -24,6 +26,12 @@ class MemberView(APIView):
             if is_member_serializer_valid:
                 with transaction.atomic():
                     member = member_serializer.save()
+                    log_activity_task.delay_on_commit(
+                        request_data_activity_log(request),
+                        verb="Member create",
+                        severity_level="info",
+                        description="A new member has been created by the user",
+                    )
                     return Response({
                         'code': 201,
                         'status': 'success',
@@ -34,6 +42,12 @@ class MemberView(APIView):
                     }, status=status.HTTP_201_CREATED)
             else:
                 # Merge errors from both serializers
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Member creation failed",
+                    severity_level="info",
+                    description="user tried to create a member but made an invalid request",
+                )
                 merged_errors = {**member_serializer.errors}
                 return Response({
                     "code": 400,
@@ -43,6 +57,12 @@ class MemberView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as server_error:
             logger.exception(str(server_error))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Member creation failed",
+                severity_level="info",
+                description="user tried to create a member but made an invalid request",
+            )
             return Response({
                 "code": 500,
                 "status": "failed",
