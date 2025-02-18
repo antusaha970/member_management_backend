@@ -102,11 +102,6 @@ class MemberSerializer(serializers.Serializer):
             name=marital_status_data)
         member = Member.objects.create(gender=gender, membership_type=membership_type, institute_name=institute_name,
                                        membership_status=membership_status, marital_status=marital_status, **validated_data)
-        AvailableID.objects.get(member_ID=validated_data["member_ID"]).delete()
-        new_generated_id = generate_member_id(membership_type_data)
-        if not AvailableID.objects.filter(membership_type=membership_type, member_ID=new_generated_id).exists():
-            AvailableID.objects.create(
-                membership_type=membership_type, member_ID=generate_member_id(membership_type_data))
         return member
 
     def update(self, instance, validated_data):

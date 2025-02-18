@@ -124,15 +124,10 @@ class MemberView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
             # if not deleted then update the member status to delete
             with transaction.atomic():
-                current_id = member.member_ID
-                membership_type = member.membership_type
                 member.member_ID = None
                 member.status = 2
                 member.save(update_fields=['status', 'member_ID'])
-                membership_type_obj = MembershipType.objects.get(
-                    name=membership_type)
-                AvailableID.objects.create(
-                    member_ID=current_id, membership_type=membership_type_obj)
+
                 return Response({
                     "code": 204,
                     'message': "member deleted",
@@ -195,8 +190,7 @@ class MemberIdView(APIView):
             serializer = serializers.MemberIdSerializer(data=data)
             if serializer.is_valid():
                 membership_type = serializer.validated_data['membership_type']
-                all_id = AvailableID.objects.filter(
-                    membership_type__name=membership_type).values("member_ID")
+                all_id = generate_member_id(membership_type)
                 return Response({
                     "code": 200,
                     "status": "success",
