@@ -23,6 +23,8 @@ urlpatterns = [
          name="member_documents_view"),
     path('v1/members/get_latest_id/', views.MemberIdView.as_view(),
          name="member_id_view"),
+    path('v1/members/membership_type/', views.AddMemberIDview.as_view(),
+         name="member_add_id_view"),
     path('v1/members/<str:member_id>/', views.MemberView.as_view(),
          name="member_update_view"),
 

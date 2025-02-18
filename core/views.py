@@ -5,6 +5,8 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.viewsets import ModelViewSet
 from .models import *
+from member.utils.utility_functions import generate_member_id
+from member.models import AvailableID
 
 
 class MembershipTypeView(APIView):
@@ -13,10 +15,12 @@ class MembershipTypeView(APIView):
     def post(self, request):
         data = request.data
         serializer = MembershipTypeSerializer(data=data)
-
         if serializer.is_valid():
             mem_type = serializer.save()
             name = serializer.validated_data["name"]
+            id = generate_member_id(name)
+            AvailableID.objects.create(membership_type=mem_type, member_ID=id)
+
             return Response({
                 "name": name,
                 "id": str(mem_type.id)

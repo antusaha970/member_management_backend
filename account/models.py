@@ -41,7 +41,6 @@ class PermissonModel(models.Model):
 class GroupModel(models.Model):
     name = models.CharField(max_length=250, unique=True)
     permission = models.ManyToManyField(PermissonModel)
-    
 
     def __str__(self):
         return self.name

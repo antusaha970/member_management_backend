@@ -1,3 +1,4 @@
+from .models import AvailableID
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from . import serializers
@@ -11,6 +12,7 @@ from .utils.permission_classes import ViewMemberPermission
 import logging
 from activity_log.tasks import log_activity_task
 from activity_log.utils.functions import request_data_activity_log
+from core.models import MembershipType
 import pdb
 logger = logging.getLogger("myapp")
 
@@ -122,8 +124,15 @@ class MemberView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
             # if not deleted then update the member status to delete
             with transaction.atomic():
+                current_id = member.member_ID
+                membership_type = member.membership_type
+                member.member_ID = None
                 member.status = 2
-                member.save(update_fields=['status'])
+                member.save(update_fields=['status', 'member_ID'])
+                membership_type_obj = MembershipType.objects.get(
+                    name=membership_type)
+                AvailableID.objects.create(
+                    member_ID=current_id, membership_type=membership_type_obj)
                 return Response({
                     "code": 204,
                     'message': "member deleted",
@@ -186,14 +195,13 @@ class MemberIdView(APIView):
             serializer = serializers.MemberIdSerializer(data=data)
             if serializer.is_valid():
                 membership_type = serializer.validated_data['membership_type']
-                id = generate_member_id(membership_type)
+                all_id = AvailableID.objects.filter(
+                    membership_type__name=membership_type).values("member_ID")
                 return Response({
                     "code": 200,
                     "status": "success",
                     "message": "Generated Member Id successfully",
-                    "data": {
-                        'new_generated_id': id
-                    }
+                    "data": all_id
                 }, status=status.HTTP_200_OK)
             else:
                 return Response({
@@ -525,6 +533,36 @@ class MemberDocumentView(APIView):
                         "document_id": instance.id
                     }
                 }, status=status.HTTP_201_CREATED)
+            else:
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Invalid request",
+                    "errors": serializer.errors,
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class AddMemberIDview(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            data = request.data
+            serializer = serializers.AddFlexibleMemberIdSerializer(data=data)
+            if serializer.is_valid():
+                with transaction.atomic():
+                    instance = serializer.save()
+                return Response({"code": 201, "status": "success", "message": "New Id has been created"}, status=status.HTTP_201_CREATED)
             else:
                 return Response({
                     "code": 400,

@@ -5,7 +5,7 @@ from club.models import Club
 
 class Member(models.Model):
     member_ID = models.CharField(
-        max_length=200, unique=True)  # mandatory field
+        max_length=200, unique=True, null=True, blank=True)  # mandatory field
     first_name = models.CharField(
         max_length=200, blank=True, default="")  # mandatory field
     last_name = models.CharField(
@@ -309,3 +309,14 @@ class SpecialDay(models.Model):
 
     def __str__(self):
         return self.member.member_ID
+
+
+# ID
+class AvailableID(models.Model):
+    membership_type = models.ForeignKey(
+        MembershipType, on_delete=models.RESTRICT, related_name="available_id")
+    member_ID = models.CharField(
+        max_length=200, unique=True)
+
+    def __str__(self):
+        return self.member_ID
