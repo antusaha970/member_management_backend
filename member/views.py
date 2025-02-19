@@ -134,7 +134,8 @@ class MemberView(APIView):
                 instance.save(update_fields=["end_date"])
                 member.member_ID = None
                 member.status = 2
-                member.save(update_fields=['status', 'member_ID'])
+                member.is_active = False
+                member.save(update_fields=['status', 'member_ID', 'is_active'])
 
                 return Response({
                     "code": 204,
