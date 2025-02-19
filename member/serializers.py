@@ -159,7 +159,10 @@ class MemberSerializer(serializers.Serializer):
             name=membership_status)
         marital_status = MaritalStatusChoice.objects.get(
             name=marital_status)
-
+        
+        flag=False
+        if instance.member_ID !=member_ID:
+            flag=True
         # update information
         instance.member_ID=member_ID
         instance.first_name = first_name
@@ -176,15 +179,16 @@ class MemberSerializer(serializers.Serializer):
         instance.institute_name = institute_name
         instance.membership_status = membership_status
 
-        history = MemberHistory(
-            start_date=timezone.now(),
-            stored_member_id=member_ID,
-            transferred=True,
-            transferred_reason="updated",
-            member=instance  
-            )
+        if flag:
+            history = MemberHistory(
+                start_date=timezone.now(),
+                stored_member_id=member_ID,
+                transferred=True,
+                transferred_reason="updated",
+                member=instance  
+                )
                     # save member history instance
-        history.save()
+            history.save()
         # save the instance
         instance.save()
 
