@@ -25,6 +25,10 @@ urlpatterns = [
          name="member_id_view"),
     path('v1/members/membership_type/', views.AddMemberIDview.as_view(),
          name="member_add_id_view"),
+    path('v1/members/history/', views.MemberHistoryView.as_view(),
+         name="member_history_view"),
+    path('v1/members/history/<str:member_ID>/', views.MemberSingleHistoryView.as_view(),
+         name="member_history_single_view"),
     path('v1/members/<str:member_id>/', views.MemberView.as_view(),
          name="member_update_view"),
 
