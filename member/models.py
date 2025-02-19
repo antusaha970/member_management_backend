@@ -320,3 +320,20 @@ class AvailableID(models.Model):
 
     def __str__(self):
         return self.member_ID
+
+
+class MemberHistory(models.Model):
+    start_date = models.DateTimeField(blank=True, null=True)
+    end_date = models.DateTimeField(blank=True, null=True)
+    transferred = models.BooleanField(default=False)
+    transferred_reason = models.TextField(blank=True, null=True, default="")
+    stored_member_id = models.CharField(max_length=200)
+    # relation
+    member = models.ForeignKey(
+        Member, related_name="history", on_delete=models.RESTRICT)
+    # record keeping
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.stored_member_id
