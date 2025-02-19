@@ -635,3 +635,29 @@ class MemberHistoryView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class MemberSingleHistoryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, member_ID):
+        try:
+            member_history = MemberHistory.objects.get(
+                member__member_ID=member_ID)
+            serializer = serializers.MemberHistorySerializer(member_history)
+            return Response({
+                'code': 200,
+                'status': 'success',
+                "message": "viewing member history",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.exception(str(e))
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
