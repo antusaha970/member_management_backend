@@ -37,6 +37,7 @@ class Member(models.Model):
 
     # Record keeping
     status = models.IntegerField(choices=STATUS_CHOICES, default=0)
+    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -68,6 +69,7 @@ class MembersFinancialBasics(models.Model):
         Member, related_name='members_financial_basics', on_delete=models.RESTRICT)
     # Record keeping
     status = models.IntegerField(choices=STATUS_CHOICES, default=0)
+    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -88,6 +90,7 @@ class ContactNumber(models.Model):
         ContactTypeChoice, related_name='contact_type_choice', on_delete=models.RESTRICT, default='present')
     # Record keeping
     status = models.IntegerField(choices=STATUS_CHOICES, default=0)
+    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -116,6 +119,7 @@ class Email(models.Model):
         EmailTypeChoice, related_name='email_type_choice', on_delete=models.RESTRICT)
     # Record keeping
     status = models.IntegerField(choices=STATUS_CHOICES, default=0)
+    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -145,6 +149,7 @@ class Address(models.Model):
 
     # Record keeping
     status = models.IntegerField(choices=STATUS_CHOICES, default=0)
+    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -176,6 +181,7 @@ class Spouse(models.Model):
         SpouseStatusChoice, related_name='spouse_current_status', on_delete=models.RESTRICT, default="present")
     # Record keeping
     status = models.IntegerField(choices=STATUS_CHOICES, default=0)
+    is_active =models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -195,6 +201,7 @@ class Descendant(models.Model):
         DescendantRelationChoice, related_name='descendant_relation_choice', on_delete=models.RESTRICT)
     # Record keeping
     status = models.IntegerField(choices=STATUS_CHOICES, default=0)
+    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -218,6 +225,7 @@ class Profession(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     status = models.IntegerField(choices=STATUS_CHOICES, default=0)
+    is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return self.title
@@ -234,6 +242,7 @@ class EmergencyContact(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     status = models.IntegerField(choices=STATUS_CHOICES, default=0)
+    is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return self.member.member_ID
@@ -254,6 +263,7 @@ class CompanionInformation(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     status = models.IntegerField(choices=STATUS_CHOICES, default=0)
+    is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return self.member.member_ID
@@ -273,6 +283,7 @@ class Documents(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     status = models.IntegerField(choices=STATUS_CHOICES, default=0)
+    is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return self.member.member_ID
@@ -288,6 +299,7 @@ class Certificate(models.Model):
         Member, related_name='certificates', on_delete=models.RESTRICT)
     # Record keeping
     status = models.IntegerField(choices=STATUS_CHOICES, default=0)
+    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -304,6 +316,7 @@ class SpecialDay(models.Model):
         Member, related_name='special_days', on_delete=models.RESTRICT)
     # Record keeping
     status = models.IntegerField(choices=STATUS_CHOICES, default=0)
+    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
