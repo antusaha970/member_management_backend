@@ -642,9 +642,10 @@ class MemberSingleHistoryView(APIView):
 
     def get(self, request, member_ID):
         try:
-            member_history = MemberHistory.objects.get(
+            member_history = MemberHistory.objects.filter(
                 member__member_ID=member_ID)
-            serializer = serializers.MemberHistorySerializer(member_history)
+            serializer = serializers.MemberHistorySerializer(
+                member_history, many=True)
             return Response({
                 'code': 200,
                 'status': 'success',
