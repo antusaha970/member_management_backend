@@ -87,6 +87,8 @@ class MemberView(APIView):
             if is_member_serializer_valid:
                 with transaction.atomic():
                     member = member_serializer.save()
+                    # member_ID=member.member_ID
+                     
                     return Response({
                         'code': 200,
                         'status': 'success',
