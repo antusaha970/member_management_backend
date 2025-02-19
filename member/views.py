@@ -15,6 +15,7 @@ from activity_log.utils.functions import request_data_activity_log
 from core.models import MembershipType
 from datetime import datetime
 from django.utils import timezone
+from core.utils.pagination import CustomPageNumberPagination
 import pdb
 logger = logging.getLogger("myapp")
 
@@ -573,6 +574,57 @@ class AddMemberIDview(APIView):
                     "message": "Invalid request",
                     "errors": serializer.errors,
                 }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class MemberHistoryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            history = MemberHistory.objects.all()
+
+            # Get query parameters
+            start_date = request.query_params.get("start_date")
+            end_date = request.query_params.get("end_date")
+            transferred = request.query_params.get("transferred")
+
+            # Apply filters if query parameters exist
+            if start_date and end_date:
+                history = history.filter(
+                    start_date__date__gte=start_date, end_date__date__lte=end_date)
+            elif start_date:
+                history = history.filter(start_date__date__gte=start_date)
+            elif end_date:
+                history = history.filter(end_date__date__lte=end_date)
+            if transferred:
+                if transferred == "true":
+                    transferred = True
+                elif transferred == "false":
+                    transferred = False
+                if isinstance(transferred, bool):
+                    history = history.filter(transferred=transferred)
+
+            paginator = CustomPageNumberPagination()
+            paginated_queryset = paginator.paginate_queryset(
+                history, request, view=self)
+            serializer = serializers.MemberHistorySerializer(
+                paginated_queryset, many=True)
+            return paginator.get_paginated_response({
+                "code": 200,
+                "status": "success",
+                "message": "Viewing all members history",
+                "data": serializer.data
+            }, 200)
         except Exception as e:
             logger.exception(str(e))
             return Response({

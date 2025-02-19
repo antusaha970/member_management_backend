@@ -1,7 +1,7 @@
 from core.models import Gender
 from core.models import Gender, MembershipType, InstituteName, MembershipStatusChoice, MaritalStatusChoice, BLOOD_GROUPS, COUNTRY_CHOICES, ContactTypeChoice, EmailTypeChoice, AddressTypeChoice, SpouseStatusChoice, DescendantRelationChoice, DocumentTypeChoice
 from rest_framework import serializers
-from .models import Member, MembersFinancialBasics, ContactNumber, Email, Address, Spouse, Descendant, Profession, EmergencyContact, CompanionInformation, Documents, AvailableID
+from .models import Member, MembersFinancialBasics, ContactNumber, Email, Address, Spouse, Descendant, Profession, EmergencyContact, CompanionInformation, Documents, AvailableID, MemberHistory
 from club.models import Club
 import pdb
 from .utils.utility_functions import generate_member_id
@@ -518,3 +518,9 @@ class AddFlexibleMemberIdSerializer(serializers.Serializer):
         instance = AvailableID.objects.create(
             membership_type=membership_type, member_ID=member_ID)
         return instance
+
+
+class MemberHistorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MemberHistory
+        fields = "__all__"
