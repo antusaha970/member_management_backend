@@ -7,12 +7,14 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-from .models import Member, MembersFinancialBasics
+from .models import Member, MembersFinancialBasics, MemberHistory
 from .utils.permission_classes import ViewMemberPermission
 import logging
 from activity_log.tasks import log_activity_task
 from activity_log.utils.functions import request_data_activity_log
 from core.models import MembershipType
+from datetime import datetime
+from django.utils import timezone
 import pdb
 logger = logging.getLogger("myapp")
 
@@ -34,6 +36,8 @@ class MemberView(APIView):
                         severity_level="info",
                         description="A new member has been created by the user",
                     )
+                    MemberHistory.objects.create(start_date=timezone.now(
+                    ), stored_member_id=member.member_ID, member=member)
                     return Response({
                         'code': 201,
                         'status': 'success',
@@ -124,6 +128,10 @@ class MemberView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
             # if not deleted then update the member status to delete
             with transaction.atomic():
+                instance = MemberHistory.objects.get(
+                    stored_member_id=member.member_ID, member=member)
+                instance.end_date = timezone.now()
+                instance.save(update_fields=["end_date"])
                 member.member_ID = None
                 member.status = 2
                 member.save(update_fields=['status', 'member_ID'])
