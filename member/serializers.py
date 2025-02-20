@@ -457,6 +457,7 @@ class AddressSerializer(serializers.Serializer):
     address = serializers.CharField()
     is_primary = serializers.BooleanField(required=False)
     title = serializers.CharField(max_length=100, required=False)
+    id = serializers.CharField(required=False)
 
 
 class MemberAddressSerializer(serializers.Serializer):
@@ -465,6 +466,8 @@ class MemberAddressSerializer(serializers.Serializer):
         child=AddressSerializer(), required=True)
 
     def validate_member_ID(self, value):
+        if self.instance:
+            return value
         is_exist = Member.objects.filter(member_ID=value).exists()
         if not is_exist:
             raise serializers.ValidationError(
@@ -493,6 +496,51 @@ class MemberAddressSerializer(serializers.Serializer):
                 "address_id": ins.id
             })
         return created_instances
+
+    def update(self, instance, validated_data):
+        """
+        instance: A Member instance whose address will be updated.
+        validated_data: Dictionary containing:
+            - member_ID (string)
+            - data: A list of emails (each may include an "id" if updating an existing contact)
+        """
+        data_list = validated_data.get('data', [])
+        results = []
+
+        # Iterate over each item in the submitted data
+        for item in data_list:
+            address_id = item.get('id', None)
+            if address_id:
+                # Update an existing email for the given member.
+                try:
+                    address_obj = instance.addresses.get(id=address_id)
+                except Address.DoesNotExist:
+                    raise serializers.ValidationError(
+                        f"address with id {address_id} does not exist for this member."
+                    )
+                # Update fields if provided; if not, retain current value.
+                address_obj.address_type = item.get(
+                    'address_type', address_obj.address_type)
+                address_obj.address = item.get('address', address_obj.address)
+                address_obj.title = item.get(
+                    'title', address_obj.title)
+                address_obj.is_primary = item.get(
+                    'is_primary', address_obj.is_primary)
+                address_obj.save()
+                results.append({
+                    "status": "updated",
+                    "address_id": address_obj.id
+                })
+            else:
+                # Optionally create a new address if no id is provided.
+                address = Address.objects.create(
+                    member=instance, **item)
+                results.append({
+                    "status": "created",
+                    "address_id": address.id
+                })
+
+        return results
 
 
 class MemberSpouseSerializer(serializers.Serializer):
@@ -650,18 +698,21 @@ class MemberContactNumberViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContactNumber
         exclude = ["member"]
+        depth = 1
 
 
 class MemberEmailAddressViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Email
         exclude = ["member"]
+        depth = 1
 
 
 class MemberAddressViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Address
         exclude = ["member"]
+        depth = 1
 
 
 class MemberSpouseViewSerializer(serializers.ModelSerializer):

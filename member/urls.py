@@ -13,6 +13,8 @@ urlpatterns = [
          name="member_email_address_view"),
     path('v1/members/address/', views.MemberAddressView.as_view(),
          name="member_address_view"),
+    path('v1/members/address/<str:member_ID>/', views.MemberAddressView.as_view(),
+         name="member_address_view"),
     path('v1/members/spouse/', views.MemberSpouseView.as_view(),
          name="member_spouse_view"),
     path('v1/members/descendants/', views.MemberDescendsView.as_view(),
