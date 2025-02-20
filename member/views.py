@@ -752,7 +752,6 @@ class MemberSingleHistoryView(APIView):
 
 class SpecialDayView(APIView):
     permission_classes = [IsAuthenticated]
-    
     def post(self, request):
         try:
             data = request.data
