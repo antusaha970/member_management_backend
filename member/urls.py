@@ -5,6 +5,8 @@ urlpatterns = [
          name="member_view"),
     path('v1/members/contact_numbers/', views.MemberContactNumberView.as_view(),
          name="member_contact_number_view"),
+    path('v1/members/contact_numbers/<str:member_ID>/', views.MemberContactNumberView.as_view(),
+         name="member_contact_number_view"),
     path('v1/members/email_address/', views.MemberEmailAddressView.as_view(),
          name="member_email_address_view"),
     path('v1/members/address/', views.MemberAddressView.as_view(),
