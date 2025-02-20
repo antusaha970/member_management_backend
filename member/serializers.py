@@ -552,3 +552,55 @@ class MemberHistorySerializer(serializers.ModelSerializer):
     class Meta:
         model = MemberHistory
         fields = "__all__"
+
+
+class MemberContactNumberViewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContactNumber
+        exclude = ["member"]
+
+
+class MemberEmailAddressViewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Email
+        exclude = ["member"]
+
+
+class MemberAddressViewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Address
+        exclude = ["member"]
+
+
+class MemberSpouseViewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Spouse
+        exclude = ["member"]
+
+
+class MemberDescendantsViewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Descendant
+        exclude = ["member"]
+        depth = 1
+
+
+class MemberEmergencyContactViewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EmergencyContact
+        exclude = ["member"]
+        depth = 1
+
+
+class MemberCompanionViewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CompanionInformation
+        exclude = ["member"]
+        depth = 1
+
+
+class MemberDocumentsViewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Documents
+        exclude = ["member"]
+        depth = 1
