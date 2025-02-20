@@ -581,8 +581,11 @@ class MemberDescendantsSerializer(serializers.Serializer):
     relation_type = serializers.PrimaryKeyRelatedField(
         queryset=DescendantRelationChoice.objects.all(), required=False)
     name = serializers.CharField(max_length=100)
+    id = serializers.IntegerField(required=False)
 
     def validate_member_ID(self, value):
+        if self.instance:
+            return value
         is_exist = Member.objects.filter(member_ID=value).exists()
         if not is_exist:
             raise serializers.ValidationError(
@@ -590,9 +593,37 @@ class MemberDescendantsSerializer(serializers.Serializer):
         return value
 
     def create(self, validated_data):
+        id = validated_data.get("id")
+        if id is not None:
+            validated_data.pop("id")
         member_ID = validated_data.pop("member_ID")
         member = Member.objects.get(member_ID=member_ID)
         instance = Descendant.objects.create(**validated_data, member=member)
+        return instance
+
+    def update(self, instance, validated_data):
+        id = validated_data.get("id")
+        if id is not None:
+            descendant_obj = instance
+            descendant_obj.descendant_contact_number = validated_data.get(
+                "descendant_contact_number", descendant_obj.descendant_contact_number)
+            descendant_obj.dob = validated_data.get(
+                "dob", descendant_obj.dob)
+            descendant_obj.image = validated_data.get(
+                "image", descendant_obj.image)
+            descendant_obj.relation_type = validated_data.get(
+                "relation_type", descendant_obj.relation_type)
+            descendant_obj.name = validated_data.get(
+                "name", descendant_obj.name)
+            descendant_obj.save()
+        else:
+            member_ID = validated_data.pop("member_ID")
+            if Member.objects.filter(member_ID=member_ID).exists():
+                raise serializers.ValidationError(
+                    "No member exists with this id")
+            member = Member.objects.get(member_ID=member_ID)
+            instance = Descendant.objects.create(
+                **validated_data, member=member)
         return instance
 
 
