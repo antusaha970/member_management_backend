@@ -116,7 +116,7 @@ class Email(models.Model):
     member = models.ForeignKey(
         Member, related_name='emails', on_delete=models.RESTRICT)
     email_type = models.ForeignKey(
-        EmailTypeChoice, related_name='email_type_choice', on_delete=models.RESTRICT)
+        EmailTypeChoice, related_name='email_type_choice', on_delete=models.RESTRICT, null=True, blank=True, default=None)
     # Record keeping
     status = models.IntegerField(choices=STATUS_CHOICES, default=0)
     is_active = models.BooleanField(default=True)
@@ -139,13 +139,13 @@ class Email(models.Model):
 
 
 class Address(models.Model):
-    title = models.CharField(max_length=100)
+    title = models.CharField(max_length=100, null=True, blank=True, default="")
     address = models.TextField()
     is_primary = models.BooleanField(default=False)
     member = models.ForeignKey(
         Member, related_name='addresses', on_delete=models.RESTRICT)
     address_type = models.ForeignKey(
-        AddressTypeChoice, related_name='address_type_choice', on_delete=models.RESTRICT)
+        AddressTypeChoice, related_name='address_type_choice', on_delete=models.RESTRICT, null=True, blank=True, default=None)
 
     # Record keeping
     status = models.IntegerField(choices=STATUS_CHOICES, default=0)
@@ -171,14 +171,15 @@ class Address(models.Model):
 class Spouse(models.Model):
     spouse_name = models.CharField(max_length=100)
     spouse_contact_number = models.CharField(
-        max_length=20, blank=True, null=True)
+        max_length=20, blank=True, null=True, default="")
     spouse_dob = models.DateField(blank=True, null=True)
-    image = models.ImageField(upload_to='spouse_images/')
+    image = models.ImageField(
+        upload_to='spouse_images/', blank=True, null=True, default=None)
     # relations
     member = models.OneToOneField(
         Member, related_name='spouse', on_delete=models.RESTRICT)
     current_status = models.ForeignKey(
-        SpouseStatusChoice, related_name='spouse_current_status', on_delete=models.RESTRICT, default="present")
+        SpouseStatusChoice, related_name='spouse_current_status', on_delete=models.RESTRICT, null=True, blank=True, default=None)
     # Record keeping
     status = models.IntegerField(choices=STATUS_CHOICES, default=0)
     is_active = models.BooleanField(default=False)
@@ -191,14 +192,16 @@ class Spouse(models.Model):
 
 class Descendant(models.Model):
     name = models.CharField(max_length=100)
-    descendant_contact_number = models.CharField(max_length=20)
+    descendant_contact_number = models.CharField(
+        max_length=20, blank=True, null=True, default=None)
     dob = models.DateField(null=True, blank=True)
-    image = models.ImageField(upload_to='descendant_images/')
+    image = models.ImageField(
+        upload_to='descendant_images/', blank=True, null=True, default=None)
     # relations
     member = models.ForeignKey(
         Member, related_name='descendants', on_delete=models.RESTRICT)
     relation_type = models.ForeignKey(
-        DescendantRelationChoice, related_name='descendant_relation_choice', on_delete=models.RESTRICT)
+        DescendantRelationChoice, related_name='descendant_relation_choice', on_delete=models.RESTRICT, blank=True, null=True, default=None)
     # Record keeping
     status = models.IntegerField(choices=STATUS_CHOICES, default=0)
     is_active = models.BooleanField(default=True)
@@ -234,7 +237,8 @@ class Profession(models.Model):
 class EmergencyContact(models.Model):
     contact_name = models.CharField(max_length=100)
     contact_number = models.CharField(max_length=20)
-    relation_with_member = models.CharField(max_length=50)
+    relation_with_member = models.CharField(
+        max_length=50, blank=True, null=True, default="")
     # relations
     member = models.ForeignKey(Member, related_name='emergency_contacts',
                                on_delete=models.RESTRICT)
@@ -250,12 +254,15 @@ class EmergencyContact(models.Model):
 
 class CompanionInformation(models.Model):
     companion_name = models.CharField(max_length=100)
-    companion_image = models.ImageField(upload_to='companion_images/')
+    companion_image = models.ImageField(
+        upload_to='companion_images/', blank=True, null=True, default=None)
     companion_dob = models.DateField(blank=True, null=True)
-    companion_contact_number = models.CharField(max_length=20)
+    companion_contact_number = models.CharField(
+        max_length=20, blank=True, null=True, default="")
     companion_card_number = models.CharField(
-        max_length=50, blank=True, null=True)
-    relation_with_member = models.CharField(max_length=100)
+        max_length=50, blank=True, null=True, default="")
+    relation_with_member = models.CharField(
+        max_length=100, blank=True, null=True, default="")
     # relations
     member = models.ForeignKey(
         Member, related_name='companions', on_delete=models.RESTRICT)
@@ -322,17 +329,6 @@ class SpecialDay(models.Model):
 
     def __str__(self):
         return self.member.member_ID
-
-
-# ID
-class AvailableID(models.Model):
-    membership_type = models.ForeignKey(
-        MembershipType, on_delete=models.RESTRICT, related_name="available_id")
-    member_ID = models.CharField(
-        max_length=200, unique=True)
-
-    def __str__(self):
-        return self.member_ID
 
 
 class MemberHistory(models.Model):

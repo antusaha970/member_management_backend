@@ -1,4 +1,4 @@
-from .models import AvailableID
+
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from . import serializers
