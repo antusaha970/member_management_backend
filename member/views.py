@@ -89,7 +89,7 @@ class MemberView(APIView):
                 with transaction.atomic():
                     member = member_serializer.save()
                     # member_ID=member.member_ID
-                     
+
                     return Response({
                         'code': 200,
                         'status': 'success',
@@ -131,10 +131,12 @@ class MemberView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
             # if not deleted then update the member status to delete
             with transaction.atomic():
-                instance = MemberHistory.objects.get(
-                    stored_member_id=member.member_ID, member=member)
-                instance.end_date = timezone.now()
-                instance.save(update_fields=["end_date"])
+                all_instance = MemberHistory.objects.filter(member=member)
+                update_lst = []
+                for instance in all_instance:
+                    instance.end_date = timezone.now()
+                    update_lst.append(instance)
+                MemberHistory.objects.bulk_update(update_lst, ["end_date"])
                 member.member_ID = None
                 member.status = 2
                 member.is_active = False

@@ -1,7 +1,7 @@
 from core.models import Gender
 from core.models import Gender, MembershipType, InstituteName, MembershipStatusChoice, MaritalStatusChoice, BLOOD_GROUPS, COUNTRY_CHOICES, ContactTypeChoice, EmailTypeChoice, AddressTypeChoice, SpouseStatusChoice, DescendantRelationChoice, DocumentTypeChoice
 from rest_framework import serializers
-from .models import Member, MembersFinancialBasics, ContactNumber, Email, Address, Spouse, Descendant, Profession, EmergencyContact, CompanionInformation, Documents, AvailableID,MemberHistory
+from .models import Member, MembersFinancialBasics, ContactNumber, Email, Address, Spouse, Descendant, Profession, EmergencyContact, CompanionInformation, Documents, AvailableID, MemberHistory
 from .models import Member, MembersFinancialBasics, ContactNumber, Email, Address, Spouse, Descendant, Profession, EmergencyContact, CompanionInformation, Documents, AvailableID, MemberHistory
 from club.models import Club
 import pdb
@@ -33,13 +33,12 @@ class MemberSerializer(serializers.Serializer):
         return value
 
     def validate_membership_type(self, value):
-        
+
         is_exist = MembershipType.objects.filter(name=value).exists()
         if not is_exist:
             raise serializers.ValidationError(
                 f'{value} does not a valid membership type')
         return value
-    
 
     def validate_institute_name(self, value):
         is_exist = InstituteName.objects.filter(name=value).exists()
@@ -77,11 +76,11 @@ class MemberSerializer(serializers.Serializer):
                 raise serializers.ValidationError(
                     f"{value} is not a valid country")
         return value
-    
+
     def validate_member_ID(self, value):
         # check if updating and instance
         if self.instance:
-            membership_type = self.instance.membership_type.name 
+            membership_type = self.instance.membership_type.name
             present_id = self.instance.member_ID
             if present_id == value:
                 return value
@@ -92,21 +91,21 @@ class MemberSerializer(serializers.Serializer):
                 )
             return value
 
-
         is_same_id_exist = Member.objects.filter(member_ID=value).exists()
         if is_same_id_exist:
             raise serializers.ValidationError(
                 f'{value} id already exists')
 
         return value
+
     def validate(self, attrs):
         if self.instance:
-            member_ID=attrs.get("member_ID")
+            member_ID = attrs.get("member_ID")
             first_two_characters = member_ID[:2]
-            membership_type=attrs.get("membership_type")
-            if membership_type!=first_two_characters:
-                    raise serializers.ValidationError(f"Invalid member_ID")
-            
+            membership_type = attrs.get("membership_type")
+            if membership_type != first_two_characters:
+                raise serializers.ValidationError(f"Invalid member_ID")
+
         return super().validate(attrs)
 
     def create(self, validated_data):
@@ -128,8 +127,9 @@ class MemberSerializer(serializers.Serializer):
         return member
 
     def update(self, instance, validated_data):
-        member_ID=validated_data.get('member_ID',instance.member_ID)
-        membership_type=validated_data.get('membership_type',instance.membership_type)
+        member_ID = validated_data.get('member_ID', instance.member_ID)
+        membership_type = validated_data.get(
+            'membership_type', instance.membership_type)
         first_name = validated_data.get('first_name', instance.first_name)
         last_name = validated_data.get('last_name', instance.last_name)
         gender = validated_data.get('gender', instance.gender)
@@ -149,22 +149,22 @@ class MemberSerializer(serializers.Serializer):
             'membership_status', instance.membership_status)
         marital_status = validated_data.get(
             'marital_status', instance.marital_status)
-        
+
         # get dependencies
-        membership_type_obj=MembershipType.objects.get(name=membership_type)
-       
+        membership_type_obj = MembershipType.objects.get(name=membership_type)
+
         gender = Gender.objects.get(name=gender)
         institute_name = InstituteName.objects.get(name=institute_name)
         membership_status = MembershipStatusChoice.objects.get(
             name=membership_status)
         marital_status = MaritalStatusChoice.objects.get(
             name=marital_status)
-        
-        flag=False
-        if instance.member_ID !=member_ID:
-            flag=True
+
+        flag = False
+        if instance.member_ID != member_ID:
+            flag = True
         # update information
-        instance.member_ID=member_ID
+        instance.member_ID = member_ID
         instance.first_name = first_name
         instance.last_name = last_name
         instance.gender = gender
@@ -174,23 +174,28 @@ class MemberSerializer(serializers.Serializer):
         instance.profile_photo = profile_photo
         instance.blood_group = blood_group
         instance.nationality = nationality
-        instance.membership_type=membership_type_obj
+        instance.membership_type = membership_type_obj
         instance.marital_status = marital_status
         instance.institute_name = institute_name
         instance.membership_status = membership_status
-
+        # save the instance
+        instance.save()
         if flag:
+            old_records = MemberHistory.objects.filter(member=instance)
+            update_lst = []
+            for record in old_records:
+                old_records.end_date = timezone.now()
+                update_lst.append(record)
+            MemberHistory.objects.bulk_update(update_lst, ['end_date'])
             history = MemberHistory(
                 start_date=timezone.now(),
                 stored_member_id=member_ID,
                 transferred=True,
                 transferred_reason="updated",
-                member=instance  
-                )
-                    # save member history instance
+                member=instance
+            )
+            # save member history instance
             history.save()
-        # save the instance
-        instance.save()
 
         return instance
 
