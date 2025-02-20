@@ -10,8 +10,6 @@ class Member(models.Model):
         max_length=200, blank=True, default="")  # mandatory field
     last_name = models.CharField(
         max_length=200, blank=True, default="")  # optional field
-    gender = models.ForeignKey(Gender, on_delete=models.SET_NULL,
-                               related_name="member_gender", null=True, blank=True)  # mandatory field
     date_of_birth = models.DateField(null=True, blank=True)  # mandatory field
     batch_number = models.CharField(
         max_length=500, default="")  # optional field
@@ -26,6 +24,8 @@ class Member(models.Model):
         max_length=100, choices=COUNTRY_CHOICES, default='XX')  # optional field
 
     # relations
+    gender = models.ForeignKey(Gender, on_delete=models.RESTRICT,
+                               related_name="member_gender")  # mandatory field
     membership_type = models.ForeignKey(
         MembershipType, related_name='membership_type_choice', on_delete=models.RESTRICT)  # mandatory field
     institute_name = models.ForeignKey(
