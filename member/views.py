@@ -182,8 +182,7 @@ class MemberView(APIView):
 
     def get(self, request, member_id):
         try:
-            member = get_object_or_404(
-                Member, member_ID=member_id)  # get member
+            member = Member.objects.get(member_ID=member_id)
             # check if member status is deleted or not
             if member.status == 2:
                 return Response({
@@ -205,6 +204,15 @@ class MemberView(APIView):
                 "message": f"View member information for member {member_id}",
                 'data': data
             }, status=status.HTTP_200_OK)
+        except  Member.DoesNotExist:
+            return Response({
+                "code": 404,
+                "status": "failed",
+                "message": "Member not found",
+                "errors": {
+                    "member": ["Member not found by this member_ID"]
+                }
+            }, status=status.HTTP_404_NOT_FOUND)
         except Exception as server_error:
             logger.exception(str(server_error))
             return Response({
@@ -668,7 +676,7 @@ class MemberSingleHistoryView(APIView):
 
     def get(self, request, member_ID):
         try:
-            member_history = MemberHistory.objects.filter(
+            member_history = MemberHistory.objects.get(
                 member__member_ID=member_ID)
             serializer = serializers.MemberHistorySerializer(
                 member_history, many=True)
@@ -678,6 +686,15 @@ class MemberSingleHistoryView(APIView):
                 "message": "viewing member history",
                 "data": serializer.data
             }, status=status.HTTP_200_OK)
+        except  MemberHistory.DoesNotExist:
+            return Response({
+                "code": 404,
+                "status": "failed",
+                "message": "Member not found",
+                "errors": {
+                    "member": ["Member not found by this member_ID"]
+                }
+            }, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             logger.exception(str(e))
             return Response({
