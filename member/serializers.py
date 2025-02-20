@@ -440,7 +440,7 @@ class MemberEmailAddressSerializer(serializers.Serializer):
                     "email_id": email_obj.id
                 })
             else:
-                # Optionally create a new contact number if no id is provided.
+                # Optionally create a new email if no id is provided.
                 new_email = Email.objects.create(
                     member=instance, **item)
                 results.append({
