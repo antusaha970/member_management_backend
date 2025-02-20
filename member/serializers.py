@@ -456,6 +456,7 @@ class AddressSerializer(serializers.Serializer):
     address = serializers.CharField()
     is_primary = serializers.BooleanField(required=False)
     title = serializers.CharField(max_length=100, required=False)
+    id = serializers.CharField(required=False)
 
 
 class MemberAddressSerializer(serializers.Serializer):
@@ -464,6 +465,8 @@ class MemberAddressSerializer(serializers.Serializer):
         child=AddressSerializer(), required=True)
 
     def validate_member_ID(self, value):
+        if self.instance:
+            return value
         is_exist = Member.objects.filter(member_ID=value).exists()
         if not is_exist:
             raise serializers.ValidationError(
@@ -492,6 +495,51 @@ class MemberAddressSerializer(serializers.Serializer):
                 "address_id": ins.id
             })
         return created_instances
+
+    def update(self, instance, validated_data):
+        """
+        instance: A Member instance whose address will be updated.
+        validated_data: Dictionary containing:
+            - member_ID (string)
+            - data: A list of emails (each may include an "id" if updating an existing contact)
+        """
+        data_list = validated_data.get('data', [])
+        results = []
+
+        # Iterate over each item in the submitted data
+        for item in data_list:
+            address_id = item.get('id', None)
+            if address_id:
+                # Update an existing email for the given member.
+                try:
+                    address_obj = instance.addresses.get(id=address_id)
+                except Address.DoesNotExist:
+                    raise serializers.ValidationError(
+                        f"address with id {address_id} does not exist for this member."
+                    )
+                # Update fields if provided; if not, retain current value.
+                address_obj.address_type = item.get(
+                    'address_type', address_obj.address_type)
+                address_obj.address = item.get('address', address_obj.address)
+                address_obj.title = item.get(
+                    'title', address_obj.title)
+                address_obj.is_primary = item.get(
+                    'is_primary', address_obj.is_primary)
+                address_obj.save()
+                results.append({
+                    "status": "updated",
+                    "address_id": address_obj.id
+                })
+            else:
+                # Optionally create a new address if no id is provided.
+                address = Address.objects.create(
+                    member=instance, **item)
+                results.append({
+                    "status": "created",
+                    "address_id": address.id
+                })
+
+        return results
 
 
 class MemberSpouseSerializer(serializers.Serializer):
@@ -591,8 +639,11 @@ class MemberDescendantsSerializer(serializers.Serializer):
     relation_type = serializers.PrimaryKeyRelatedField(
         queryset=DescendantRelationChoice.objects.all(), required=False)
     name = serializers.CharField(max_length=100)
+    id = serializers.IntegerField(required=False)
 
     def validate_member_ID(self, value):
+        if self.instance:
+            return value
         is_exist = Member.objects.filter(member_ID=value).exists()
         if not is_exist:
             raise serializers.ValidationError(
@@ -600,9 +651,37 @@ class MemberDescendantsSerializer(serializers.Serializer):
         return value
 
     def create(self, validated_data):
+        id = validated_data.get("id")
+        if id is not None:
+            validated_data.pop("id")
         member_ID = validated_data.pop("member_ID")
         member = Member.objects.get(member_ID=member_ID)
         instance = Descendant.objects.create(**validated_data, member=member)
+        return instance
+
+    def update(self, instance, validated_data):
+        id = validated_data.get("id")
+        if id is not None:
+            descendant_obj = instance
+            descendant_obj.descendant_contact_number = validated_data.get(
+                "descendant_contact_number", descendant_obj.descendant_contact_number)
+            descendant_obj.dob = validated_data.get(
+                "dob", descendant_obj.dob)
+            descendant_obj.image = validated_data.get(
+                "image", descendant_obj.image)
+            descendant_obj.relation_type = validated_data.get(
+                "relation_type", descendant_obj.relation_type)
+            descendant_obj.name = validated_data.get(
+                "name", descendant_obj.name)
+            descendant_obj.save()
+        else:
+            member_ID = validated_data.pop("member_ID")
+            if Member.objects.filter(member_ID=member_ID).exists():
+                raise serializers.ValidationError(
+                    "No member exists with this id")
+            member = Member.objects.get(member_ID=member_ID)
+            instance = Descendant.objects.create(
+                **validated_data, member=member)
         return instance
 
 
@@ -642,6 +721,8 @@ class MemberEmergencyContactSerializer(serializers.Serializer):
     relation_with_member = serializers.CharField(max_length=50, required=False)
 
     def validate_member_ID(self, value):
+        if self.instance:
+            return value
         is_exist = Member.objects.filter(member_ID=value).exists()
         if not is_exist:
             raise serializers.ValidationError(
@@ -654,6 +735,17 @@ class MemberEmergencyContactSerializer(serializers.Serializer):
         instance = EmergencyContact.objects.create(
             **validated_data, member=member)
         return instance
+
+    def update(self, instance, validated_data):
+        emergency_contact = instance.emergency_contacts.first()
+        emergency_contact.contact_name = validated_data.get(
+            "contact_name", emergency_contact.contact_name)
+        emergency_contact.contact_number = validated_data.get(
+            "contact_number", emergency_contact.contact_number)
+        emergency_contact.relation_with_member = validated_data.get(
+            "relation_with_member", emergency_contact.relation_with_member)
+        emergency_contact.save()
+        return emergency_contact
 
 
 class MemberCompanionInformationSerializer(serializers.Serializer):
@@ -715,18 +807,21 @@ class MemberContactNumberViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContactNumber
         exclude = ["member"]
+        depth = 1
 
 
 class MemberEmailAddressViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Email
         exclude = ["member"]
+        depth = 1
 
 
 class MemberAddressViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Address
         exclude = ["member"]
+        depth = 1
 
 
 class MemberSpouseViewSerializer(serializers.ModelSerializer):
