@@ -1,8 +1,7 @@
 from core.models import Gender
 from core.models import Gender, MembershipType, InstituteName, MembershipStatusChoice, MaritalStatusChoice, BLOOD_GROUPS, COUNTRY_CHOICES, ContactTypeChoice, EmailTypeChoice, AddressTypeChoice, SpouseStatusChoice, DescendantRelationChoice, DocumentTypeChoice
 from rest_framework import serializers
-from .models import Member, MembersFinancialBasics, ContactNumber, Email, Address, Spouse, Descendant, Profession, EmergencyContact, CompanionInformation, Documents, MemberHistory
-from .models import Member, MembersFinancialBasics, ContactNumber, Email, Address, Spouse, Descendant, Profession, EmergencyContact, CompanionInformation, Documents, MemberHistory
+from .models import Member, MembersFinancialBasics, ContactNumber, Email, Address, Spouse, Descendant, Profession, EmergencyContact, CompanionInformation, Documents, MemberHistory,SpecialDay
 from club.models import Club
 import pdb
 from .utils.utility_functions import generate_member_id
@@ -431,7 +430,33 @@ class MemberSpouseSerializer(serializers.Serializer):
                                          spouse_dob=spouse_dob, image=image, current_status=current_status, member=member)
         return instance
 
+class SpecialDayDataSerializer(serializers.Serializer):
+    title = serializers.CharField(max_length=100)
+    date= serializers.DateField(required=False)
 
+class SpecialDaySerializer(serializers.Serializer):
+    member_ID = serializers.CharField(max_length=200)
+    data = serializers.ListSerializer(child=SpecialDayDataSerializer(), required=True)
+    
+    def validate_member_ID(self, value):
+        is_exist = Member.objects.filter(member_ID=value).exists()
+        if not is_exist:
+            raise serializers.ValidationError(
+                f"{value} is not a valid member id")
+        return value
+    
+    
+    def create(self, validated_data):
+        member_ID = validated_data['member_ID']
+        data = validated_data['data']
+        member = Member.objects.get(member_ID=member_ID)
+        
+        created_instances = [] 
+        for item in data:
+            instance = SpecialDay.objects.create(**item, member=member)
+            created_instances.append(instance)  
+        
+        return created_instances 
 class MemberDescendantsSerializer(serializers.Serializer):
     member_ID = serializers.CharField()
     descendant_contact_number = serializers.CharField(
