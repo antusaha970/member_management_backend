@@ -81,7 +81,7 @@ class MemberView(APIView):
 
     def patch(self, request, member_id):
         try:
-            member = get_object_or_404(Member, member_ID=member_id)
+            member = Member.objects.get(member_ID=member_id)
             data = request.data
             member_serializer = serializers.MemberSerializer(member, data=data)
             is_member_serializer_valid = member_serializer.is_valid()
@@ -107,6 +107,15 @@ class MemberView(APIView):
                     "message": "Member update failed",
                     "errors": merged_errors,
                 }, status=status.HTTP_400_BAD_REQUEST)
+        except  Member.DoesNotExist:
+            return Response({
+                "code": 404,
+                "status": "failed",
+                "message": "Member not found",
+                "errors": {
+                    "member": ["Member not found by this member_ID"]
+                }
+            }, status=status.HTTP_404_NOT_FOUND)
         except Exception as server_error:
             logger.exception(str(server_error))
             return Response({
@@ -120,7 +129,7 @@ class MemberView(APIView):
 
     def delete(self, request, member_id):
         try:
-            member = get_object_or_404(Member, member_ID=member_id)
+            member = Member.objects.get(member_ID=member_id)
             # find the member
             if member.status == 2:
                 # if member is already deleted
@@ -135,8 +144,10 @@ class MemberView(APIView):
                 update_lst = []
                 for instance in all_instance:
                     instance.end_date = timezone.now()
+                    instance.transferred_reason="deleted"
+                    instance.transferred=True
                     update_lst.append(instance)
-                MemberHistory.objects.bulk_update(update_lst, ["end_date"])
+                MemberHistory.objects.bulk_update(update_lst, ["end_date","transferred_reason","transferred"])
                 member.member_ID = None
                 member.status = 2
                 member.is_active = False
@@ -147,6 +158,17 @@ class MemberView(APIView):
                     'message': "member deleted",
                     'status': "success",
                 }, status=status.HTTP_204_NO_CONTENT)
+                
+        except  Member.DoesNotExist:
+            return Response({
+                "code": 404,
+                "status": "failed",
+                "message": "Member not found",
+                "errors": {
+                    "member": ["Member not found by this member_ID"]
+                }
+            }, status=status.HTTP_404_NOT_FOUND)
+            
         except Exception as server_error:
             logger.exception(str(server_error))
             return Response({

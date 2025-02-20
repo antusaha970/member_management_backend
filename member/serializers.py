@@ -184,7 +184,7 @@ class MemberSerializer(serializers.Serializer):
             old_records = MemberHistory.objects.filter(member=instance)
             update_lst = []
             for record in old_records:
-                old_records.end_date = timezone.now()
+                record.end_date = timezone.now()
                 update_lst.append(record)
             MemberHistory.objects.bulk_update(update_lst, ['end_date'])
             history = MemberHistory(
