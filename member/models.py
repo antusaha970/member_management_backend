@@ -87,7 +87,7 @@ class ContactNumber(models.Model):
     member = models.ForeignKey(Member, related_name='contact_numbers',
                                on_delete=models.RESTRICT)
     contact_type = models.ForeignKey(
-        ContactTypeChoice, related_name='contact_type_choice', on_delete=models.RESTRICT, default='present')
+        ContactTypeChoice, related_name='contact_type_choice', on_delete=models.RESTRICT, default=None, null=True, blank=True)
     # Record keeping
     status = models.IntegerField(choices=STATUS_CHOICES, default=0)
     is_active = models.BooleanField(default=True)
@@ -181,7 +181,7 @@ class Spouse(models.Model):
         SpouseStatusChoice, related_name='spouse_current_status', on_delete=models.RESTRICT, default="present")
     # Record keeping
     status = models.IntegerField(choices=STATUS_CHOICES, default=0)
-    is_active =models.BooleanField(default=False)
+    is_active = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -275,9 +275,9 @@ class MembersFinancialBasicsSerializerForViewSingleMember(serializers.ModelSeria
 
 class ContactDetailSerializer(serializers.Serializer):
     contact_type = serializers.PrimaryKeyRelatedField(
-        queryset=ContactTypeChoice.objects.all())
+        queryset=ContactTypeChoice.objects.all(), required=False)
     number = serializers.CharField(max_length=20)
-    is_primary = serializers.BooleanField()
+    is_primary = serializers.BooleanField(required=False)
 
 
 class MemberContactNumberSerializer(serializers.Serializer):
