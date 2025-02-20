@@ -750,8 +750,9 @@ class MemberSingleHistoryView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-class SpecialDayView(APIView):
+class MemberSpecialDayView(APIView):
     permission_classes = [IsAuthenticated]
+    
     def post(self, request):
         try:
             data = request.data
@@ -764,10 +765,46 @@ class SpecialDayView(APIView):
                 return Response({
                     "code": 201,
                     "status": "success",
-                    "message": "Special Days have been created successfully",
+                    "message": " Member Special Days has been created successfully",
                     "data": [
                         {"id": instance.id, "title": instance.title} for instance in instances
                     ]
+                }, status=status.HTTP_201_CREATED)
+            
+            else:
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Invalid request",
+                    "errors": serializer.errors,
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class MemberCertificateView(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request):
+        try:
+            data = request.data
+            # pdb.set_trace()
+            serializer = serializers.MemberCertificateSerializer(data=data)
+            
+            if serializer.is_valid():
+                instance = serializer.save()
+                
+                return Response({
+                    "code": 201,
+                    "status": "success",
+                    "message": "Member Certificate has been created successfully",
+                    "data": {"id": instance.id, "title": instance.title}
                 }, status=status.HTTP_201_CREATED)
             
             else:

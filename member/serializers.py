@@ -1,7 +1,7 @@
 from core.models import Gender
 from core.models import Gender, MembershipType, InstituteName, MembershipStatusChoice, MaritalStatusChoice, BLOOD_GROUPS, COUNTRY_CHOICES, ContactTypeChoice, EmailTypeChoice, AddressTypeChoice, SpouseStatusChoice, DescendantRelationChoice, DocumentTypeChoice
 from rest_framework import serializers
-from .models import Member, MembersFinancialBasics, ContactNumber, Email, Address, Spouse, Descendant, Profession, EmergencyContact, CompanionInformation, Documents, MemberHistory,SpecialDay
+from .models import Member, MembersFinancialBasics, ContactNumber, Email, Address, Spouse, Descendant, Profession, EmergencyContact, CompanionInformation, Documents, MemberHistory,SpecialDay,Certificate
 from club.models import Club
 import pdb
 from .utils.utility_functions import generate_member_id
@@ -458,6 +458,29 @@ class MemberSpecialDaySerializer(serializers.Serializer):
         
         return created_instances 
 
+class MemberCertificateSerializer(serializers.Serializer):
+    member_ID=serializers.CharField(max_length=200)
+    title= serializers.CharField(max_length=100)
+    certificate_number = serializers.CharField(max_length=100,required=False)
+    certificate_document=serializers.FileField()
+    
+    def validate_member_ID(self, value):
+        is_exist = Member.objects.filter(member_ID=value).exists()
+        if not is_exist:
+            raise serializers.ValidationError(
+                f"{value} is not a valid member id")
+        return value
+
+    def validate_certificate_number(self,value):
+        if not value.isalnum():
+            raise serializers.ValidationError("Certificate number must contain only letters and numbers.")
+        return value
+            
+    def create(self, validated_data):
+        member_ID = validated_data.pop('member_ID')  
+        member = Member.objects.get(member_ID=member_ID) 
+        instance = Certificate.objects.create(member=member, **validated_data)  
+        return instance
 class MemberDescendantsSerializer(serializers.Serializer):
     member_ID = serializers.CharField()
     descendant_contact_number = serializers.CharField(
