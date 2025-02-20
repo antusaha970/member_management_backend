@@ -318,9 +318,9 @@ class MemberContactNumberSerializer(serializers.Serializer):
 
 class EmailAddressSerializer(serializers.Serializer):
     email_type = serializers.PrimaryKeyRelatedField(
-        queryset=EmailTypeChoice.objects.all())
+        queryset=EmailTypeChoice.objects.all(), required=False)
     email = serializers.EmailField()
-    is_primary = serializers.BooleanField()
+    is_primary = serializers.BooleanField(required=False)
 
 
 class MemberEmailAddressSerializer(serializers.Serializer):
@@ -361,9 +361,10 @@ class MemberEmailAddressSerializer(serializers.Serializer):
 
 class AddressSerializer(serializers.Serializer):
     address_type = serializers.PrimaryKeyRelatedField(
-        queryset=AddressTypeChoice.objects.all())
+        queryset=AddressTypeChoice.objects.all(), required=False)
     address = serializers.CharField()
-    is_primary = serializers.BooleanField()
+    is_primary = serializers.BooleanField(required=False)
+    title = serializers.CharField(max_length=100, required=False)
 
 
 class MemberAddressSerializer(serializers.Serializer):
@@ -404,11 +405,11 @@ class MemberAddressSerializer(serializers.Serializer):
 
 class MemberSpouseSerializer(serializers.Serializer):
     spouse_name = serializers.CharField(max_length=100)
-    contact_number = serializers.CharField(max_length=20)
-    spouse_dob = serializers.DateField()
-    image = serializers.ImageField()
+    contact_number = serializers.CharField(max_length=20, required=False)
+    spouse_dob = serializers.DateField(required=False)
+    image = serializers.ImageField(required=False)
     current_status = serializers.PrimaryKeyRelatedField(
-        queryset=SpouseStatusChoice.objects.all())
+        queryset=SpouseStatusChoice.objects.all(), required=False)
     member_ID = serializers.CharField()
 
     def validate_member_ID(self, value):
@@ -420,10 +421,10 @@ class MemberSpouseSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         spouse_name = validated_data['spouse_name']
-        contact_number = validated_data['contact_number']
-        spouse_dob = validated_data['spouse_dob']
-        image = validated_data['image']
-        current_status = validated_data['current_status']
+        contact_number = validated_data.get("contact_number", "")
+        spouse_dob = validated_data.get("spouse_dob")
+        image = validated_data.get("image")
+        current_status = validated_data.get("current_status")
         member_ID = validated_data['member_ID']
         member = Member.objects.get(member_ID=member_ID)
         instance = Spouse.objects.create(spouse_name=spouse_name, spouse_contact_number=contact_number,
@@ -433,11 +434,12 @@ class MemberSpouseSerializer(serializers.Serializer):
 
 class MemberDescendantsSerializer(serializers.Serializer):
     member_ID = serializers.CharField()
-    descendant_contact_number = serializers.CharField(max_length=20)
-    dob = serializers.DateField()
-    image = serializers.ImageField()
+    descendant_contact_number = serializers.CharField(
+        max_length=20, required=False)
+    dob = serializers.DateField(required=False)
+    image = serializers.ImageField(required=False)
     relation_type = serializers.PrimaryKeyRelatedField(
-        queryset=DescendantRelationChoice.objects.all())
+        queryset=DescendantRelationChoice.objects.all(), required=False)
     name = serializers.CharField(max_length=100)
 
     def validate_member_ID(self, value):
@@ -457,8 +459,10 @@ class MemberDescendantsSerializer(serializers.Serializer):
 class MemberJobSerializer(serializers.Serializer):
     member_ID = serializers.CharField()
     title = serializers.CharField(max_length=100)
-    organization_name = serializers.CharField(max_length=150)
+    organization_name = serializers.CharField(max_length=150, required=False)
     location = serializers.CharField(max_length=100)
+    job_description = serializers.CharField(required=False)
+    location = serializers.CharField(max_length=100, required=False)
 
     def validate_member_ID(self, value):
         is_exist = Member.objects.filter(member_ID=value).exists()
@@ -478,7 +482,7 @@ class MemberEmergencyContactSerializer(serializers.Serializer):
     member_ID = serializers.CharField()
     contact_name = serializers.CharField(max_length=100)
     contact_number = serializers.CharField(max_length=20)
-    relation_with_member = serializers.CharField(max_length=50)
+    relation_with_member = serializers.CharField(max_length=50, required=False)
 
     def validate_member_ID(self, value):
         is_exist = Member.objects.filter(member_ID=value).exists()
@@ -498,11 +502,14 @@ class MemberEmergencyContactSerializer(serializers.Serializer):
 class MemberCompanionInformationSerializer(serializers.Serializer):
     member_ID = serializers.CharField()
     companion_name = serializers.CharField(max_length=100)
-    companion_dob = serializers.DateField()
-    companion_contact_number = serializers.CharField(max_length=20)
-    companion_card_number = serializers.CharField(max_length=50)
-    relation_with_member = serializers.CharField(max_length=100)
-    companion_image = serializers.ImageField()
+    companion_dob = serializers.DateField(required=False)
+    companion_contact_number = serializers.CharField(
+        max_length=20, required=False)
+    companion_card_number = serializers.CharField(
+        max_length=50, required=False)
+    relation_with_member = serializers.CharField(
+        max_length=100, required=False)
+    companion_image = serializers.ImageField(required=False)
 
     def validate_member_ID(self, value):
         is_exist = Member.objects.filter(member_ID=value).exists()
@@ -524,6 +531,7 @@ class MemberDocumentSerializer(serializers.Serializer):
     document_document = serializers.FileField()
     document_type = serializers.PrimaryKeyRelatedField(
         queryset=DocumentTypeChoice.objects.all())
+    document_number = serializers.CharField(max_length=50, required=False)
 
     def validate_member_ID(self, value):
         is_exist = Member.objects.filter(member_ID=value).exists()
