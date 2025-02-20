@@ -430,13 +430,13 @@ class MemberSpouseSerializer(serializers.Serializer):
                                          spouse_dob=spouse_dob, image=image, current_status=current_status, member=member)
         return instance
 
-class SpecialDayDataSerializer(serializers.Serializer):
+class MemberSpecialDayDataSerializer(serializers.Serializer):
     title = serializers.CharField(max_length=100)
     date= serializers.DateField(required=False)
 
-class SpecialDaySerializer(serializers.Serializer):
+class MemberSpecialDaySerializer(serializers.Serializer):
     member_ID = serializers.CharField(max_length=200)
-    data = serializers.ListSerializer(child=SpecialDayDataSerializer(), required=True)
+    data = serializers.ListSerializer(child=MemberSpecialDayDataSerializer(), required=True)
     
     def validate_member_ID(self, value):
         is_exist = Member.objects.filter(member_ID=value).exists()
@@ -457,6 +457,7 @@ class SpecialDaySerializer(serializers.Serializer):
             created_instances.append(instance)  
         
         return created_instances 
+
 class MemberDescendantsSerializer(serializers.Serializer):
     member_ID = serializers.CharField()
     descendant_contact_number = serializers.CharField(

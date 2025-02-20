@@ -756,7 +756,7 @@ class SpecialDayView(APIView):
         try:
             data = request.data
             # pdb.set_trace()
-            serializer = serializers.SpecialDaySerializer(data=data)
+            serializer = serializers.MemberSpecialDaySerializer(data=data)
             
             if serializer.is_valid():
                 instances = serializer.save()
