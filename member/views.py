@@ -710,26 +710,40 @@ class SpecialDayView(APIView):
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
-        data = request.data
-        # pdb.set_trace()
-        serializer = serializers.SpecialDaySerializer(data=data)
-        
-        if serializer.is_valid():
-            instances = serializer.save()
+        try:
+            data = request.data
+            # pdb.set_trace()
+            serializer = serializers.SpecialDaySerializer(data=data)
             
+            if serializer.is_valid():
+                instances = serializer.save()
+                
+                return Response({
+                    "code": 201,
+                    "status": "success",
+                    "message": "Special Days have been created successfully",
+                    "data": [
+                        {"id": instance.id, "title": instance.title} for instance in instances
+                    ]
+                }, status=status.HTTP_201_CREATED)
+            
+            else:
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Invalid request",
+                    "errors": serializer.errors,
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
             return Response({
-                "code": 201,
-                "status": "success",
-                "message": "Special Days have been created successfully",
-                "data": [
-                    {"id": instance.id, "title": instance.title} for instance in instances
-                ]
-            }, status=status.HTTP_201_CREATED)
-        
-        else:
-            return Response({
-                "code": 400,
+                "code": 500,
                 "status": "failed",
-                "message": "Invalid request",
-                "errors": serializer.errors,
-            }, status=status.HTTP_400_BAD_REQUEST)
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+      
+    
