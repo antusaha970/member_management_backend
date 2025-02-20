@@ -706,6 +706,41 @@ class MemberEmergencyContactView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    def patch(self, request, member_ID):
+        try:
+            member = get_object_or_404(Member, member_ID=member_ID)
+            data = request.data
+            serializer = serializers.MemberEmergencyContactSerializer(member,
+                                                                      data=data)
+            if serializer.is_valid():
+                with transaction.atomic():
+                    instance = serializer.save(instance=member)
+                return Response({
+                    "code": 200,
+                    "message": "Member Emergency contact has been updated successfully",
+                    "status": "success",
+                    "data": {
+                        "emergency_contact_id": instance.id
+                    }
+                }, status=status.HTTP_200_OK)
+            else:
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Invalid request",
+                    "errors": serializer.errors,
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class MemberCompanionView(APIView):
     permission_classes = [IsAuthenticated]

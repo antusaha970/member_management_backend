@@ -656,6 +656,8 @@ class MemberEmergencyContactSerializer(serializers.Serializer):
     relation_with_member = serializers.CharField(max_length=50, required=False)
 
     def validate_member_ID(self, value):
+        if self.instance:
+            return value
         is_exist = Member.objects.filter(member_ID=value).exists()
         if not is_exist:
             raise serializers.ValidationError(
@@ -668,6 +670,17 @@ class MemberEmergencyContactSerializer(serializers.Serializer):
         instance = EmergencyContact.objects.create(
             **validated_data, member=member)
         return instance
+
+    def update(self, instance, validated_data):
+        emergency_contact = instance.emergency_contacts.first()
+        emergency_contact.contact_name = validated_data.get(
+            "contact_name", emergency_contact.contact_name)
+        emergency_contact.contact_number = validated_data.get(
+            "contact_number", emergency_contact.contact_number)
+        emergency_contact.relation_with_member = validated_data.get(
+            "relation_with_member", emergency_contact.relation_with_member)
+        emergency_contact.save()
+        return emergency_contact
 
 
 class MemberCompanionInformationSerializer(serializers.Serializer):

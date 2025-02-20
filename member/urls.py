@@ -23,6 +23,8 @@ urlpatterns = [
          name="member_job_view"),
     path('v1/members/emergency_contact/', views.MemberEmergencyContactView.as_view(),
          name="member_emergency_contact_view"),
+    path('v1/members/emergency_contact/<str:member_ID>/', views.MemberEmergencyContactView.as_view(),
+         name="member_emergency_contact_view"),
     path('v1/members/companion/', views.MemberCompanionView.as_view(),
          name="member_companion_view"),
     path('v1/members/documents/', views.MemberDocumentView.as_view(),
