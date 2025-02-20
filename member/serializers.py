@@ -522,6 +522,15 @@ class MemberSpouseSerializer(serializers.Serializer):
                                          spouse_dob=spouse_dob, image=image, current_status=current_status, member=member)
         return instance
 
+    def update(self, instance, validated_data):
+        instance.spouse_name = validated_data.get('spouse_name', instance.spouse_name)
+        instance.spouse_contact_number = validated_data.get('contact_number', instance.spouse_contact_number)
+        instance.spouse_dob = validated_data.get('spouse_dob', instance.spouse_dob)
+        instance.image = validated_data.get('image', instance.image)
+        instance.current_status = validated_data.get('current_status', instance.current_status)
+        instance.save()
+        return instance
+     
 class MemberSpecialDayDataSerializer(serializers.Serializer):
     title = serializers.CharField(max_length=100)
     date= serializers.DateField(required=False)
@@ -616,6 +625,13 @@ class MemberJobSerializer(serializers.Serializer):
         member_ID = validated_data.pop('member_ID')
         member = Member.objects.get(member_ID=member_ID)
         instance = Profession.objects.create(**validated_data, member=member)
+        return instance
+    def update(self,instance,validated_data):
+        instance.title = validated_data.get("title", instance.title)
+        instance.organization_name = validated_data.get("organization_name", instance.organization_name)
+        instance.job_description = validated_data.get("job_description", instance.job_description)
+        instance.location = validated_data.get("location", instance.location)
+        instance.save()
         return instance
 
 

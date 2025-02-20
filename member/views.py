@@ -18,6 +18,7 @@ from django.utils import timezone
 from core.utils.pagination import CustomPageNumberPagination
 from .import models
 import pdb
+from .models import Spouse,Profession
 logger = logging.getLogger("myapp")
 
 
@@ -510,7 +511,49 @@ class MemberSpouseView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    def patch(self, request):
+        try:
+            data = request.data
+            member_ID = data.get('member_ID')
+            try:
+                member = Member.objects.get(member_ID=member_ID)
+                instance = Spouse.objects.get(member=member)
+                is_new = False  
+            except Spouse.DoesNotExist:
+                instance = None
+                is_new = True 
 
+            serializer = serializers.MemberSpouseSerializer(instance, data=data, partial=True)
+            if serializer.is_valid():
+                with transaction.atomic():
+                    instance = serializer.save()
+
+                return Response({
+                    "code": 201 if is_new else 200,
+                    "message": "Spouse object created successfully" if is_new else "Spouse updated successfully",
+                    "status": "success",
+                    "data": {
+                        "spouse_id": instance.id
+                    }
+                }, status=status.HTTP_201_CREATED if is_new else status.HTTP_200_OK)
+
+            return Response({
+                "code": 400,
+                "status": "failed",
+                "message": "Invalid request",
+                "errors": serializer.errors,
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
 
 class MemberDescendsView(APIView):
     permission_classes = [IsAuthenticated]
@@ -584,7 +627,50 @@ class MemberJobView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    def patch(self, request):
+        try:
+            data = request.data
+            member_ID = data.get("member_ID")
 
+            # Check if the profession instance exists
+            try:
+                profession_instance =Profession.objects.get(member__member_ID=member_ID)
+                is_new = False
+            except Profession.DoesNotExist:
+                profession_instance = None
+                is_new = True
+
+            serializer = serializers.MemberJobSerializer(profession_instance, data=data, partial=True)
+            
+            if serializer.is_valid():
+                with transaction.atomic():
+                    instance = serializer.save()
+                return Response({
+                    "code": 200 if not is_new else 201,
+                    "message": "Member job has been updated successfully" if not is_new else "Member job has been created successfully",
+                    "status": "success",
+                    "data": {
+                        "job_id": instance.id
+                    }
+                }, status=status.HTTP_200_OK if not is_new else status.HTTP_201_CREATED)
+            else:
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Invalid request",
+                    "errors": serializer.errors,
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            logger.exception(str(e))
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class MemberEmergencyContactView(APIView):
     permission_classes = [IsAuthenticated]

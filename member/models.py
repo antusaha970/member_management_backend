@@ -219,7 +219,6 @@ class Profession(models.Model):
     job_description = models.TextField(blank=True, null=True, default="")
     location = models.CharField(
         max_length=100, blank=True, null=True, default="")
-
     # relations
     member = models.ForeignKey(
         Member, on_delete=models.RESTRICT, related_name='professions')
