@@ -1,8 +1,8 @@
 from core.models import Gender
 from core.models import Gender, MembershipType, InstituteName, MembershipStatusChoice, MaritalStatusChoice, BLOOD_GROUPS, COUNTRY_CHOICES, ContactTypeChoice, EmailTypeChoice, AddressTypeChoice, SpouseStatusChoice, DescendantRelationChoice, DocumentTypeChoice
 from rest_framework import serializers
-from .models import Member, MembersFinancialBasics, ContactNumber, Email, Address, Spouse, Descendant, Profession, EmergencyContact, CompanionInformation, Documents, AvailableID, MemberHistory
-from .models import Member, MembersFinancialBasics, ContactNumber, Email, Address, Spouse, Descendant, Profession, EmergencyContact, CompanionInformation, Documents, AvailableID, MemberHistory
+from .models import Member, MembersFinancialBasics, ContactNumber, Email, Address, Spouse, Descendant, Profession, EmergencyContact, CompanionInformation, Documents, MemberHistory
+from .models import Member, MembersFinancialBasics, ContactNumber, Email, Address, Spouse, Descendant, Profession, EmergencyContact, CompanionInformation, Documents, MemberHistory
 from club.models import Club
 import pdb
 from .utils.utility_functions import generate_member_id
@@ -275,9 +275,9 @@ class MembersFinancialBasicsSerializerForViewSingleMember(serializers.ModelSeria
 
 class ContactDetailSerializer(serializers.Serializer):
     contact_type = serializers.PrimaryKeyRelatedField(
-        queryset=ContactTypeChoice.objects.all())
+        queryset=ContactTypeChoice.objects.all(), required=False)
     number = serializers.CharField(max_length=20)
-    is_primary = serializers.BooleanField()
+    is_primary = serializers.BooleanField(required=False)
 
 
 class MemberContactNumberSerializer(serializers.Serializer):
@@ -537,33 +537,6 @@ class MemberDocumentSerializer(serializers.Serializer):
         member = Member.objects.get(member_ID=member_ID)
         instance = Documents.objects.create(
             **validated_data, member=member)
-        return instance
-
-
-class AddFlexibleMemberIdSerializer(serializers.Serializer):
-    membership_type = serializers.CharField()
-    member_ID = serializers.CharField()
-
-    def validate_membership_type(self, value):
-        if not MembershipType.objects.filter(name=value).exists():
-            raise serializers.ValidationError(
-                f"{value} does not exist as a valid membership type")
-        return value
-
-    def validate_member_ID(self, value):
-        if AvailableID.objects.filter(member_ID=value).exists():
-            raise serializers.ValidationError(f"{value} already exists")
-        if Member.objects.filter(member_ID=value).exists():
-            raise serializers.ValidationError(
-                f"{value} already exists in one of the members")
-        return value
-
-    def create(self, validated_data):
-        membership_type = validated_data.get("membership_type")
-        member_ID = validated_data.get("member_ID")
-        membership_type = MembershipType.objects.get(name=membership_type)
-        instance = AvailableID.objects.create(
-            membership_type=membership_type, member_ID=member_ID)
         return instance
 
 
