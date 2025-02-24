@@ -36,7 +36,7 @@ urlpatterns = [
     path('v1/members/history/', views.MemberHistoryView.as_view(),
          name="member_history_view"),
     path('v1/members/special_day/', views.MemberSpecialDayView.as_view(),
-         name="special_day"), 
+         name="member_special_day_view"), 
     path('v1/members/certificate/', views.MemberCertificateView.as_view(),
          name="certificate"), 
     path('v1/members/history/<str:member_ID>/', views.MemberSingleHistoryView.as_view(),

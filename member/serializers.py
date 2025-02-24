@@ -550,13 +550,29 @@ class MemberSpouseSerializer(serializers.Serializer):
     current_status = serializers.PrimaryKeyRelatedField(
         queryset=SpouseStatusChoice.objects.all(), required=False)
     member_ID = serializers.CharField()
-
+   
+    
     def validate_member_ID(self, value):
+        if self.instance:
+            return value
         is_exist = Member.objects.filter(member_ID=value).exists()
         if not is_exist:
             raise serializers.ValidationError(
                 f"{value} is not a valid member id")
         return value
+    def validate(self, data):
+        """
+        Ensure that `member_ID` is provided when performing a PATCH request.
+        """
+        print(data)
+        request_method = self.context.get("request_method")
+        
+        if request_method == "PATCH" and "member_ID" not in data:
+            raise serializers.ValidationError({
+                "member_ID": "This field is required for updating a companion."
+            })
+        return data 
+     
 
     def create(self, validated_data):
         spouse_name = validated_data['spouse_name']
@@ -614,6 +630,8 @@ class MemberCertificateSerializer(serializers.Serializer):
     certificate_document=serializers.FileField()
     
     def validate_member_ID(self, value):
+        if self.instance:
+            return value
         is_exist = Member.objects.filter(member_ID=value).exists()
         if not is_exist:
             raise serializers.ValidationError(
@@ -686,7 +704,7 @@ class MemberDescendantsSerializer(serializers.Serializer):
 
 
 class MemberJobSerializer(serializers.Serializer):
-    member_ID = serializers.CharField()
+    member_ID = serializers.CharField(max_length=200)
     title = serializers.CharField(max_length=100)
     organization_name = serializers.CharField(max_length=150, required=False)
     location = serializers.CharField(max_length=100)
@@ -694,6 +712,8 @@ class MemberJobSerializer(serializers.Serializer):
     location = serializers.CharField(max_length=100, required=False)
 
     def validate_member_ID(self, value):
+        if self.instance:
+            return value
         is_exist = Member.objects.filter(member_ID=value).exists()
         if not is_exist:
             raise serializers.ValidationError(
@@ -749,7 +769,7 @@ class MemberEmergencyContactSerializer(serializers.Serializer):
 
 
 class MemberCompanionInformationSerializer(serializers.Serializer):
-    member_ID = serializers.CharField()
+    member_ID = serializers.CharField(max_length=200)
     companion_name = serializers.CharField(max_length=100)
     companion_dob = serializers.DateField(required=False)
     companion_contact_number = serializers.CharField(
@@ -760,20 +780,44 @@ class MemberCompanionInformationSerializer(serializers.Serializer):
         max_length=100, required=False)
     companion_image = serializers.ImageField(required=False)
 
+    
+
     def validate_member_ID(self, value):
+        
+        if self.instance:
+            return value
         is_exist = Member.objects.filter(member_ID=value).exists()
         if not is_exist:
             raise serializers.ValidationError(
                 f"{value} is not a valid member id")
         return value
-
+    def validate(self, data):
+        """
+        Ensure that `member_ID` is provided when performing a PATCH request.
+        """
+        request_method = self.context.get("request_method")
+        if request_method == "PATCH" and "member_ID" not in data:
+            raise serializers.ValidationError({
+                "member_ID": "This field is required for updating a companion."
+            })
+        return data
+    
     def create(self, validated_data):
         member_ID = validated_data.pop("member_ID")
         member = Member.objects.get(member_ID=member_ID)
         instance = CompanionInformation.objects.create(
             **validated_data, member=member)
         return instance
-
+    def update(self, instance,validated_data):
+        companion_info = instance
+        companion_info.companion_name = validated_data.get("companion_name", companion_info.companion_name)
+        companion_info.companion_image = validated_data.get("companion_image", companion_info.companion_image)
+        companion_info.companion_dob = validated_data.get("companion_dob", companion_info.companion_dob)
+        companion_info.companion_contact_number = validated_data.get("companion_contact_number", companion_info.companion_contact_number)
+        companion_info.companion_card_number = validated_data.get("companion_card_number", companion_info.companion_card_number)
+        companion_info.relation_with_member = validated_data.get("relation_with_member", companion_info.relation_with_member)
+        companion_info.save()
+        return companion_info
 
 class MemberDocumentSerializer(serializers.Serializer):
     member_ID = serializers.CharField()

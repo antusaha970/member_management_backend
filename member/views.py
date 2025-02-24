@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-from .models import Member, MembersFinancialBasics, MemberHistory
+from .models import Member, MembersFinancialBasics, MemberHistory,CompanionInformation
 from .utils.permission_classes import ViewMemberPermission
 import logging
 from activity_log.tasks import log_activity_task
@@ -548,8 +548,7 @@ class MemberSpouseView(APIView):
             data = request.data
             member_ID = data.get('member_ID')
             try:
-                member = Member.objects.get(member_ID=member_ID)
-                instance = Spouse.objects.get(member=member)
+                instance = Spouse.objects.get(member__member_ID=member_ID)
                 is_new = False  
             except Spouse.DoesNotExist:
                 instance = None
@@ -865,6 +864,50 @@ class MemberCompanionView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    def patch(self,request):
+       try:
+            data = request.data
+            member_ID = data.get("member_ID")
+            # Check if the companion instance exists
+            try:
+                companion_instance = CompanionInformation.objects.get(member__member_ID=member_ID)
+                is_new = False
+            except CompanionInformation.DoesNotExist:
+                companion_instance = None
+                is_new = True
+               
+            serializer = serializers.MemberCompanionInformationSerializer(
+                companion_instance, data=data, partial=True,context={"request_method": "PATCH"})
+            
+            if serializer.is_valid():
+                with transaction.atomic():
+                    instance = serializer.save()
+                return Response({
+                    "code": 200 if not is_new else 201,
+                    "message": "Member companion has been updated successfully" if not is_new else "Member companion has been created successfully",
+                    "status": "success",
+                    "data": {
+                        "companion_id": instance.id
+                    }
+                }, status=status.HTTP_200_OK if not is_new else status.HTTP_201_CREATED)
+            else:
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Invalid request",
+                    "errors": serializer.errors,
+                }, status=status.HTTP_400_BAD_REQUEST)
+       
+       except Exception as e:
+            logger.exception(str(e))
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)    
 
 class MemberDocumentView(APIView):
     permission_classes = [IsAuthenticated]
