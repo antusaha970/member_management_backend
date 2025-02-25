@@ -1,7 +1,7 @@
 from core.models import Gender
 from core.models import Gender, MembershipType, InstituteName, MembershipStatusChoice, MaritalStatusChoice, BLOOD_GROUPS, COUNTRY_CHOICES, ContactTypeChoice, EmailTypeChoice, AddressTypeChoice, SpouseStatusChoice, DescendantRelationChoice, DocumentTypeChoice
 from rest_framework import serializers
-from .models import Member, MembersFinancialBasics, ContactNumber, Email, Address, Spouse, Descendant, Profession, EmergencyContact, CompanionInformation, Documents, MemberHistory,SpecialDay,Certificate
+from .models import Member, MembersFinancialBasics, ContactNumber, Email, Address, Spouse, Descendant, Profession, EmergencyContact, CompanionInformation, Documents, MemberHistory, SpecialDay, Certificate
 from club.models import Club
 import pdb
 from .utils.utility_functions import generate_member_id
@@ -550,28 +550,27 @@ class MemberSpouseSerializer(serializers.Serializer):
     current_status = serializers.PrimaryKeyRelatedField(
         queryset=SpouseStatusChoice.objects.all(), required=False)
     member_ID = serializers.CharField()
-   
-    
+
     def validate_member_ID(self, value):
-        
+
         is_exist = Member.objects.filter(member_ID=value).exists()
         if not is_exist:
             raise serializers.ValidationError(
                 f"{value} is not a valid member id")
         return value
+
     def validate(self, data):
         """
         Ensure that `member_ID` is provided when performing a PATCH request.
         """
         print(data)
         request_method = self.context.get("request_method")
-        
+
         if request_method == "PATCH" and "member_ID" not in data:
             raise serializers.ValidationError({
                 "member_ID": "This field is required for updating a companion."
             })
-        return data 
-     
+        return data
 
     def create(self, validated_data):
         spouse_name = validated_data['spouse_name']
@@ -586,24 +585,30 @@ class MemberSpouseSerializer(serializers.Serializer):
         return instance
 
     def update(self, instance, validated_data):
-        instance.spouse_name = validated_data.get('spouse_name', instance.spouse_name)
-        instance.spouse_contact_number = validated_data.get('contact_number', instance.spouse_contact_number)
-        instance.spouse_dob = validated_data.get('spouse_dob', instance.spouse_dob)
+        instance.spouse_name = validated_data.get(
+            'spouse_name', instance.spouse_name)
+        instance.spouse_contact_number = validated_data.get(
+            'contact_number', instance.spouse_contact_number)
+        instance.spouse_dob = validated_data.get(
+            'spouse_dob', instance.spouse_dob)
         instance.image = validated_data.get('image', instance.image)
-        instance.current_status = validated_data.get('current_status', instance.current_status)
+        instance.current_status = validated_data.get(
+            'current_status', instance.current_status)
         instance.save()
         return instance
-     
+
+
 class MemberSpecialDayDataSerializer(serializers.Serializer):
     title = serializers.CharField(max_length=100)
-    date= serializers.DateField(required=False)
+    date = serializers.DateField(required=False)
+
 
 class MemberSpecialDaySerializer(serializers.Serializer):
     member_ID = serializers.CharField(max_length=200)
-    data = serializers.ListSerializer(child=MemberSpecialDayDataSerializer(), required=True)
+    data = serializers.ListSerializer(
+        child=MemberSpecialDayDataSerializer(), required=True)
     id = serializers.IntegerField(required=False)
 
-    
     def validate_member_ID(self, value):
         if self.instance:
             return value
@@ -612,26 +617,27 @@ class MemberSpecialDaySerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 f"{value} is not a valid member id")
         return value
-    
-    
+
     def create(self, validated_data):
         member_ID = validated_data['member_ID']
         data = validated_data['data']
         member = Member.objects.get(member_ID=member_ID)
-        
-        created_instances = [] 
+
+        created_instances = []
         for item in data:
             instance = SpecialDay.objects.create(**item, member=member)
-            created_instances.append(instance)  
-        
-        return created_instances 
+            created_instances.append(instance)
+
+        return created_instances
+
     def update(self, instance, validated_data):
         id = validated_data.get("id")
         if id is not None:
             special_day_obj = instance
             data = validated_data['data']
             for item in data:
-                special_day_obj.title = item.get('title', special_day_obj.title)
+                special_day_obj.title = item.get(
+                    'title', special_day_obj.title)
                 special_day_obj.date = item.get('date', special_day_obj.date)
                 special_day_obj.save()
         else:
@@ -646,49 +652,54 @@ class MemberSpecialDaySerializer(serializers.Serializer):
 
 
 class MemberCertificateSerializer(serializers.Serializer):
-    member_ID=serializers.CharField(max_length=200)
-    title= serializers.CharField(max_length=100)
-    certificate_number = serializers.CharField(max_length=100,required=False)
-    certificate_document=serializers.FileField()
+    member_ID = serializers.CharField(max_length=200)
+    title = serializers.CharField(max_length=100)
+    certificate_number = serializers.CharField(max_length=100, required=False)
+    certificate_document = serializers.FileField()
     id = serializers.IntegerField(required=False)
-    
+
     def validate_member_ID(self, value):
-        
+
         is_exist = Member.objects.filter(member_ID=value).exists()
         if not is_exist:
             raise serializers.ValidationError(
                 f"{value} is not a valid member id")
         return value
 
-    def validate_certificate_number(self,value):
+    def validate_certificate_number(self, value):
         if not value.isalnum():
-            raise serializers.ValidationError("Certificate number must contain only letters and numbers.")
+            raise serializers.ValidationError(
+                "Certificate number must contain only letters and numbers.")
         return value
-            
+
     def create(self, validated_data):
-        member_ID = validated_data.pop('member_ID')  
-        member = Member.objects.get(member_ID=member_ID) 
-        instance = Certificate.objects.create(member=member, **validated_data)  
+        member_ID = validated_data.pop('member_ID')
+        member = Member.objects.get(member_ID=member_ID)
+        instance = Certificate.objects.create(member=member, **validated_data)
         return instance
-    
+
     def update(self, instance, validated_data):
         id = validated_data.get("id")
         if id is not None:
             certificate_obj = instance
-            certificate_obj.title = validated_data.get("title", certificate_obj.title)
-            certificate_obj.certificate_number = validated_data.get("certificate_number", certificate_obj.certificate_number)
-            certificate_obj.certificate_document = validated_data.get("certificate_document", certificate_obj.certificate_document)
+            certificate_obj.title = validated_data.get(
+                "title", certificate_obj.title)
+            certificate_obj.certificate_number = validated_data.get(
+                "certificate_number", certificate_obj.certificate_number)
+            certificate_obj.certificate_document = validated_data.get(
+                "certificate_document", certificate_obj.certificate_document)
             certificate_obj.save()
         else:
             member_ID = validated_data.pop("member_ID")
-            if  Member.objects.filter(member_ID=member_ID).exists():
+            if Member.objects.filter(member_ID=member_ID).exists():
                 raise serializers.ValidationError(
                     "No member exists with this id")
             member = Member.objects.get(member_ID=member_ID)
-            instance = Certificate.objects.create( **validated_data,member=member) 
-        return instance     
-        
-    
+            instance = Certificate.objects.create(
+                **validated_data, member=member)
+        return instance
+
+
 class MemberDescendantsSerializer(serializers.Serializer):
     member_ID = serializers.CharField()
     descendant_contact_number = serializers.CharField(
@@ -766,10 +777,13 @@ class MemberJobSerializer(serializers.Serializer):
         member = Member.objects.get(member_ID=member_ID)
         instance = Profession.objects.create(**validated_data, member=member)
         return instance
-    def update(self,instance,validated_data):
+
+    def update(self, instance, validated_data):
         instance.title = validated_data.get("title", instance.title)
-        instance.organization_name = validated_data.get("organization_name", instance.organization_name)
-        instance.job_description = validated_data.get("job_description", instance.job_description)
+        instance.organization_name = validated_data.get(
+            "organization_name", instance.organization_name)
+        instance.job_description = validated_data.get(
+            "job_description", instance.job_description)
         instance.location = validated_data.get("location", instance.location)
         instance.save()
         return instance
@@ -821,10 +835,8 @@ class MemberCompanionInformationSerializer(serializers.Serializer):
         max_length=100, required=False)
     companion_image = serializers.ImageField(required=False)
 
-    
-
     def validate_member_ID(self, value):
-        
+
         if self.instance:
             return value
         is_exist = Member.objects.filter(member_ID=value).exists()
@@ -832,6 +844,7 @@ class MemberCompanionInformationSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 f"{value} is not a valid member id")
         return value
+
     def validate(self, data):
         """
         Ensure that `member_ID` is provided when performing a PATCH request.
@@ -842,23 +855,31 @@ class MemberCompanionInformationSerializer(serializers.Serializer):
                 "member_ID": "This field is required for updating a companion."
             })
         return data
-    
+
     def create(self, validated_data):
         member_ID = validated_data.pop("member_ID")
         member = Member.objects.get(member_ID=member_ID)
         instance = CompanionInformation.objects.create(
             **validated_data, member=member)
         return instance
-    def update(self, instance,validated_data):
+
+    def update(self, instance, validated_data):
         companion_info = instance
-        companion_info.companion_name = validated_data.get("companion_name", companion_info.companion_name)
-        companion_info.companion_image = validated_data.get("companion_image", companion_info.companion_image)
-        companion_info.companion_dob = validated_data.get("companion_dob", companion_info.companion_dob)
-        companion_info.companion_contact_number = validated_data.get("companion_contact_number", companion_info.companion_contact_number)
-        companion_info.companion_card_number = validated_data.get("companion_card_number", companion_info.companion_card_number)
-        companion_info.relation_with_member = validated_data.get("relation_with_member", companion_info.relation_with_member)
+        companion_info.companion_name = validated_data.get(
+            "companion_name", companion_info.companion_name)
+        companion_info.companion_image = validated_data.get(
+            "companion_image", companion_info.companion_image)
+        companion_info.companion_dob = validated_data.get(
+            "companion_dob", companion_info.companion_dob)
+        companion_info.companion_contact_number = validated_data.get(
+            "companion_contact_number", companion_info.companion_contact_number)
+        companion_info.companion_card_number = validated_data.get(
+            "companion_card_number", companion_info.companion_card_number)
+        companion_info.relation_with_member = validated_data.get(
+            "relation_with_member", companion_info.relation_with_member)
         companion_info.save()
         return companion_info
+
 
 class MemberDocumentSerializer(serializers.Serializer):
     member_ID = serializers.CharField()
@@ -870,7 +891,11 @@ class MemberDocumentSerializer(serializers.Serializer):
 
     def validate_member_ID(self, value):
         if self.instance:
-            return value
+            is_exist = Member.objects.filter(member_ID=value).exists()
+            if is_exist:
+                return value
+            else:
+                raise serializers.ValidationError("Member does not exist")
         is_exist = Member.objects.filter(member_ID=value).exists()
         if not is_exist:
             raise serializers.ValidationError(
@@ -883,13 +908,17 @@ class MemberDocumentSerializer(serializers.Serializer):
         instance = Documents.objects.create(
             **validated_data, member=member)
         return instance
+
     def update(self, instance, validated_data):
         id = validated_data.get("id")
         if id is not None:
             document_obj = instance
-            document_obj.document_document = validated_data.get("document_document", document_obj.document_document)
-            document_obj.document_type = validated_data.get("document_type", document_obj.document_type)
-            document_obj.document_number = validated_data.get("document_number", document_obj.document_number)
+            document_obj.document_document = validated_data.get(
+                "document_document", document_obj.document_document)
+            document_obj.document_type = validated_data.get(
+                "document_type", document_obj.document_type)
+            document_obj.document_number = validated_data.get(
+                "document_number", document_obj.document_number)
             document_obj.save()
         else:
             member_ID = validated_data.pop("member_ID")
@@ -900,7 +929,6 @@ class MemberDocumentSerializer(serializers.Serializer):
             instance = Documents.objects.create(
                 **validated_data, member=member)
         return instance
-
 
 
 class MemberHistorySerializer(serializers.ModelSerializer):
