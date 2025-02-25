@@ -176,7 +176,7 @@ class Spouse(models.Model):
     image = models.ImageField(
         upload_to='spouse_images/', blank=True, null=True, default=None)
     # relations
-    member = models.OneToOneField(
+    member = models.ForeignKey(
         Member, related_name='spouse', on_delete=models.RESTRICT)
     current_status = models.ForeignKey(
         SpouseStatusChoice, related_name='spouse_current_status', on_delete=models.RESTRICT, null=True, blank=True, default=None)
