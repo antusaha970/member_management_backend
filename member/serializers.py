@@ -553,8 +553,7 @@ class MemberSpouseSerializer(serializers.Serializer):
    
     
     def validate_member_ID(self, value):
-        if self.instance:
-            return value
+        
         is_exist = Member.objects.filter(member_ID=value).exists()
         if not is_exist:
             raise serializers.ValidationError(
@@ -602,8 +601,12 @@ class MemberSpecialDayDataSerializer(serializers.Serializer):
 class MemberSpecialDaySerializer(serializers.Serializer):
     member_ID = serializers.CharField(max_length=200)
     data = serializers.ListSerializer(child=MemberSpecialDayDataSerializer(), required=True)
+    id = serializers.IntegerField(required=False)
+
     
     def validate_member_ID(self, value):
+        if self.instance:
+            return value
         is_exist = Member.objects.filter(member_ID=value).exists()
         if not is_exist:
             raise serializers.ValidationError(
@@ -622,16 +625,35 @@ class MemberSpecialDaySerializer(serializers.Serializer):
             created_instances.append(instance)  
         
         return created_instances 
+    def update(self, instance, validated_data):
+        id = validated_data.get("id")
+        if id is not None:
+            special_day_obj = instance
+            data = validated_data['data']
+            for item in data:
+                special_day_obj.title = item.get('title', special_day_obj.title)
+                special_day_obj.date = item.get('date', special_day_obj.date)
+                special_day_obj.save()
+        else:
+            member_ID = validated_data.pop("member_ID")
+            if Member.objects.filter(member_ID=member_ID).exists():
+                raise serializers.ValidationError(
+                    "No member exists with this id")
+            member = Member.objects.get(member_ID=member_ID)
+            instance = SpecialDay.objects.create(
+                **validated_data, member=member)
+        return instance
+
 
 class MemberCertificateSerializer(serializers.Serializer):
     member_ID=serializers.CharField(max_length=200)
     title= serializers.CharField(max_length=100)
     certificate_number = serializers.CharField(max_length=100,required=False)
     certificate_document=serializers.FileField()
+    id = serializers.IntegerField(required=False)
     
     def validate_member_ID(self, value):
-        if self.instance:
-            return value
+        
         is_exist = Member.objects.filter(member_ID=value).exists()
         if not is_exist:
             raise serializers.ValidationError(
@@ -648,6 +670,25 @@ class MemberCertificateSerializer(serializers.Serializer):
         member = Member.objects.get(member_ID=member_ID) 
         instance = Certificate.objects.create(member=member, **validated_data)  
         return instance
+    
+    def update(self, instance, validated_data):
+        id = validated_data.get("id")
+        if id is not None:
+            certificate_obj = instance
+            certificate_obj.title = validated_data.get("title", certificate_obj.title)
+            certificate_obj.certificate_number = validated_data.get("certificate_number", certificate_obj.certificate_number)
+            certificate_obj.certificate_document = validated_data.get("certificate_document", certificate_obj.certificate_document)
+            certificate_obj.save()
+        else:
+            member_ID = validated_data.pop("member_ID")
+            if  Member.objects.filter(member_ID=member_ID).exists():
+                raise serializers.ValidationError(
+                    "No member exists with this id")
+            member = Member.objects.get(member_ID=member_ID)
+            instance = Certificate.objects.create( **validated_data,member=member) 
+        return instance     
+        
+    
 class MemberDescendantsSerializer(serializers.Serializer):
     member_ID = serializers.CharField()
     descendant_contact_number = serializers.CharField(
@@ -825,8 +866,11 @@ class MemberDocumentSerializer(serializers.Serializer):
     document_type = serializers.PrimaryKeyRelatedField(
         queryset=DocumentTypeChoice.objects.all())
     document_number = serializers.CharField(max_length=50, required=False)
+    id = serializers.IntegerField(required=False)
 
     def validate_member_ID(self, value):
+        if self.instance:
+            return value
         is_exist = Member.objects.filter(member_ID=value).exists()
         if not is_exist:
             raise serializers.ValidationError(
@@ -839,6 +883,24 @@ class MemberDocumentSerializer(serializers.Serializer):
         instance = Documents.objects.create(
             **validated_data, member=member)
         return instance
+    def update(self, instance, validated_data):
+        id = validated_data.get("id")
+        if id is not None:
+            document_obj = instance
+            document_obj.document_document = validated_data.get("document_document", document_obj.document_document)
+            document_obj.document_type = validated_data.get("document_type", document_obj.document_type)
+            document_obj.document_number = validated_data.get("document_number", document_obj.document_number)
+            document_obj.save()
+        else:
+            member_ID = validated_data.pop("member_ID")
+            if Member.objects.filter(member_ID=member_ID).exists():
+                raise serializers.ValidationError(
+                    "No member exists with this id")
+            member = Member.objects.get(member_ID=member_ID)
+            instance = Documents.objects.create(
+                **validated_data, member=member)
+        return instance
+
 
 
 class MemberHistorySerializer(serializers.ModelSerializer):

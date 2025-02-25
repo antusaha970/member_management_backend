@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-from .models import Member, MembersFinancialBasics, MemberHistory,CompanionInformation
+from .models import Member, MembersFinancialBasics, MemberHistory,CompanionInformation,Documents
 from .utils.permission_classes import ViewMemberPermission
 import logging
 from activity_log.tasks import log_activity_task
@@ -554,7 +554,7 @@ class MemberSpouseView(APIView):
                 instance = None
                 is_new = True 
 
-            serializer = serializers.MemberSpouseSerializer(instance, data=data, partial=True)
+            serializer = serializers.MemberSpouseSerializer(instance, data=data, partial=True ,context={"request_method": "PATCH"})
             if serializer.is_valid():
                 with transaction.atomic():
                     instance = serializer.save()
@@ -713,7 +713,6 @@ class MemberJobView(APIView):
         try:
             data = request.data
             member_ID = data.get("member_ID")
-
             # Check if the profession instance exists
             try:
                 profession_instance =Profession.objects.get(member__member_ID=member_ID)
@@ -946,6 +945,59 @@ class MemberDocumentView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    def patch(self, request):
+        try:
+            data = request.data
+            id = data.get('id')
+            if id:
+                instance = models.Documents.objects.get(pk=id)
+                serializer = serializers.MemberDocumentSerializer(
+                    instance, data=data)
+            
+            else:
+                instance = None
+                serializer = serializers.MemberDocumentSerializer(data=data)
+
+            if serializer.is_valid():
+                with transaction.atomic():
+                    if instance is not None:
+                        instance = serializer.save(instance=instance)
+                        return Response({
+                            "code": 200,
+                            "message": "Member Documents has been updated successfully",
+                            "status": "success",
+                            "data": {
+                                "document_id": instance.id
+                            }
+                        }, status=status.HTTP_200_OK)
+                    else:
+                        instance = serializer.save()
+                        return Response({
+                            "code": 201,
+                            "message": "Member Document has been created successfully",
+                            "status": "success",
+                            "data": {
+                                "document_id": instance.id
+                            }
+                        }, status=status.HTTP_201_CREATED)
+            else:
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Invalid request",
+                    "errors": serializer.errors,
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class AddMemberIDview(APIView):
     permission_classes = [IsAuthenticated]
@@ -1102,6 +1154,57 @@ class MemberSpecialDayView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    def patch(self, request):
+        try:
+            data = request.data
+            id = data.get('id')
+            if id:
+                instance = models.SpecialDay.objects.get(pk=id)
+                serializer = serializers.MemberSpecialDaySerializer(
+                    instance, data=data)
+            else:
+                instance = None
+                serializer = serializers.MemberSpecialDaySerializer(data=data)
+
+            if serializer.is_valid():
+                with transaction.atomic():
+                    if instance is not None:
+                        instance = serializer.save(instance=instance)
+                        return Response({
+                            "code": 200,
+                            "message": "Member SpecialDay has been updated successfully",
+                            "status": "success",
+                            "data": {
+                                "special_day_id": instance.id 
+                            }
+                        }, status=status.HTTP_200_OK)
+                    else:
+                        instances = serializer.save()
+                        return Response({
+                            "code": 201,
+                            "message": "Member SpecialDay has been created successfully",
+                            "status": "success",
+                            "data": {
+                                "special_day_ids": [instance.id for instance in instances]
+                            }
+                        }, status=status.HTTP_201_CREATED)
+            else:
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Invalid request",
+                    "errors": serializer.errors,
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 class MemberCertificateView(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, request):
@@ -1138,5 +1241,56 @@ class MemberCertificateView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    def patch(self, request):
+        try:
+            data = request.data
+            id = data.get('id')
+            if id:
+                instance = models.Certificate.objects.get(pk=id)
+                serializer = serializers.MemberCertificateSerializer(
+                    instance, data=data)
+            else:
+                instance = None
+                serializer = serializers.MemberCertificateSerializer(data=data)
+
+            if serializer.is_valid():
+                with transaction.atomic():
+                    if instance is not None:
+                        instance = serializer.save(instance=instance)
+                        return Response({
+                            "code": 200,
+                            "message": "Member Certificate has been updated successfully",
+                            "status": "success",
+                            "data": {
+                                "certificate_id": instance.id
+                            }
+                        }, status=status.HTTP_200_OK)
+                    else:
+                        instance = serializer.save()
+                        return Response({
+                            "code": 201,
+                            "message": "Member Certificate has been created successfully",
+                            "status": "success",
+                            "data": {
+                                "certificate_id": instance.id 
+                            }
+                        }, status=status.HTTP_201_CREATED)
+            else:
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Invalid request",
+                    "errors": serializer.errors,
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
       
     
