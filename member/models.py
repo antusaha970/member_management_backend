@@ -74,7 +74,7 @@ class MembersFinancialBasics(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.member.member_ID
+        return self.member.first_name
 
 
 # Member other information Models
@@ -95,7 +95,7 @@ class ContactNumber(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.member.member_ID
+        return self.member.first_name
 
     def save(self, *args, **kwargs):
         # Ensure only one primary contact per member
@@ -124,7 +124,7 @@ class Email(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.member.member_ID
+        return self.member.first_name
 
     def save(self, *args, **kwargs):
         # Ensure only one primary email per user
@@ -154,7 +154,7 @@ class Address(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.member.member_ID
+        return self.member.first_name
 
     def save(self, *args, **kwargs):
         # Ensure only one primary address per member
@@ -182,12 +182,12 @@ class Spouse(models.Model):
         SpouseStatusChoice, related_name='spouse_current_status', on_delete=models.RESTRICT, null=True, blank=True, default=None)
     # Record keeping
     status = models.IntegerField(choices=STATUS_CHOICES, default=0)
-    is_active = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.member.member_ID
+        return self.member.first_name
 
 
 class Descendant(models.Model):
@@ -209,7 +209,7 @@ class Descendant(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.member.member_ID
+        return self.member.first_name
 
 
 class Profession(models.Model):
@@ -248,7 +248,7 @@ class EmergencyContact(models.Model):
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
-        return self.member.member_ID
+        return self.member.first_name
 
 
 class CompanionInformation(models.Model):
@@ -272,7 +272,7 @@ class CompanionInformation(models.Model):
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
-        return self.member.member_ID
+        return self.member.first_name
 
 
 class Documents(models.Model):
@@ -292,7 +292,7 @@ class Documents(models.Model):
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
-        return self.member.member_ID
+        return self.member.first_name
 
 
 class Certificate(models.Model):
@@ -310,7 +310,7 @@ class Certificate(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.member.member_ID
+        return self.member.first_name
 
 
 class SpecialDay(models.Model):
@@ -327,7 +327,7 @@ class SpecialDay(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.member.member_ID
+        return self.member.first_name
 
 
 class MemberHistory(models.Model):

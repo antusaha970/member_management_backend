@@ -19,6 +19,7 @@ from core.utils.pagination import CustomPageNumberPagination
 from .import models
 import pdb
 from .models import Spouse, Profession
+from .tasks import delete_member_model_dependencies
 logger = logging.getLogger("myapp")
 
 
@@ -155,7 +156,7 @@ class MemberView(APIView):
                 member.status = 2
                 member.is_active = False
                 member.save(update_fields=['status', 'member_ID', 'is_active'])
-
+                delete_member_model_dependencies.delay_on_commit(member.id)
                 return Response({
                     "code": 204,
                     'message': "member deleted",
@@ -772,9 +773,7 @@ class MemberEmergencyContactView(APIView):
                     "code": 201,
                     "message": "Member Emergency contact has been created successfully",
                     "status": "success",
-                    "data": {
-                        "emergency_contact_id": instance.id
-                    }
+                    "data": instance
                 }, status=status.HTTP_201_CREATED)
             else:
                 return Response({
@@ -807,9 +806,7 @@ class MemberEmergencyContactView(APIView):
                     "code": 200,
                     "message": "Member Emergency contact has been updated successfully",
                     "status": "success",
-                    "data": {
-                        "emergency_contact_id": instance.id
-                    }
+                    "data": instance
                 }, status=status.HTTP_200_OK)
             else:
                 return Response({
