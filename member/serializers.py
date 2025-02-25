@@ -1130,3 +1130,10 @@ class MemberCertificateViewSerializer(serializers.ModelSerializer):
         model = Certificate
         exclude = ["member"]
         depth = 1
+
+
+class MemberSpecialDaysViewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SpecialDay
+        exclude = ["member"]
+        depth = 1

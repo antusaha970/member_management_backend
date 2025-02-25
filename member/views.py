@@ -215,6 +215,7 @@ class MemberView(APIView):
             documents = models.Documents.objects.filter(
                 member=member)
             jobs = models.Profession.objects.filter(member=member)
+            special_days = models.SpecialDay.objects.filter(member=member)
             # pass the data to the serializers
             member_serializer = serializers.MemberSerializerForViewSingleMember(
                 member)
@@ -238,6 +239,8 @@ class MemberView(APIView):
                 jobs, many=True)
             certificate_serialzier = serializers.MemberCertificateViewSerializer(
                 certificate, many=True)
+            special_days_serializer = serializers.MemberSpecialDaysViewSerializer(
+                special_days, many=True)
             # unwrap the data to make a single object using two serializers data
             data = {
                 'member_info': member_serializer.data,
@@ -250,7 +253,8 @@ class MemberView(APIView):
                 'emergency_contact': emergency_serializer.data,
                 'certificate': certificate_serialzier.data,
                 'companion': companion_serializer.data,
-                'document': documents_serializer.data
+                'document': documents_serializer.data,
+                'special_days': special_days_serializer.data,
             }
             return Response({
                 "code": 200,
