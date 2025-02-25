@@ -761,6 +761,7 @@ class MemberJobDataSerializer(serializers.Serializer):
     location = serializers.CharField(max_length=100)
     job_description = serializers.CharField(required=False)
     location = serializers.CharField(max_length=100, required=False)
+    id = serializers.IntegerField(required=False)
 
 
 class MemberJobSerializer(serializers.Serializer):
@@ -791,14 +792,50 @@ class MemberJobSerializer(serializers.Serializer):
         return created_instance
 
     def update(self, instance, validated_data):
-        instance.title = validated_data.get("title", instance.title)
-        instance.organization_name = validated_data.get(
-            "organization_name", instance.organization_name)
-        instance.job_description = validated_data.get(
-            "job_description", instance.job_description)
-        instance.location = validated_data.get("location", instance.location)
-        instance.save()
-        return instance
+        """
+        instance: A Member instance whose Job will be updated.
+        validated_data: Dictionary containing:
+            - member_ID (string)
+            - data: A list of title (each may include an "id" if updating an existing job)
+        """
+        data_list = validated_data.get('data', [])
+        results = []
+
+        # Iterate over each item in the submitted data
+        for item in data_list:
+            job_id = item.get('id', None)
+            if job_id:
+                # Update an existing email for the given member.
+                try:
+                    job_obj = instance.professions.get(id=job_id)
+                except Profession.DoesNotExist:
+                    raise serializers.ValidationError(
+                        f"job with id {job_id} does not exist for this member."
+                    )
+                # Update fields if provided; if not, retain current value.
+                job_obj.title = item.get(
+                    'title', job_obj.title)
+                job_obj.organization_name = item.get(
+                    'organization_name', job_obj.organization_name)
+                job_obj.job_description = item.get(
+                    'job_description', job_obj.job_description)
+                job_obj.location = item.get(
+                    'location', job_obj.location)
+                job_obj.save()
+                results.append({
+                    "status": "updated",
+                    "job_id": job_obj.id
+                })
+            else:
+                # Optionally create a new address if no id is provided.
+                job = Profession.objects.create(
+                    member=instance, **item)
+                results.append({
+                    "status": "created",
+                    "job_id": job.id
+                })
+
+        return results
 
 
 class MemberEmergencyContactSerializer(serializers.Serializer):

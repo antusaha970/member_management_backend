@@ -714,33 +714,20 @@ class MemberJobView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def patch(self, request):
+    def patch(self, request, member_ID):
         try:
+            member = get_object_or_404(Member, member_ID=member_ID)
             data = request.data
-            member_ID = data.get("member_ID")
-            # Check if the profession instance exists
-            try:
-                profession_instance = Profession.objects.get(
-                    member__member_ID=member_ID)
-                is_new = False
-            except Profession.DoesNotExist:
-                profession_instance = None
-                is_new = True
-
-            serializer = serializers.MemberJobSerializer(
-                profession_instance, data=data, partial=True)
-
+            serializer = serializers.MemberJobSerializer(member, data=data)
             if serializer.is_valid():
                 with transaction.atomic():
-                    instance = serializer.save()
+                    instance = serializer.save(instance=member)
                 return Response({
-                    "code": 200 if not is_new else 201,
-                    "message": "Member job has been updated successfully" if not is_new else "Member job has been created successfully",
+                    "code": 200,
+                    "message": "Member job has been updated successfully",
                     "status": "success",
-                    "data": {
-                        "job_id": instance.id
-                    }
-                }, status=status.HTTP_200_OK if not is_new else status.HTTP_201_CREATED)
+                    "data": instance
+                }, status=status.HTTP_200_OK)
             else:
                 return Response({
                     "code": 400,
@@ -748,7 +735,6 @@ class MemberJobView(APIView):
                     "message": "Invalid request",
                     "errors": serializer.errors,
                 }, status=status.HTTP_400_BAD_REQUEST)
-
         except Exception as e:
             logger.exception(str(e))
             return Response({

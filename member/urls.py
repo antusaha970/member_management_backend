@@ -21,6 +21,8 @@ urlpatterns = [
          name="member_descendants_view"),
     path('v1/members/job/', views.MemberJobView.as_view(),
          name="member_job_view"),
+    path('v1/members/job/<str:member_ID>/', views.MemberJobView.as_view(),
+         name="member_job_view"),
     path('v1/members/emergency_contact/', views.MemberEmergencyContactView.as_view(),
          name="member_emergency_contact_view"),
     path('v1/members/emergency_contact/<str:member_ID>/', views.MemberEmergencyContactView.as_view(),
@@ -36,13 +38,13 @@ urlpatterns = [
     path('v1/members/history/', views.MemberHistoryView.as_view(),
          name="member_history_view"),
     path('v1/members/special_day/', views.MemberSpecialDayView.as_view(),
-         name="member_special_day_view"), 
+         name="member_special_day_view"),
     path('v1/members/certificate/', views.MemberCertificateView.as_view(),
-         name="certificate"), 
+         name="certificate"),
     path('v1/members/history/<str:member_ID>/', views.MemberSingleHistoryView.as_view(),
          name="member_history_single_view"),
     path('v1/members/<str:member_id>/', views.MemberView.as_view(),
          name="member_update_view"),
-    
+
 
 ]
