@@ -19,6 +19,7 @@ from core.utils.pagination import CustomPageNumberPagination
 from .import models
 import pdb
 from .models import Spouse, Profession
+from .tasks import delete_member_model_dependencies
 logger = logging.getLogger("myapp")
 
 
@@ -155,7 +156,7 @@ class MemberView(APIView):
                 member.status = 2
                 member.is_active = False
                 member.save(update_fields=['status', 'member_ID', 'is_active'])
-
+                delete_member_model_dependencies.delay_on_commit(member.id)
                 return Response({
                     "code": 204,
                     'message': "member deleted",
