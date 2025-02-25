@@ -211,6 +211,7 @@ class MemberView(APIView):
                 member=member)
             companion = models.CompanionInformation.objects.filter(
                 member=member)
+            certificate = models.Certificate.objects.filter(member=member)
             documents = models.Documents.objects.filter(
                 member=member)
             jobs = models.Profession.objects.filter(member=member)
@@ -235,6 +236,8 @@ class MemberView(APIView):
                 documents, many=True)
             jon_serializer = serializers.MemberJobViewSerializer(
                 jobs, many=True)
+            certificate_serialzier = serializers.MemberCertificateViewSerializer(
+                certificate, many=True)
             # unwrap the data to make a single object using two serializers data
             data = {
                 'member_info': member_serializer.data,
@@ -245,6 +248,7 @@ class MemberView(APIView):
                 'spouse': spouse_serializer.data,
                 'descendant': descendant_serializer.data,
                 'emergency_contact': emergency_serializer.data,
+                'certificate': certificate_serialzier.data,
                 'companion': companion_serializer.data,
                 'document': documents_serializer.data
             }
@@ -580,7 +584,7 @@ class MemberSpouseView(APIView):
                             "message": "Member spouse has been created successfully",
                             "status": "success",
                             "data": {
-                                "spouse_id": instance.id 
+                                "spouse_id": instance.id
                             }
                         }, status=status.HTTP_201_CREATED)
             else:
@@ -600,7 +604,6 @@ class MemberSpouseView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 
 class MemberDescendsView(APIView):
@@ -874,7 +877,8 @@ class MemberCompanionView(APIView):
                     instance, data=data)
             else:
                 instance = None
-                serializer = serializers.MemberCompanionInformationSerializer(data=data)
+                serializer = serializers.MemberCompanionInformationSerializer(
+                    data=data)
 
             if serializer.is_valid():
                 with transaction.atomic():
@@ -895,7 +899,7 @@ class MemberCompanionView(APIView):
                             "message": "Member companion has been created successfully",
                             "status": "success",
                             "data": {
-                                "companion_id": instance.id 
+                                "companion_id": instance.id
                             }
                         }, status=status.HTTP_201_CREATED)
             else:
@@ -915,8 +919,6 @@ class MemberCompanionView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
 
 
 class MemberDocumentView(APIView):
@@ -1164,11 +1166,7 @@ class MemberSpecialDayView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    
-    
-
-    
-        # def patch(self, request): 
+        # def patch(self, request):
         # try:
         #     data = request.data
         #     special_data = data.get("data", [])
@@ -1176,7 +1174,7 @@ class MemberSpecialDayView(APIView):
         #     update_instance = []
         #     for item in special_data:
         #         special_day_id = item.get("id")
-        #         instance = None  
+        #         instance = None
 
         #         if special_day_id is not None:
         #             instance = models.SpecialDay.objects.get(pk=special_day_id)
@@ -1229,7 +1227,7 @@ class MemberSpecialDayView(APIView):
         #             "server_error": [str(e)]
         #         }
         #     }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-     
+
     def patch(self, request, member_ID):
         try:
             member = get_object_or_404(Member, member_ID=member_ID)
@@ -1262,7 +1260,6 @@ class MemberSpecialDayView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-               
 
 
 class MemberCertificateView(APIView):

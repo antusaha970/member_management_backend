@@ -575,7 +575,7 @@ class MemberSpouseSerializer(serializers.Serializer):
     def update(self, instance, validated_data):
         id = validated_data.get("id")
         if id is not None:
-            spouse_obj=instance
+            spouse_obj = instance
             spouse_obj.spouse_name = validated_data.get(
                 'spouse_name', spouse_obj.spouse_name)
             spouse_obj.spouse_contact_number = validated_data.get(
@@ -587,7 +587,7 @@ class MemberSpouseSerializer(serializers.Serializer):
                 'current_status', spouse_obj.current_status)
             spouse_obj.save()
             return spouse_obj
-        
+
         return instance
 
 
@@ -596,14 +596,14 @@ class MemberSpecialDayDataSerializer(serializers.Serializer):
     date = serializers.DateField(required=False)
     id = serializers.IntegerField(required=False)
 
+
 class MemberSpecialDaySerializer(serializers.Serializer):
     member_ID = serializers.CharField(max_length=200)
     data = serializers.ListSerializer(
         child=MemberSpecialDayDataSerializer(), required=True)
-    
 
     def validate_member_ID(self, value):
-        
+
         is_exist = Member.objects.filter(member_ID=value).exists()
         if not is_exist:
             raise serializers.ValidationError(
@@ -619,15 +619,14 @@ class MemberSpecialDaySerializer(serializers.Serializer):
         for item in data:
             instance = SpecialDay.objects.create(**item, member=member)
             created_instances.append({
-                    "status": "created",
-                    "special_day_id": instance.id
-                })
+                "status": "created",
+                "special_day_id": instance.id
+            })
 
         return created_instances
-    
-    
+
     def update(self, instance, validated_data):
-        
+
         data_list = validated_data.get('data', [])
         results = []
 
@@ -636,12 +635,14 @@ class MemberSpecialDaySerializer(serializers.Serializer):
             special_day_id = item.get('id', None)
             if special_day_id:
                 try:
-                    special_day_obj = instance.special_days.get(id=special_day_id)
+                    special_day_obj = instance.special_days.get(
+                        id=special_day_id)
                 except SpecialDay.DoesNotExist:
                     raise serializers.ValidationError(
                         f"Special day with id {special_day_id} does not exist for this member."
                     )
-                special_day_obj.title = item.get('title', special_day_obj.title)
+                special_day_obj.title = item.get(
+                    'title', special_day_obj.title)
                 special_day_obj.date = item.get('date', special_day_obj.date)
                 special_day_obj.save()
                 results.append({
@@ -661,8 +662,8 @@ class MemberSpecialDaySerializer(serializers.Serializer):
 
     # def update(self, instance, validated_data):
     #     data = validated_data['data']
-    #     updated_instances = []  
-        
+    #     updated_instances = []
+
     #     for item in data:
     #         special_day_id = item.get('id')
     #         if special_day_id is not None:
@@ -686,8 +687,7 @@ class MemberSpecialDaySerializer(serializers.Serializer):
     #                 "special_day_id": instance.id
     #             })
 
-    #     return updated_instances  
-
+    #     return updated_instances
 
 
 class MemberCertificateSerializer(serializers.Serializer):
@@ -972,13 +972,12 @@ class MemberCompanionInformationSerializer(serializers.Serializer):
     id = serializers.IntegerField(required=False)
 
     def validate_member_ID(self, value):
-        
+
         is_exist = Member.objects.filter(member_ID=value).exists()
         if not is_exist:
             raise serializers.ValidationError(
                 f"{value} is not a valid member id")
         return value
-    
 
     def create(self, validated_data):
         member_ID = validated_data.pop("member_ID")
@@ -986,17 +985,23 @@ class MemberCompanionInformationSerializer(serializers.Serializer):
         instance = CompanionInformation.objects.create(
             **validated_data, member=member)
         return instance
-    
-    def update(self, instance,validated_data):
+
+    def update(self, instance, validated_data):
         id = validated_data.get("id")
         if id is not None:
             companion_info = instance
-            companion_info.companion_name = validated_data.get("companion_name", companion_info.companion_name)
-            companion_info.companion_image = validated_data.get("companion_image", companion_info.companion_image)
-            companion_info.companion_dob = validated_data.get("companion_dob", companion_info.companion_dob)
-            companion_info.companion_contact_number = validated_data.get("companion_contact_number", companion_info.companion_contact_number)
-            companion_info.companion_card_number = validated_data.get("companion_card_number", companion_info.companion_card_number)
-            companion_info.relation_with_member = validated_data.get("relation_with_member", companion_info.relation_with_member)
+            companion_info.companion_name = validated_data.get(
+                "companion_name", companion_info.companion_name)
+            companion_info.companion_image = validated_data.get(
+                "companion_image", companion_info.companion_image)
+            companion_info.companion_dob = validated_data.get(
+                "companion_dob", companion_info.companion_dob)
+            companion_info.companion_contact_number = validated_data.get(
+                "companion_contact_number", companion_info.companion_contact_number)
+            companion_info.companion_card_number = validated_data.get(
+                "companion_card_number", companion_info.companion_card_number)
+            companion_info.relation_with_member = validated_data.get(
+                "relation_with_member", companion_info.relation_with_member)
             companion_info.save()
             return companion_info
         return instance
@@ -1116,5 +1121,12 @@ class MemberDocumentsViewSerializer(serializers.ModelSerializer):
 class MemberJobViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profession
+        exclude = ["member"]
+        depth = 1
+
+
+class MemberCertificateViewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Certificate
         exclude = ["member"]
         depth = 1
