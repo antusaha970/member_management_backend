@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-from .models import Member, MembersFinancialBasics, MemberHistory,CompanionInformation,Documents
+from .models import Member, MembersFinancialBasics, MemberHistory, CompanionInformation, Documents
 from .utils.permission_classes import ViewMemberPermission
 import logging
 from activity_log.tasks import log_activity_task
@@ -18,7 +18,7 @@ from django.utils import timezone
 from core.utils.pagination import CustomPageNumberPagination
 from .import models
 import pdb
-from .models import Spouse,Profession
+from .models import Spouse, Profession
 logger = logging.getLogger("myapp")
 
 
@@ -212,6 +212,7 @@ class MemberView(APIView):
                 member=member)
             documents = models.Documents.objects.filter(
                 member=member)
+            jobs = models.Profession.objects.filter(member=member)
             # pass the data to the serializers
             member_serializer = serializers.MemberSerializerForViewSingleMember(
                 member)
@@ -231,12 +232,15 @@ class MemberView(APIView):
                 companion, many=True)
             documents_serializer = serializers.MemberDocumentsViewSerializer(
                 documents, many=True)
+            jon_serializer = serializers.MemberJobViewSerializer(
+                jobs, many=True)
             # unwrap the data to make a single object using two serializers data
             data = {
                 'member_info': member_serializer.data,
                 'contact_info': contact_serializer.data,
                 'email_address': email_serializer.data,
                 'address': address_serializer.data,
+                'job': jon_serializer.data,
                 'spouse': spouse_serializer.data,
                 'descendant': descendant_serializer.data,
                 'emergency_contact': emergency_serializer.data,
@@ -543,18 +547,20 @@ class MemberSpouseView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     def patch(self, request):
         try:
             data = request.data
             member_ID = data.get('member_ID')
             try:
                 instance = Spouse.objects.get(member__member_ID=member_ID)
-                is_new = False  
+                is_new = False
             except Spouse.DoesNotExist:
                 instance = None
-                is_new = True 
+                is_new = True
 
-            serializer = serializers.MemberSpouseSerializer(instance, data=data, partial=True ,context={"request_method": "PATCH"})
+            serializer = serializers.MemberSpouseSerializer(
+                instance, data=data, partial=True, context={"request_method": "PATCH"})
             if serializer.is_valid():
                 with transaction.atomic():
                     instance = serializer.save()
@@ -584,7 +590,7 @@ class MemberSpouseView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+
 
 class MemberDescendsView(APIView):
     permission_classes = [IsAuthenticated]
@@ -688,9 +694,7 @@ class MemberJobView(APIView):
                     "code": 201,
                     "message": "Member job has been created successfully",
                     "status": "success",
-                    "data": {
-                        "job_id": instance.id
-                    }
+                    "data": instance
                 }, status=status.HTTP_201_CREATED)
             else:
                 return Response({
@@ -709,20 +713,23 @@ class MemberJobView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     def patch(self, request):
         try:
             data = request.data
             member_ID = data.get("member_ID")
             # Check if the profession instance exists
             try:
-                profession_instance =Profession.objects.get(member__member_ID=member_ID)
+                profession_instance = Profession.objects.get(
+                    member__member_ID=member_ID)
                 is_new = False
             except Profession.DoesNotExist:
                 profession_instance = None
                 is_new = True
 
-            serializer = serializers.MemberJobSerializer(profession_instance, data=data, partial=True)
-            
+            serializer = serializers.MemberJobSerializer(
+                profession_instance, data=data, partial=True)
+
             if serializer.is_valid():
                 with transaction.atomic():
                     instance = serializer.save()
@@ -752,6 +759,7 @@ class MemberJobView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class MemberEmergencyContactView(APIView):
     permission_classes = [IsAuthenticated]
@@ -863,21 +871,22 @@ class MemberCompanionView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def patch(self,request):
-       try:
+    def patch(self, request):
+        try:
             data = request.data
             member_ID = data.get("member_ID")
             # Check if the companion instance exists
             try:
-                companion_instance = CompanionInformation.objects.get(member__member_ID=member_ID)
+                companion_instance = CompanionInformation.objects.get(
+                    member__member_ID=member_ID)
                 is_new = False
             except CompanionInformation.DoesNotExist:
                 companion_instance = None
                 is_new = True
-               
+
             serializer = serializers.MemberCompanionInformationSerializer(
-                companion_instance, data=data, partial=True,context={"request_method": "PATCH"})
-            
+                companion_instance, data=data, partial=True, context={"request_method": "PATCH"})
+
             if serializer.is_valid():
                 with transaction.atomic():
                     instance = serializer.save()
@@ -896,8 +905,8 @@ class MemberCompanionView(APIView):
                     "message": "Invalid request",
                     "errors": serializer.errors,
                 }, status=status.HTTP_400_BAD_REQUEST)
-       
-       except Exception as e:
+
+        except Exception as e:
             logger.exception(str(e))
             return Response({
                 "code": 500,
@@ -906,7 +915,8 @@ class MemberCompanionView(APIView):
                 "errors": {
                     "server_error": [str(e)]
                 }
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)    
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class MemberDocumentView(APIView):
     permission_classes = [IsAuthenticated]
@@ -953,7 +963,7 @@ class MemberDocumentView(APIView):
                 instance = models.Documents.objects.get(pk=id)
                 serializer = serializers.MemberDocumentSerializer(
                     instance, data=data)
-            
+
             else:
                 instance = None
                 serializer = serializers.MemberDocumentSerializer(data=data)
@@ -1115,18 +1125,19 @@ class MemberSingleHistoryView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 class MemberSpecialDayView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def post(self, request):
         try:
             data = request.data
             # pdb.set_trace()
             serializer = serializers.MemberSpecialDaySerializer(data=data)
-            
+
             if serializer.is_valid():
                 instances = serializer.save()
-                
+
                 return Response({
                     "code": 201,
                     "status": "success",
@@ -1135,7 +1146,7 @@ class MemberSpecialDayView(APIView):
                         {"id": instance.id, "title": instance.title} for instance in instances
                     ]
                 }, status=status.HTTP_201_CREATED)
-            
+
             else:
                 return Response({
                     "code": 400,
@@ -1175,7 +1186,7 @@ class MemberSpecialDayView(APIView):
                             "message": "Member SpecialDay has been updated successfully",
                             "status": "success",
                             "data": {
-                                "special_day_id": instance.id 
+                                "special_day_id": instance.id
                             }
                         }, status=status.HTTP_200_OK)
                     else:
@@ -1205,24 +1216,27 @@ class MemberSpecialDayView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 class MemberCertificateView(APIView):
     permission_classes = [IsAuthenticated]
+
     def post(self, request):
         try:
             data = request.data
             # pdb.set_trace()
             serializer = serializers.MemberCertificateSerializer(data=data)
-            
+
             if serializer.is_valid():
                 instance = serializer.save()
-                
+
                 return Response({
                     "code": 201,
                     "status": "success",
                     "message": "Member Certificate has been created successfully",
                     "data": {"id": instance.id, "title": instance.title}
                 }, status=status.HTTP_201_CREATED)
-            
+
             else:
                 return Response({
                     "code": 400,
@@ -1272,7 +1286,7 @@ class MemberCertificateView(APIView):
                             "message": "Member Certificate has been created successfully",
                             "status": "success",
                             "data": {
-                                "certificate_id": instance.id 
+                                "certificate_id": instance.id
                             }
                         }, status=status.HTTP_201_CREATED)
             else:
@@ -1292,5 +1306,3 @@ class MemberCertificateView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-      
-    

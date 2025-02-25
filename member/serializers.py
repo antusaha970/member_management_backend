@@ -755,13 +755,18 @@ class MemberDescendantsSerializer(serializers.Serializer):
         return instance
 
 
-class MemberJobSerializer(serializers.Serializer):
-    member_ID = serializers.CharField(max_length=200)
+class MemberJobDataSerializer(serializers.Serializer):
     title = serializers.CharField(max_length=100)
     organization_name = serializers.CharField(max_length=150, required=False)
     location = serializers.CharField(max_length=100)
     job_description = serializers.CharField(required=False)
     location = serializers.CharField(max_length=100, required=False)
+
+
+class MemberJobSerializer(serializers.Serializer):
+    member_ID = serializers.CharField(max_length=200)
+    data = serializers.ListSerializer(
+        child=MemberJobDataSerializer(), required=True)
 
     def validate_member_ID(self, value):
         if self.instance:
@@ -774,9 +779,16 @@ class MemberJobSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         member_ID = validated_data.pop('member_ID')
+        data = validated_data.pop('data')
         member = Member.objects.get(member_ID=member_ID)
-        instance = Profession.objects.create(**validated_data, member=member)
-        return instance
+        created_instance = []
+        for job_data in data:
+            instance = Profession.objects.create(**job_data, member=member)
+            created_instance.append({
+                'status': 'created',
+                'job_id': instance.id
+            })
+        return created_instance
 
     def update(self, instance, validated_data):
         instance.title = validated_data.get("title", instance.title)
@@ -988,5 +1000,12 @@ class MemberCompanionViewSerializer(serializers.ModelSerializer):
 class MemberDocumentsViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Documents
+        exclude = ["member"]
+        depth = 1
+
+
+class MemberJobViewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Profession
         exclude = ["member"]
         depth = 1
