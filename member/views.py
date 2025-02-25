@@ -551,35 +551,44 @@ class MemberSpouseView(APIView):
     def patch(self, request):
         try:
             data = request.data
-            member_ID = data.get('member_ID')
-            try:
-                instance = Spouse.objects.get(member__member_ID=member_ID)
-                is_new = False
-            except Spouse.DoesNotExist:
+            id = data.get('id')
+            if id:
+                instance = models.Spouse.objects.get(pk=id)
+                serializer = serializers.MemberSpouseSerializer(
+                    instance, data=data)
+            else:
                 instance = None
-                is_new = True
+                serializer = serializers.MemberSpouseSerializer(data=data)
 
-            serializer = serializers.MemberSpouseSerializer(
-                instance, data=data, partial=True, context={"request_method": "PATCH"})
             if serializer.is_valid():
                 with transaction.atomic():
-                    instance = serializer.save()
-
+                    if instance is not None:
+                        instance = serializer.save(instance=instance)
+                        return Response({
+                            "code": 200,
+                            "message": "Member Spouse has been updated successfully",
+                            "status": "success",
+                            "data": {
+                                "spouse_id": instance.id
+                            }
+                        }, status=status.HTTP_200_OK)
+                    else:
+                        instance = serializer.save()
+                        return Response({
+                            "code": 201,
+                            "message": "Member spouse has been created successfully",
+                            "status": "success",
+                            "data": {
+                                "spouse_id": instance.id 
+                            }
+                        }, status=status.HTTP_201_CREATED)
+            else:
                 return Response({
-                    "code": 201 if is_new else 200,
-                    "message": "Spouse object created successfully" if is_new else "Spouse updated successfully",
-                    "status": "success",
-                    "data": {
-                        "spouse_id": instance.id
-                    }
-                }, status=status.HTTP_201_CREATED if is_new else status.HTTP_200_OK)
-
-            return Response({
-                "code": 400,
-                "status": "failed",
-                "message": "Invalid request",
-                "errors": serializer.errors,
-            }, status=status.HTTP_400_BAD_REQUEST)
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Invalid request",
+                    "errors": serializer.errors,
+                }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
             return Response({
@@ -590,6 +599,7 @@ class MemberSpouseView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 class MemberDescendsView(APIView):
@@ -860,30 +870,37 @@ class MemberCompanionView(APIView):
     def patch(self, request):
         try:
             data = request.data
-            member_ID = data.get("member_ID")
-            # Check if the companion instance exists
-            try:
-                companion_instance = CompanionInformation.objects.get(
-                    member__member_ID=member_ID)
-                is_new = False
-            except CompanionInformation.DoesNotExist:
-                companion_instance = None
-                is_new = True
-
-            serializer = serializers.MemberCompanionInformationSerializer(
-                companion_instance, data=data, partial=True, context={"request_method": "PATCH"})
+            id = data.get('id')
+            if id:
+                instance = models.CompanionInformation.objects.get(pk=id)
+                serializer = serializers.MemberCompanionInformationSerializer(
+                    instance, data=data)
+            else:
+                instance = None
+                serializer = serializers.MemberCompanionInformationSerializer(data=data)
 
             if serializer.is_valid():
                 with transaction.atomic():
-                    instance = serializer.save()
-                return Response({
-                    "code": 200 if not is_new else 201,
-                    "message": "Member companion has been updated successfully" if not is_new else "Member companion has been created successfully",
-                    "status": "success",
-                    "data": {
-                        "companion_id": instance.id
-                    }
-                }, status=status.HTTP_200_OK if not is_new else status.HTTP_201_CREATED)
+                    if instance is not None:
+                        instance = serializer.save(instance=instance)
+                        return Response({
+                            "code": 200,
+                            "message": "Member companion has been updated successfully",
+                            "status": "success",
+                            "data": {
+                                "companion_id": instance.id
+                            }
+                        }, status=status.HTTP_200_OK)
+                    else:
+                        instance = serializer.save()
+                        return Response({
+                            "code": 201,
+                            "message": "Member companion has been created successfully",
+                            "status": "success",
+                            "data": {
+                                "companion_id": instance.id 
+                            }
+                        }, status=status.HTTP_201_CREATED)
             else:
                 return Response({
                     "code": 400,
@@ -891,7 +908,6 @@ class MemberCompanionView(APIView):
                     "message": "Invalid request",
                     "errors": serializer.errors,
                 }, status=status.HTTP_400_BAD_REQUEST)
-
         except Exception as e:
             logger.exception(str(e))
             return Response({
@@ -902,6 +918,8 @@ class MemberCompanionView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 
 
 class MemberDocumentView(APIView):
@@ -1128,9 +1146,7 @@ class MemberSpecialDayView(APIView):
                     "code": 201,
                     "status": "success",
                     "message": " Member Special Days has been created successfully",
-                    "data": [
-                        {"id": instance.id, "title": instance.title} for instance in instances
-                    ]
+                    "data": instances
                 }, status=status.HTTP_201_CREATED)
 
             else:
@@ -1151,40 +1167,87 @@ class MemberSpecialDayView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def patch(self, request):
-        try:
-            data = request.data
-            id = data.get('id')
-            if id:
-                instance = models.SpecialDay.objects.get(pk=id)
-                serializer = serializers.MemberSpecialDaySerializer(
-                    instance, data=data)
-            else:
-                instance = None
-                serializer = serializers.MemberSpecialDaySerializer(data=data)
+    
+    
 
+    
+        # def patch(self, request): 
+        # try:
+        #     data = request.data
+        #     special_data = data.get("data", [])
+        #     member_ID = data.get("member_ID")
+        #     update_instance = []
+        #     for item in special_data:
+        #         special_day_id = item.get("id")
+        #         instance = None  
+
+        #         if special_day_id is not None:
+        #             instance = models.SpecialDay.objects.get(pk=special_day_id)
+        #             serializer = serializers.MemberSpecialDaySerializer(
+        #                 instance, data={"member_ID": member_ID, "data": [item]}, partial=True
+        #             )
+        #         else:
+        #             serializer = serializers.MemberSpecialDaySerializer(
+        #                 data={"member_ID": member_ID, "data": [item]}
+        #             )
+
+        #     if serializer.is_valid():
+        #         with transaction.atomic():
+        #             if instance:
+        #                 instance = serializer.save(instance=instance)
+        #                 print(instance)
+        #                 update_instance.append(instance)
+        #                 return Response({
+        #                     "code": 200,
+        #                     "message": "Member special day has been updated successfully",
+        #                     "status": "success",
+        #                     "data": update_instance
+        #                 }, status=status.HTTP_200_OK)
+        #             else:
+        #                 instance = serializer.save()
+        #                 print(instance)
+        #                 update_instance.append(instance)
+        #                 return Response({
+        #                     "code": 201,
+        #                     "message": "Member special day has been created successfully",
+        #                     "status": "success",
+        #                     "data": update_instance
+        #                 }, status=status.HTTP_201_CREATED)
+
+        #     else:
+        #         return Response({
+        #             "code": 400,
+        #             "status": "failed",
+        #             "message": "Invalid request",
+        #             "errors": serializer.errors,
+        #         }, status=status.HTTP_400_BAD_REQUEST)
+
+        # except Exception as e:
+        #     logger.exception(str(e))
+        #     return Response({
+        #         "code": 500,
+        #         "status": "failed",
+        #         "message": "Something went wrong",
+        #         "errors": {
+        #             "server_error": [str(e)]
+        #         }
+        #     }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+     
+    def patch(self, request, member_ID):
+        try:
+            member = get_object_or_404(Member, member_ID=member_ID)
+            data = request.data
+            serializer = serializers.MemberSpecialDaySerializer(
+                member, data=data)
             if serializer.is_valid():
                 with transaction.atomic():
-                    if instance is not None:
-                        instance = serializer.save(instance=instance)
-                        return Response({
-                            "code": 200,
-                            "message": "Member SpecialDay has been updated successfully",
-                            "status": "success",
-                            "data": {
-                                "special_day_id": instance.id
-                            }
-                        }, status=status.HTTP_200_OK)
-                    else:
-                        instances = serializer.save()
-                        return Response({
-                            "code": 201,
-                            "message": "Member SpecialDay has been created successfully",
-                            "status": "success",
-                            "data": {
-                                "special_day_ids": [instance.id for instance in instances]
-                            }
-                        }, status=status.HTTP_201_CREATED)
+                    instance = serializer.save(instance=member)
+                return Response({
+                    "code": 200,
+                    "message": "Member special day has been updated successfully",
+                    "status": "success",
+                    "data": instance
+                }, status=status.HTTP_200_OK)
             else:
                 return Response({
                     "code": 400,
@@ -1202,6 +1265,7 @@ class MemberSpecialDayView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+               
 
 
 class MemberCertificateView(APIView):
