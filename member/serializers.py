@@ -838,11 +838,17 @@ class MemberJobSerializer(serializers.Serializer):
         return results
 
 
-class MemberEmergencyContactSerializer(serializers.Serializer):
-    member_ID = serializers.CharField()
+class MemberEmergencyContactDataSerializer(serializers.Serializer):
     contact_name = serializers.CharField(max_length=100)
     contact_number = serializers.CharField(max_length=20)
     relation_with_member = serializers.CharField(max_length=50, required=False)
+    id = serializers.IntegerField(required=False)
+
+
+class MemberEmergencyContactSerializer(serializers.Serializer):
+    member_ID = serializers.CharField()
+    data = serializers.ListSerializer(
+        child=MemberEmergencyContactDataSerializer(), required=True)
 
     def validate_member_ID(self, value):
         if self.instance:
@@ -855,21 +861,62 @@ class MemberEmergencyContactSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         member_ID = validated_data.pop("member_ID")
+        data = validated_data.pop("data")
         member = Member.objects.get(member_ID=member_ID)
-        instance = EmergencyContact.objects.create(
-            **validated_data, member=member)
-        return instance
+        created_instance = []
+        for emergency_contact_data in data:
+            instance = EmergencyContact.objects.create(
+                **emergency_contact_data, member=member)
+            created_instance.append({
+                'status': "created",
+                'emergency_contact_id': instance.id
+            })
+        return created_instance
 
     def update(self, instance, validated_data):
-        emergency_contact = instance.emergency_contacts.first()
-        emergency_contact.contact_name = validated_data.get(
-            "contact_name", emergency_contact.contact_name)
-        emergency_contact.contact_number = validated_data.get(
-            "contact_number", emergency_contact.contact_number)
-        emergency_contact.relation_with_member = validated_data.get(
-            "relation_with_member", emergency_contact.relation_with_member)
-        emergency_contact.save()
-        return emergency_contact
+        """
+        instance: A Member instance whose Emergency contact will be updated.
+        validated_data: Dictionary containing:
+            - member_ID (string)
+            - data: A list of contact (each may include an "id" if updating an existing job)
+        """
+        data_list = validated_data.get('data', [])
+        results = []
+
+        # Iterate over each item in the submitted data
+        for item in data_list:
+            emergency_contact_id = item.get('id', None)
+            if emergency_contact_id:
+                # Update an existing email for the given member.
+                try:
+                    emergency_contact_obj = instance.emergency_contacts.get(
+                        id=emergency_contact_id)
+                except EmergencyContact.DoesNotExist:
+                    raise serializers.ValidationError(
+                        f"emergency contact with id {emergency_contact_id} does not exist for this member."
+                    )
+                # Update fields if provided; if not, retain current value.
+                emergency_contact_obj.contact_name = item.get(
+                    'contact_name', emergency_contact_obj.contact_name)
+                emergency_contact_obj.contact_number = item.get(
+                    'contact_number', emergency_contact_obj.contact_number)
+                emergency_contact_obj.relation_with_member = item.get(
+                    'relation_with_member', emergency_contact_obj.relation_with_member)
+                emergency_contact_obj.save()
+                results.append({
+                    "status": "updated",
+                    "emergency_contact_id": emergency_contact_obj.id
+                })
+            else:
+                # Optionally create a new address if no id is provided.
+                emergency_contact = EmergencyContact.objects.create(
+                    member=instance, **item)
+                results.append({
+                    "status": "created",
+                    "emergency_contact_id": emergency_contact.id
+                })
+
+        return results
 
 
 class MemberCompanionInformationSerializer(serializers.Serializer):

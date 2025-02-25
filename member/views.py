@@ -762,9 +762,7 @@ class MemberEmergencyContactView(APIView):
                     "code": 201,
                     "message": "Member Emergency contact has been created successfully",
                     "status": "success",
-                    "data": {
-                        "emergency_contact_id": instance.id
-                    }
+                    "data": instance
                 }, status=status.HTTP_201_CREATED)
             else:
                 return Response({
@@ -797,9 +795,7 @@ class MemberEmergencyContactView(APIView):
                     "code": 200,
                     "message": "Member Emergency contact has been updated successfully",
                     "status": "success",
-                    "data": {
-                        "emergency_contact_id": instance.id
-                    }
+                    "data": instance
                 }, status=status.HTTP_200_OK)
             else:
                 return Response({
