@@ -141,7 +141,7 @@ class TestMemberCreateAndUpdateEndpoints(APITestCase):
 
     def test_member_creation_api_with_invalid_data(self):
         """
-        Test member creation with invalid data
+        Test member creation with invalid data. Check if we can create member without providing the required fields
         """
         # arrange
         self.client.force_authenticate(user=self.user)
