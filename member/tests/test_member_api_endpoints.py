@@ -125,7 +125,10 @@ class TestMemberCreateAndUpdateEndpoints(APITestCase):
             "nationality": "Bangladesh",
         }
 
-    def test_member_creation_api(self):
+    def test_member_creation_api_with_valid_data(self):
+        """
+        Test member creation with valid data
+        """
         # arrange
         self.client.force_authenticate(user=self.user)
         # act
@@ -136,8 +139,25 @@ class TestMemberCreateAndUpdateEndpoints(APITestCase):
         self.assertEqual(_response['code'], 201)
         self.assertEqual(_response['status'], "success")
 
-    def test_member_factory(self):
-        member = MemberFactory()
-
-        pdb.set_trace()
-        self.assertEqual(1, 1)
+    def test_member_creation_api_with_invalid_data(self):
+        """
+        Test member creation with invalid data
+        """
+        # arrange
+        self.client.force_authenticate(user=self.user)
+        # act
+        _data = self.member_create_request_body
+        _data.pop("member_ID")
+        _data.pop("gender")
+        _data.pop("profile_photo")
+        # assert
+        _response = self.client.post(
+            "/api/member/v1/members/", _data, format='multipart')
+        self.assertEqual(_response.status_code, 400)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 400)
+        self.assertEqual(_response['status'], "failed")
+        _errors = _response['errors']
+        self.assertIn("member_ID", _errors)
+        self.assertIn("gender", _errors)
+        self.assertIn("profile_photo", _errors)
