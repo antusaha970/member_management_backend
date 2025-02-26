@@ -9,8 +9,9 @@ from ..models import *
 from django.core.files.uploadedfile import SimpleUploadedFile
 from io import BytesIO
 from PIL import Image
+from ..utils.factories import *
 import pdb
-
+from utils.factories import *
 # Create a dummy image using PIL
 
 fake = Faker()
@@ -126,7 +127,10 @@ class TestMemberCreateAndUpdateEndpoints(APITestCase):
             "nationality": "Bangladesh",
         }
 
-    def test_member_creation_api(self):
+    def test_member_creation_api_with_valid_data(self):
+        """
+        Test member creation with valid data
+        """
         # arrange
         self.client.force_authenticate(user=self.user)
         # act
@@ -137,8 +141,28 @@ class TestMemberCreateAndUpdateEndpoints(APITestCase):
         self.assertEqual(_response['code'], 201)
         self.assertEqual(_response['status'], "success")
 
-    def test_member_factory(self):
-        member = MemberFactory()
+    def test_member_creation_api_with_invalid_data(self):
+        """
+        Test member creation with invalid data. Check if we can create member without providing the required fields
+        """
+        # arrange
+        self.client.force_authenticate(user=self.user)
+        # act
+        _data = self.member_create_request_body
+        _data.pop("member_ID")
+        _data.pop("gender")
+        _data.pop("profile_photo")
+        # assert
+        _response = self.client.post(
+            "/api/member/v1/members/", _data, format='multipart')
+        self.assertEqual(_response.status_code, 400)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 400)
+        self.assertEqual(_response['status'], "failed")
+        _errors = _response['errors']
+        self.assertIn("member_ID", _errors)
+        self.assertIn("gender", _errors)
+        self.assertIn("profile_photo", _errors)
 
         self.assertEqual(1, 1)
 
@@ -149,8 +173,8 @@ class SpouseApiTest(APITestCase):
         cls.user = get_user_model().objects.create_superuser(
             username=faker.user_name(), password=faker.password(length=8)
         )
-        cls.membership_status = [MembershipStatusChoiceFactory() for _ in range(3)]
-        print(MembershipStatusChoice.objects.values_list("id", "name"))
+        cls.membership_status = [SpouseStatusChoiceFactory() for _ in range(3)]
+        print(SpouseStatusChoiceFactory.objects.values_list("id", "name"))
         image = generate_test_image()
         member = MemberFactory()
 
@@ -174,3 +198,129 @@ class SpouseApiTest(APITestCase):
         # Assert
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response_data['status'], "success")
+
+class TestMemberContactNumberAddAndUpdateTest(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.member = MemberFactory()
+        cls.contact_type = ContactTypeFactory()
+        cls.fake = Faker()
+        cls.user = get_user_model().objects.create_superuser(
+            username=fake.user_name(), password=fake.password(length=8))
+
+    def setUp(self):
+        self.client.force_authenticate(user=self.user)
+
+    def test_member_contact_number_add_endpoint_with_valid_data(self):
+        """
+        Test for checking member contact numbers are adding perfectly with valid data
+        """
+        # arrange
+        member_ID = self.member.member_ID
+        _data = {
+            'member_ID': member_ID,
+            "data": [
+                {
+                    "number": self.fake.random_number(digits=6),
+                    "contact_type": self.contact_type.id,
+                    "is_primary": False
+                },
+                {
+                    "number": self.fake.random_number(digits=6),
+                    "contact_type": self.contact_type.id,
+                    "is_primary": True
+                }
+            ]
+        }
+
+        # act
+
+        _response = self.client.post(
+            "/api/member/v1/members/contact_numbers/", _data, format="json")
+
+        # assert
+        self.assertEqual(_response.status_code, 201)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 201)
+        self.assertEqual(_response['status'], "success")
+        self.assertIn("data", _response)
+
+    def test_member_contact_number_add_endpoint_with_invalid_data(self):
+        """
+        Test for checking member contact numbers endpoint with invalid data. Like contact type and missing data
+        """
+        # arrange
+        member_ID = self.member.member_ID
+        _data = {
+            'member_ID': member_ID,
+            "data": [
+                {
+                    "number": self.fake.random_number(digits=6),
+                    "contact_type": self.contact_type.id+1,
+                    "is_primary": False
+                },
+                {
+                    "contact_type": self.contact_type.id,
+                    "is_primary": True
+                }
+            ]
+        }
+
+        # act
+
+        _response = self.client.post(
+            "/api/member/v1/members/contact_numbers/", _data, format="json")
+
+        # assert
+        self.assertEqual(_response.status_code, 400)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 400)
+        self.assertEqual(_response['status'], "failed")
+        self.assertIn("errors", _response)
+
+
+class TestMemberEmailAddressAddAndUpdate(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.email_type = EmailTypeChoiceFactory()
+        cls.fake = Faker()
+        cls.user = get_user_model().objects.create_superuser(
+            username=fake.user_name(), password=fake.password(length=8))
+        cls.member = MemberFactory()
+
+    def setUp(self):
+        self.client.force_authenticate(user=self.user)
+
+    def test_member_email_address_add_with_valid_data(self):
+        """
+        Test for checking member email address add api with valid data
+        """
+        # arrange
+        _data = {
+            "member_ID": self.member.member_ID,
+            "data": [
+                {
+                    "email": self.fake.email(),
+                    "is_primary": False
+                },
+                {
+                    "email_type": self.email_type.id,
+                    "email": self.fake.email(),
+                    "is_primary": False
+                }
+            ]
+        }
+        # act
+        _response = self.client.post(
+            "/api/member/v1/members/email_address/", _data, format="json")
+
+        # assert
+        self.assertEqual(_response.status_code, 201)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 201)
+        self.assertEqual(_response['status'], "success")
+        self.assertIn("data", _response)
+
+
+class TestMemberAddressAddAndUpdate(APITestCase):
+    pass
