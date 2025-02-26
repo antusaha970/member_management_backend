@@ -242,3 +242,46 @@ class TestMemberContactNumberAddAndUpdateTest(APITestCase):
         self.assertEqual(_response['code'], 400)
         self.assertEqual(_response['status'], "failed")
         self.assertIn("errors", _response)
+
+
+class TestMemberEmailAddressAddAndUpdate(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.email_type = EmailTypeChoiceFactory()
+        cls.fake = Faker()
+        cls.user = get_user_model().objects.create_superuser(
+            username=fake.user_name(), password=fake.password(length=8))
+        cls.member = MemberFactory()
+
+    def setUp(self):
+        self.client.force_authenticate(user=self.user)
+
+    def test_member_email_address_add_with_valid_data(self):
+        """
+        Test for checking member email address add api with valid data
+        """
+        # arrange
+        _data = {
+            "member_ID": self.member.member_ID,
+            "data": [
+                {
+                    "email": self.fake.email(),
+                    "is_primary": False
+                },
+                {
+                    "email_type": self.email_type.id,
+                    "email": self.fake.email(),
+                    "is_primary": False
+                }
+            ]
+        }
+        # act
+        _response = self.client.post(
+            "/api/member/v1/members/email_address/", _data, format="json")
+
+        # assert
+        self.assertEqual(_response.status_code, 201)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 201)
+        self.assertEqual(_response['status'], "success")
+        self.assertIn("data", _response)

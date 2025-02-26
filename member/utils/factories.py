@@ -10,3 +10,10 @@ class ContactTypeFactory(factory.django.DjangoModelFactory):
         model = ContactTypeChoice
 
     name = fake.name()
+
+
+class EmailTypeChoiceFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = EmailTypeChoice
+
+    name = fake.name()
