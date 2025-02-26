@@ -21,4 +21,9 @@ class EmailTypeChoiceFactory(factory.django.DjangoModelFactory):
 class SpouseStatusChoiceFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = SpouseStatusChoice
-    name = fake.name()
+    name = factory.LazyAttribute(lambda _: fake.unique.word())
+    
+class DescendantRelationChoiceFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = DescendantRelationChoice
+    name=factory.LazyAttribute(lambda _: fake.unique.word())
