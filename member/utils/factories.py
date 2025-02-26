@@ -1,0 +1,12 @@
+import factory
+from core.models import *
+from faker import Faker
+
+fake = Faker()
+
+
+class ContactTypeFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = ContactTypeChoice
+
+    name = fake.name()

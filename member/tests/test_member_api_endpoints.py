@@ -9,6 +9,7 @@ from ..models import *
 from django.core.files.uploadedfile import SimpleUploadedFile
 from io import BytesIO
 from PIL import Image
+from ..utils.factories import *
 import pdb
 
 # Create a dummy image using PIL
@@ -161,3 +162,83 @@ class TestMemberCreateAndUpdateEndpoints(APITestCase):
         self.assertIn("member_ID", _errors)
         self.assertIn("gender", _errors)
         self.assertIn("profile_photo", _errors)
+
+
+class TestMemberContactNumberAddAndUpdateTest(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.member = MemberFactory()
+        cls.contact_type = ContactTypeFactory()
+        cls.fake = Faker()
+        cls.user = get_user_model().objects.create_superuser(
+            username=fake.user_name(), password=fake.password(length=8))
+
+    def setUp(self):
+        self.client.force_authenticate(user=self.user)
+
+    def test_member_contact_number_add_endpoint_with_valid_data(self):
+        """
+        Test for checking member contact numbers are adding perfectly with valid data
+        """
+        # arrange
+        member_ID = self.member.member_ID
+        _data = {
+            'member_ID': member_ID,
+            "data": [
+                {
+                    "number": self.fake.random_number(digits=6),
+                    "contact_type": self.contact_type.id,
+                    "is_primary": False
+                },
+                {
+                    "number": self.fake.random_number(digits=6),
+                    "contact_type": self.contact_type.id,
+                    "is_primary": True
+                }
+            ]
+        }
+
+        # act
+
+        _response = self.client.post(
+            "/api/member/v1/members/contact_numbers/", _data, format="json")
+
+        # assert
+        self.assertEqual(_response.status_code, 201)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 201)
+        self.assertEqual(_response['status'], "success")
+        self.assertIn("data", _response)
+
+    def test_member_contact_number_add_endpoint_with_invalid_data(self):
+        """
+        Test for checking member contact numbers endpoint with invalid data. Like contact type and missing data
+        """
+        # arrange
+        member_ID = self.member.member_ID
+        _data = {
+            'member_ID': member_ID,
+            "data": [
+                {
+                    "number": self.fake.random_number(digits=6),
+                    "contact_type": self.contact_type.id+1,
+                    "is_primary": False
+                },
+                {
+                    "contact_type": self.contact_type.id,
+                    "is_primary": True
+                }
+            ]
+        }
+
+        # act
+
+        _response = self.client.post(
+            "/api/member/v1/members/contact_numbers/", _data, format="json")
+
+        # assert
+        self.assertEqual(_response.status_code, 400)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 400)
+        self.assertEqual(_response['status'], "failed")
+        self.assertIn("errors", _response)
