@@ -10,3 +10,8 @@ class TestMemberCreateAndUpdateEndpoints(APITestCase):
         faker = Faker()
         cls.user = get_user_model().objects.create_superuser(
             username=faker.user_name(), password=faker.password(length=8))
+
+        cls.member_create_request_body = {
+
+
+        }
