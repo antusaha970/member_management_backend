@@ -17,3 +17,10 @@ class EmailTypeChoiceFactory(factory.django.DjangoModelFactory):
         model = EmailTypeChoice
 
     name = fake.name()
+
+
+class AddressTypeChoiceFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = AddressTypeChoice
+
+    name = fake.name()
