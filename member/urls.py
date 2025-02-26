@@ -23,6 +23,7 @@ urlpatterns = [
          name="member_job_view"),
     path('v1/members/job/<str:member_ID>/', views.MemberJobView.as_view(),
          name="member_job_view"),
+#     ---------------------------------------------------------
     path('v1/members/emergency_contact/', views.MemberEmergencyContactView.as_view(),
          name="member_emergency_contact_view"),
     path('v1/members/emergency_contact/<str:member_ID>/', views.MemberEmergencyContactView.as_view(),

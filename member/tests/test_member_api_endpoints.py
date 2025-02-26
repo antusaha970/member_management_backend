@@ -58,6 +58,7 @@ class MaritalStatusChoiceFactory(factory.django.DjangoModelFactory):
     name = factory.Faker('word')
 
 
+
 class MemberFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Member
@@ -139,5 +140,37 @@ class TestMemberCreateAndUpdateEndpoints(APITestCase):
     def test_member_factory(self):
         member = MemberFactory()
 
-        pdb.set_trace()
         self.assertEqual(1, 1)
+
+class SpouseApiTest(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        faker = Faker()
+        cls.user = get_user_model().objects.create_superuser(
+            username=faker.user_name(), password=faker.password(length=8)
+        )
+        cls.membership_status = [MembershipStatusChoiceFactory() for _ in range(3)]
+        print(MembershipStatusChoice.objects.values_list("id", "name"))
+        image = generate_test_image()
+        member = MemberFactory()
+
+        cls.member_spouse_create_request_body = {
+            "member_ID": member.member_ID,
+            "spouse_name": faker.first_name(),
+            "contact_number": faker.numerify(text='###########'),
+            "spouse_dob": faker.date_of_birth(minimum_age=18, maximum_age=90).strftime('%Y-%m-%d'),
+            "image": image,
+            "current_status": cls.membership_status[0].pk, 
+        }
+
+    def test_spouse_creation_api(self):
+        self.client.force_authenticate(user=self.user)  
+        print(MembershipStatusChoice.objects.all())
+        response = self.client.post(
+            "/api/member/v1/members/spouse/", self.member_spouse_create_request_body, format='multipart'
+        )
+        response_data = response.json()
+        pdb.set_trace()
+        # Assert
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response_data['status'], "success")
