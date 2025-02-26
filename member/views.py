@@ -92,7 +92,12 @@ class MemberView(APIView):
                 with transaction.atomic():
                     member = member_serializer.save()
                     # member_ID=member.member_ID
-
+                    log_activity_task.delay_on_commit(
+                        request_data_activity_log(request),
+                        verb="Member update success",
+                        severity_level="info",
+                        description="user updated a member successfully",
+                    )
                     return Response({
                         'code': 200,
                         'status': 'success',
@@ -104,6 +109,12 @@ class MemberView(APIView):
             else:
                 # Merge errors from both serializers
                 merged_errors = {**member_serializer.errors}
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Member update failed",
+                    severity_level="info",
+                    description="user tried to update member but made an invalid request",
+                )
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -111,6 +122,12 @@ class MemberView(APIView):
                     "errors": merged_errors,
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Member.DoesNotExist:
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Member update failed",
+                severity_level="info",
+                description="user tried to update member but made an invalid request",
+            )
             return Response({
                 "code": 404,
                 "status": "failed",
@@ -120,6 +137,12 @@ class MemberView(APIView):
                 }
             }, status=status.HTTP_404_NOT_FOUND)
         except Exception as server_error:
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Member update failed",
+                severity_level="info",
+                description="user tried to update member but made an invalid request",
+            )
             logger.exception(str(server_error))
             return Response({
                 "code": 500,
@@ -136,6 +159,12 @@ class MemberView(APIView):
             # find the member
             if member.status == 2:
                 # if member is already deleted
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Member delete failed",
+                    severity_level="info",
+                    description="user tried to delete member but made an invalid request",
+                )
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -157,6 +186,12 @@ class MemberView(APIView):
                 member.is_active = False
                 member.save(update_fields=['status', 'member_ID', 'is_active'])
                 delete_member_model_dependencies.delay_on_commit(member.id)
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Member delete success",
+                    severity_level="info",
+                    description="user tried to delete a member and succeeded",
+                )
                 return Response({
                     "code": 204,
                     'message': "member deleted",
@@ -164,6 +199,12 @@ class MemberView(APIView):
                 }, status=status.HTTP_204_NO_CONTENT)
 
         except Member.DoesNotExist:
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Member delete failed",
+                severity_level="error",
+                description="user tried to delete member but made an invalid request",
+            )
             return Response({
                 "code": 404,
                 "status": "failed",
@@ -175,6 +216,12 @@ class MemberView(APIView):
 
         except Exception as server_error:
             logger.exception(str(server_error))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Member delete failed",
+                severity_level="error",
+                description="user tried to delete member but made an invalid request",
+            )
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -189,6 +236,12 @@ class MemberView(APIView):
             member = Member.objects.get(member_ID=member_id)
             # check if member status is deleted or not
             if member.status == 2:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Member view failed",
+                    severity_level="warning",
+                    description="user tried to view a member but made an invalid request",
+                )
                 return Response({
                     "code": 204,
                     "status": "failed",
@@ -256,6 +309,12 @@ class MemberView(APIView):
                 'document': documents_serializer.data,
                 'special_days': special_days_serializer.data,
             }
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Member view successfully",
+                severity_level="info",
+                description="user tried to view a member and succeeded",
+            )
             return Response({
                 "code": 200,
                 "status": "success",
@@ -263,6 +322,12 @@ class MemberView(APIView):
                 'data': data
             }, status=status.HTTP_200_OK)
         except Member.DoesNotExist:
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Member view failed",
+                severity_level="error",
+                description="user tried to view a member but made an invalid request",
+            )
             return Response({
                 "code": 404,
                 "status": "failed",
@@ -273,6 +338,12 @@ class MemberView(APIView):
             }, status=status.HTTP_404_NOT_FOUND)
         except Exception as server_error:
             logger.exception(str(server_error))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Member view failed",
+                severity_level="error",
+                description="user tried to view a member but made an invalid request",
+            )
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -293,6 +364,12 @@ class MemberIdView(APIView):
             if serializer.is_valid():
                 membership_type = serializer.validated_data['membership_type']
                 all_id = generate_member_id(membership_type)
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Member id view succeeded",
+                    severity_level="info",
+                    description="user tried to view member id and succeeded",
+                )
                 return Response({
                     "code": 200,
                     "status": "success",
@@ -300,6 +377,12 @@ class MemberIdView(APIView):
                     "data": all_id
                 }, status=status.HTTP_200_OK)
             else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Member id view failed",
+                    severity_level="error",
+                    description="user tried to view member id but made an invalid request",
+                )
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -308,6 +391,12 @@ class MemberIdView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as server_error:
             logger.exception(str(server_error))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Member id view failed",
+                severity_level="error",
+                description="user tried to view member id but made an invalid request",
+            )
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -328,6 +417,12 @@ class MemberContactNumberView(APIView):
             if serializer.is_valid():
                 with transaction.atomic():
                     instance = serializer.save()
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Added member contact number",
+                    severity_level="info",
+                    description="user tried to add member contact number and succeeded",
+                )
                 return Response({
                     "code": 201,
                     "message": "Member contact number has been created successfully",
@@ -335,6 +430,12 @@ class MemberContactNumberView(APIView):
                     "data": instance
                 }, status=status.HTTP_201_CREATED)
             else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Failed to add member contact number",
+                    severity_level="error",
+                    description="user tried to add member contact number but made an invalid request",
+                )
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -343,6 +444,12 @@ class MemberContactNumberView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Failed to add member contact number",
+                severity_level="error",
+                description="user tried to add member contact number but made an invalid request",
+            )
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -361,6 +468,12 @@ class MemberContactNumberView(APIView):
             if serializer.is_valid():
                 with transaction.atomic():
                     instance = serializer.save(instance=member)
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Update member contact number",
+                    severity_level="info",
+                    description="user tried to update member contact number and succeeded",
+                )
                 return Response({
                     "code": 200,
                     "message": "Member contact number has been created successfully",
@@ -368,6 +481,12 @@ class MemberContactNumberView(APIView):
                     "data": instance
                 }, status=status.HTTP_200_OK)
             else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Update member contact number failed",
+                    severity_level="error",
+                    description="user tried to update member contact number but made an invalid request",
+                )
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -376,6 +495,12 @@ class MemberContactNumberView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Update member contact number failed",
+                severity_level="error",
+                description="user tried to update member contact number but made an invalid request",
+            )
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -396,6 +521,12 @@ class MemberEmailAddressView(APIView):
             if serializer.is_valid():
                 with transaction.atomic():
                     instance = serializer.save()
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Added member Email addresses",
+                    severity_level="info",
+                    description="user tried to add member email addresses and succeeded",
+                )
                 return Response({
                     "code": 201,
                     "message": "Member Email address has been created successfully",
@@ -403,6 +534,12 @@ class MemberEmailAddressView(APIView):
                     "data": instance
                 }, status=status.HTTP_201_CREATED)
             else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Added member email addresses failed",
+                    severity_level="error",
+                    description="user tried to add member email addresses and failed",
+                )
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -411,6 +548,12 @@ class MemberEmailAddressView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Added member email address failed",
+                severity_level="error",
+                description="user tried to add member email address and failed",
+            )
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -429,6 +572,12 @@ class MemberEmailAddressView(APIView):
             if serializer.is_valid():
                 with transaction.atomic():
                     instance = serializer.save(instance=member)
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Update member email address",
+                    severity_level="info",
+                    description="user tried to update member email address and succeeded"
+                )
                 return Response({
                     "code": 200,
                     "message": "Member Email address has been updated successfully",
@@ -436,6 +585,12 @@ class MemberEmailAddressView(APIView):
                     "data": instance
                 }, status=status.HTTP_200_OK)
             else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Update member email address failed",
+                    severity_level="error",
+                    description="user tried to update member email address but made an invalid request",
+                )
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -444,6 +599,12 @@ class MemberEmailAddressView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Update member email address failed",
+                severity_level="error",
+                description="user tried to update member email address but made an invalid request",
+            )
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -464,6 +625,12 @@ class MemberAddressView(APIView):
             if serializer.is_valid():
                 with transaction.atomic():
                     instance = serializer.save()
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Added member address successful",
+                    severity_level="info",
+                    description="user tried to add member address and succeeded",
+                )
                 return Response({
                     "code": 201,
                     "message": "Member address has been created successfully",
@@ -471,6 +638,12 @@ class MemberAddressView(APIView):
                     "data": instance
                 }, status=status.HTTP_201_CREATED)
             else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Added member address failed",
+                    severity_level="error",
+                    description="user tried to add member address but made an invalid request",
+                )
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -479,6 +652,12 @@ class MemberAddressView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Added member address failed",
+                severity_level="error",
+                description="user tried to add member address but made an invalid request",
+            )
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -496,6 +675,12 @@ class MemberAddressView(APIView):
             if serializer.is_valid():
                 with transaction.atomic():
                     instance = serializer.save(instance=member)
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Update member address successful",
+                    severity_level="info",
+                    description="user tried to update member address and successful",
+                )
                 return Response({
                     "code": 200,
                     "message": "Member address has been updated successfully",
@@ -503,6 +688,12 @@ class MemberAddressView(APIView):
                     "data": instance
                 }, status=status.HTTP_200_OK)
             else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Update member address failed",
+                    severity_level="error",
+                    description="user tried to update member address but made an invalid request",
+                )
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -511,6 +702,12 @@ class MemberAddressView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Update member address failed",
+                severity_level="error",
+                description="user tried to update member address but made an invalid request",
+            )
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -531,6 +728,12 @@ class MemberSpouseView(APIView):
             if serializer.is_valid():
                 with transaction.atomic():
                     instance = serializer.save()
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Added member spouse successful",
+                    severity_level="info",
+                    description="user tried to add member spouse and succeeded",
+                )
                 return Response({
                     "code": 201,
                     "message": "Member address has been created successfully",
@@ -540,6 +743,12 @@ class MemberSpouseView(APIView):
                     }
                 }, status=status.HTTP_201_CREATED)
             else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Added member spouse failed",
+                    severity_level="error",
+                    description="user tried to add member spouse but made an invalid",
+                )
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -548,6 +757,12 @@ class MemberSpouseView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Added member spouse failed",
+                severity_level="error",
+                description="user tried to add member spouse but made an invalid",
+            )
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -573,6 +788,12 @@ class MemberSpouseView(APIView):
                 with transaction.atomic():
                     if instance is not None:
                         instance = serializer.save(instance=instance)
+                        log_activity_task.delay_on_commit(
+                            request_data_activity_log(request),
+                            verb="Update member spouse succeeded",
+                            severity_level="info",
+                            description="user tried to update member spouse and succeeded",
+                        )
                         return Response({
                             "code": 200,
                             "message": "Member Spouse has been updated successfully",
@@ -583,6 +804,12 @@ class MemberSpouseView(APIView):
                         }, status=status.HTTP_200_OK)
                     else:
                         instance = serializer.save()
+                        log_activity_task.delay_on_commit(
+                            request_data_activity_log(request),
+                            verb="Update member spouse succeeded",
+                            severity_level="info",
+                            description="user tried to update member spouse and succeeded",
+                        )
                         return Response({
                             "code": 201,
                             "message": "Member spouse has been created successfully",
@@ -592,6 +819,12 @@ class MemberSpouseView(APIView):
                             }
                         }, status=status.HTTP_201_CREATED)
             else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Update member spouse failed",
+                    severity_level="error",
+                    description="user tried to update member spouse but made an invalid request",
+                )
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -600,6 +833,12 @@ class MemberSpouseView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Update member spouse failed",
+                severity_level="error",
+                description="user tried to update member spouse but made an invalid request",
+            )
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -620,6 +859,12 @@ class MemberDescendsView(APIView):
             if serializer.is_valid():
                 with transaction.atomic():
                     instance = serializer.save()
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Add member descendants successful",
+                    severity_level="info",
+                    description="user tried to add member descendants and succeeded",
+                )
                 return Response({
                     "code": 201,
                     "message": "Member Descendant has been created successfully",
@@ -629,6 +874,12 @@ class MemberDescendsView(APIView):
                     }
                 }, status=status.HTTP_201_CREATED)
             else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Add member descendants failed",
+                    severity_level="error",
+                    description="user tried to add member descendants but made an invalid request",
+                )
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -637,6 +888,12 @@ class MemberDescendsView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Add member descendants failed",
+                severity_level="error",
+                description="user tried to add member descendants but made an invalid request",
+            )
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -661,6 +918,12 @@ class MemberDescendsView(APIView):
                 with transaction.atomic():
                     if instance is not None:
                         instance = serializer.save(instance=instance)
+                        log_activity_task.delay_on_commit(
+                            request_data_activity_log(request),
+                            verb="Update member descendants succeeded",
+                            severity_level="info",
+                            description="user tried to update member descendants and succeeded",
+                        )
                         return Response({
                             "code": 200,
                             "message": "Member Descendant has been updated successfully",
@@ -671,6 +934,12 @@ class MemberDescendsView(APIView):
                         }, status=status.HTTP_200_OK)
                     else:
                         instance = serializer.save()
+                        log_activity_task.delay_on_commit(
+                            request_data_activity_log(request),
+                            verb="Update member descendants succeeded",
+                            severity_level="info",
+                            description="user tried to update member descendants and succeeded",
+                        )
                         return Response({
                             "code": 201,
                             "message": "Member Descendant has been created successfully",
@@ -680,6 +949,12 @@ class MemberDescendsView(APIView):
                             }
                         }, status=status.HTTP_201_CREATED)
             else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Update member descendants failed",
+                    severity_level="error",
+                    description="user tried to update member descendants but made an invalid request",
+                )
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -688,6 +963,12 @@ class MemberDescendsView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Update member descendants failed",
+                severity_level="error",
+                description="user tried to update member descendants but made an invalid request",
+            )
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -708,6 +989,12 @@ class MemberJobView(APIView):
             if serializer.is_valid():
                 with transaction.atomic():
                     instance = serializer.save()
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Add member job information",
+                    severity_level="info",
+                    description="user tried to add member job information and succeeded",
+                )
                 return Response({
                     "code": 201,
                     "message": "Member job has been created successfully",
@@ -715,6 +1002,12 @@ class MemberJobView(APIView):
                     "data": instance
                 }, status=status.HTTP_201_CREATED)
             else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Add member job information failed",
+                    severity_level="error",
+                    description="user tried to add member job information but made an invalid request",
+                )
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -723,6 +1016,12 @@ class MemberJobView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Add member job information failed",
+                severity_level="error",
+                description="user tried to add member job information but made an invalid request",
+            )
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -740,6 +1039,12 @@ class MemberJobView(APIView):
             if serializer.is_valid():
                 with transaction.atomic():
                     instance = serializer.save(instance=member)
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Update member job information succeeded",
+                    severity_level="info",
+                    description="user tried to update member job information  and succeeded",
+                )
                 return Response({
                     "code": 200,
                     "message": "Member job has been updated successfully",
@@ -747,6 +1052,12 @@ class MemberJobView(APIView):
                     "data": instance
                 }, status=status.HTTP_200_OK)
             else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Update member job information failed",
+                    severity_level="error",
+                    description="user tried to update member job information but made an invalid request",
+                )
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -755,6 +1066,12 @@ class MemberJobView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Update member job information failed",
+                severity_level="error",
+                description="user tried to update member job information but made an invalid request",
+            )
             return Response({
                 "code": 500,
                 "status": "failed",
