@@ -90,7 +90,7 @@ class MemberFactory(factory.django.DjangoModelFactory):
 
     # Record keeping
     status = factory.Iterator([0, 1, 2])
-    is_active = factory.Faker('boolean')
+    is_active = True
     created_at = factory.LazyFunction(date.today)
     updated_at = factory.LazyFunction(date.today)
 
