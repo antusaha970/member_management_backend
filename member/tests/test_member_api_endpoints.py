@@ -13,6 +13,8 @@ import pdb
 
 # Create a dummy image using PIL
 
+fake = Faker()
+
 
 def generate_test_image():
     image = Image.new('RGB', (100, 100), color='red')  # Create a red image
@@ -60,24 +62,27 @@ class MemberFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Member
 
-    member_ID = factory.LazyFunction(lambda: random_string(10))
+    # Foreign key relation (created first)
+    membership_type = factory.SubFactory(MembershipTypeFactory)
+
+    member_ID = factory.LazyAttribute(
+        lambda obj: f"{obj.membership_type.name}{fake.random_digit()}")
     first_name = factory.Faker('first_name')
     last_name = factory.Faker('last_name')
     date_of_birth = factory.Faker(
         'date_of_birth', minimum_age=18, maximum_age=60)
-    batch_number = factory.LazyFunction(lambda: random_string(5))
+    batch_number = factory.LazyFunction(lambda: fake.random_digit())
     anniversary_date = factory.Faker(
         'date_this_century', before_today=True, after_today=False)
 
     # Generate a dummy image file
-    profile_photo = generate_test_image()
+    profile_photo = factory.LazyFunction(lambda: generate_test_image())
 
     blood_group = factory.Iterator(['A+', 'B+', 'O+', 'AB-', 'UNKNOWN'])
-    nationality = factory.Iterator(['BD', 'US', 'IN', 'UK', 'XX'])
+    nationality = factory.Iterator(['Bangladesh', 'India'])
 
     # Foreign key relations
     gender = factory.SubFactory(GenderFactory)
-    membership_type = factory.SubFactory(MembershipTypeFactory)
     institute_name = factory.SubFactory(InstituteNameFactory)
     membership_status = factory.SubFactory(MembershipStatusChoiceFactory)
     marital_status = factory.SubFactory(MaritalStatusChoiceFactory)
@@ -130,3 +135,8 @@ class TestMemberCreateAndUpdateEndpoints(APITestCase):
 
         self.assertEqual(_response['code'], 201)
         self.assertEqual(_response['status'], "success")
+
+    def test_member_factory(self):
+        member = MemberFactory()
+        pdb.set_trace()
+        self.assertEqual(1, 1)
