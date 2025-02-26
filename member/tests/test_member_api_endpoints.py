@@ -285,3 +285,7 @@ class TestMemberEmailAddressAddAndUpdate(APITestCase):
         self.assertEqual(_response['code'], 201)
         self.assertEqual(_response['status'], "success")
         self.assertIn("data", _response)
+
+
+class TestMemberAddressAddAndUpdate(APITestCase):
+    pass
