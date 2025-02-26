@@ -138,5 +138,6 @@ class TestMemberCreateAndUpdateEndpoints(APITestCase):
 
     def test_member_factory(self):
         member = MemberFactory()
+
         pdb.set_trace()
         self.assertEqual(1, 1)
