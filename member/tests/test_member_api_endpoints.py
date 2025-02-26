@@ -357,10 +357,73 @@ class TestMemberAddressAddAndUpdate(APITestCase):
         # act
         _response = self.client.post(
             "/api/member/v1/members/address/", _data, format="json")
-        pdb.set_trace()
         # assert
         self.assertEqual(_response.status_code, 400)
         _response = _response.json()
         self.assertEqual(_response['code'], 400)
         self.assertEqual(_response['status'], "failed")
+        self.assertIn("errors", _response)
+
+
+class TestMemberJobInformationAddAndUpdate(APITestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.member = MemberFactory()
+        cls.user = get_user_model().objects.create_superuser(
+            username=fake.user_name(), password=fake.password(length=8))
+
+    def setUp(self):
+        self.client.force_authenticate(user=self.user)
+
+    def test_job_information_add_with_valid_data(self):
+        """
+        Test job information add with valid data.
+        """
+        # arrange
+        _data = {
+            "member_ID": self.member.member_ID,
+            "data": [
+                {
+                    "title": fake.job(),
+                    "organization_name": fake.company(),
+                    "location": fake.country()
+                }
+            ]
+        }
+
+        # act
+        _response = self.client.post(
+            "/api/member/v1/members/job/", _data, format="json")
+
+        # assert
+        self.assertEqual(_response.status_code, 201)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 201)
+        self.assertEqual(_response["status"], "success")
+        self.assertIn("data", _response)
+
+    def test_job_information_add_with_invalid_data(self):
+        """
+        Test job information add with invalid data. Like missing fields
+        """
+        # arrange
+        _data = {
+            "member_ID": self.member.member_ID,
+            "data": [
+                {
+                    "organization_name": fake.company(),
+                    "location": fake.country()
+                }
+            ]
+        }
+
+        # act
+        _response = self.client.post(
+            "/api/member/v1/members/job/", _data, format="json")
+
+        # assert
+        self.assertEqual(_response.status_code, 400)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 400)
+        self.assertEqual(_response["status"], "failed")
         self.assertIn("errors", _response)
