@@ -420,13 +420,14 @@ class MemberIdView(APIView):
 
 
 class MemberContactNumberView(APIView):
+    permission_classes = [IsAuthenticated]
     def get_permissions(self):
         if self.request.method == "POST":
             return [IsAuthenticated(), AddMemberPermission()]
         elif self.request.method == "PATCH":
             return [IsAuthenticated(), UpdateMemberPermission()]
         else:
-            return [AllowAny()]
+            return [IsAuthenticated()]
 
     def post(self, request):
         try:

@@ -25,13 +25,11 @@ def generate_test_image():
     image.save(image_io, format='JPEG')  # Save image to BytesIO
     return SimpleUploadedFile("test_image.jpg", image_io.getvalue(), content_type="image/jpeg")
 
-
 class GenderFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Gender
 
     name = factory.Faker('word')
-
 
 class MembershipTypeFactory(factory.django.DjangoModelFactory):
     class Meta:
@@ -39,13 +37,11 @@ class MembershipTypeFactory(factory.django.DjangoModelFactory):
 
     name = factory.Faker('word')
 
-
 class InstituteNameFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = InstituteName
 
     name = factory.Faker('company')
-
 
 class MembershipStatusChoiceFactory(factory.django.DjangoModelFactory):
     class Meta:
@@ -53,13 +49,11 @@ class MembershipStatusChoiceFactory(factory.django.DjangoModelFactory):
 
     name = factory.Faker('word')
 
-
 class MaritalStatusChoiceFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = MaritalStatusChoice
 
     name = factory.Faker('word')
-
 
 class MemberFactory(factory.django.DjangoModelFactory):
     class Meta:
@@ -96,7 +90,6 @@ class MemberFactory(factory.django.DjangoModelFactory):
     created_at = factory.LazyFunction(date.today)
     updated_at = factory.LazyFunction(date.today)
 
-
 class TestMemberCreateAndUpdateEndpoints(APITestCase):
     @classmethod
     def setUpTestData(cls):
@@ -129,7 +122,7 @@ class TestMemberCreateAndUpdateEndpoints(APITestCase):
         }
 
     @patch.object(AddMemberPermission, "has_permission", return_value=True)
-    def test_member_creation_api_with_valid_data(self):
+    def test_member_creation_api_with_valid_data(self,mock_permission):
         """
         Test member creation with valid data
         """
@@ -143,8 +136,8 @@ class TestMemberCreateAndUpdateEndpoints(APITestCase):
         self.assertEqual(_response['code'], 201)
         self.assertEqual(_response['status'], "success")
 
-    
-    def test_member_creation_api_with_invalid_data(self):
+    @patch.object(AddMemberPermission, "has_permission", return_value=True)
+    def test_member_creation_api_with_invalid_data(self,mock_permission):
         """
         Test member creation with invalid data. Check if we can create member without providing the required fields
         """
@@ -169,7 +162,6 @@ class TestMemberCreateAndUpdateEndpoints(APITestCase):
 
         self.assertEqual(1, 1)
 
-
 class SpouseApiEndpointTest(APITestCase):
     @classmethod
     def setUpTestData(cls):
@@ -192,8 +184,9 @@ class SpouseApiEndpointTest(APITestCase):
 
     def setUp(self):
         self.client.force_authenticate(user=self.user)
-
-    def test_spouse_creation_api_with_valid_data(self):
+    
+    @patch.object(AddMemberPermission, "has_permission", return_value=True)
+    def test_spouse_creation_api_with_valid_data(self,mock_permission):
         response = self.client.post(
             "/api/member/v1/members/spouse/", self.member_spouse_create_request_body, format='multipart'
         )
@@ -203,8 +196,9 @@ class SpouseApiEndpointTest(APITestCase):
         self.assertEqual(response_data['status'], "success")
         self.assertEqual(response_data['code'], 201)
         self.assertIn("spouse_id", response_data["data"])
-
-    def test_spouse_creation_api_with_invalid_data(self):
+    
+    @patch.object(AddMemberPermission, "has_permission", return_value=True)
+    def test_spouse_creation_api_with_invalid_data(self,mock_permission):
         """
         Test for checking member contact numbers are adding perfectly with invalid data
         """
@@ -220,7 +214,6 @@ class SpouseApiEndpointTest(APITestCase):
         self.assertEqual(response_data['errors']['spouse_name'], [
                          'This field is required.'])
         self.assertIn("spouse_name", response_data["errors"])
-
 
 class DescendantApiEndpointTest(APITestCase):
     @classmethod
@@ -245,8 +238,9 @@ class DescendantApiEndpointTest(APITestCase):
 
     def setUp(self):
         self.client.force_authenticate(user=self.user)
-
-    def test_descendant_creation_api_with_valid_data(self):
+    
+    @patch.object(AddMemberPermission, "has_permission", return_value=True)
+    def test_descendant_creation_api_with_valid_data(self,mock_permission):
         response = self.client.post(
             "/api/member/v1/members/descendants/", self.member_descendant_create_request_body, format='multipart'
         )
@@ -257,7 +251,8 @@ class DescendantApiEndpointTest(APITestCase):
         self.assertEqual(response_data['code'], 201)
         self.assertIn("descendant_id", response_data["data"])
 
-    def test_descendant_creation_api_with_invalid_data(self):
+    @patch.object(AddMemberPermission, "has_permission", return_value=True)
+    def test_descendant_creation_api_with_invalid_data(self,mock_permission):
         """
         Test for checking member contact numbers are adding perfectly with invalid data
         """
@@ -273,7 +268,6 @@ class DescendantApiEndpointTest(APITestCase):
         self.assertEqual(response_data['errors']['name'], [
                          'This field is required.'])
         self.assertIn("name", response_data["errors"])
-
 
 class CompanionApiEndpointTest(APITestCase):
     @classmethod
@@ -298,7 +292,8 @@ class CompanionApiEndpointTest(APITestCase):
     def setUp(self):
         self.client.force_authenticate(user=self.user)
 
-    def test_companion_creation_api_with_valid_data(self):
+    @patch.object(AddMemberPermission, "has_permission", return_value=True)
+    def test_companion_creation_api_with_valid_data(self,mock_permission):
         response = self.client.post(
             "/api/member/v1/members/companion/", self.member_companion_create_request_body, format='multipart'
         )
@@ -309,7 +304,8 @@ class CompanionApiEndpointTest(APITestCase):
         self.assertEqual(response_data['code'], 201)
         self.assertIn("companion_id", response_data["data"])
 
-    def test_companion_creation_api_with_invalid_data(self):
+    @patch.object(AddMemberPermission, "has_permission", return_value=True)
+    def test_companion_creation_api_with_invalid_data(self,mock_permission):
         """
         Test for checking member contact numbers are adding perfectly with invalid data
         """
@@ -325,7 +321,6 @@ class CompanionApiEndpointTest(APITestCase):
         self.assertEqual(response_data['errors']['companion_name'], [
                          'This field is required.'])
         self.assertIn("companion_name", response_data["errors"])
-
 
 class DocumentApiEndpointTest(APITestCase):
     @classmethod
@@ -348,7 +343,8 @@ class DocumentApiEndpointTest(APITestCase):
     def setUp(self):
         self.client.force_authenticate(user=self.user)
 
-    def test_document_creation_api_with_valid_data(self):
+    @patch.object(AddMemberPermission, "has_permission", return_value=True)
+    def test_document_creation_api_with_valid_data(self,mock_permission):
         response = self.client.post(
             "/api/member/v1/members/documents/", self.document_create_request_body, format='multipart'
         )
@@ -359,7 +355,8 @@ class DocumentApiEndpointTest(APITestCase):
         self.assertEqual(response_data['code'], 201)
         self.assertIn("document_id", response_data["data"])
 
-    def test_document_creation_api_with_invalid_data(self):
+    @patch.object(AddMemberPermission, "has_permission", return_value=True)
+    def test_document_creation_api_with_invalid_data(self,mock_permission):
         """
         Test for checking member document are adding perfectly with invalid data
         """
@@ -375,7 +372,6 @@ class DocumentApiEndpointTest(APITestCase):
         self.assertEqual(response_data['errors']['document_document'], [
                          'No file was submitted.'])
         self.assertIn("document_document", response_data["errors"])
-
 
 class CertificateApiEndpointTest(APITestCase):
     @classmethod
@@ -397,7 +393,8 @@ class CertificateApiEndpointTest(APITestCase):
     def setUp(self):
         self.client.force_authenticate(user=self.user)
 
-    def test_certificate_creation_api_with_valid_data(self):
+    @patch.object(AddMemberPermission, "has_permission", return_value=True)
+    def test_certificate_creation_api_with_valid_data(self,mock_permission):
         response = self.client.post(
             "/api/member/v1/members/certificate/", self.certificate_create_request_body, format='multipart'
         )
@@ -410,7 +407,8 @@ class CertificateApiEndpointTest(APITestCase):
         self.assertIn("id", response_data["data"])
         self.assertIn("title", response_data["data"])
 
-    def test_certificate_creation_api_with_invalid_data(self):
+    @patch.object(AddMemberPermission, "has_permission", return_value=True)
+    def test_certificate_creation_api_with_invalid_data(self,mock_permission):
         """
         Test for checking member certificate are adding perfectly with invalid data
         """
@@ -428,7 +426,6 @@ class CertificateApiEndpointTest(APITestCase):
                          'No file was submitted.'])
         self.assertIn("certificate_document", response_data["errors"])
 
-
 class TestMemberContactNumberAddAndUpdateTest(APITestCase):
     @classmethod
     def setUpTestData(cls):
@@ -441,7 +438,8 @@ class TestMemberContactNumberAddAndUpdateTest(APITestCase):
     def setUp(self):
         self.client.force_authenticate(user=self.user)
 
-    def test_member_contact_number_add_endpoint_with_valid_data(self):
+    @patch.object(AddMemberPermission, "has_permission", return_value=True)
+    def test_member_contact_number_add_endpoint_with_valid_data(self,mock_permission):
         """
         Test for checking member contact numbers are adding perfectly with valid data
         """
@@ -475,7 +473,8 @@ class TestMemberContactNumberAddAndUpdateTest(APITestCase):
         self.assertEqual(_response['status'], "success")
         self.assertIn("data", _response)
 
-    def test_member_contact_number_add_endpoint_with_invalid_data(self):
+    @patch.object(AddMemberPermission, "has_permission", return_value=True)
+    def test_member_contact_number_add_endpoint_with_invalid_data(self,mock_permission):
         """
         Test for checking member contact numbers endpoint with invalid data. Like contact type and missing data
         """
@@ -508,7 +507,6 @@ class TestMemberContactNumberAddAndUpdateTest(APITestCase):
         self.assertEqual(_response['status'], "failed")
         self.assertIn("errors", _response)
 
-
 class TestMemberEmailAddressAddAndUpdate(APITestCase):
     @classmethod
     def setUpTestData(cls):
@@ -521,7 +519,8 @@ class TestMemberEmailAddressAddAndUpdate(APITestCase):
     def setUp(self):
         self.client.force_authenticate(user=self.user)
 
-    def test_member_email_address_add_with_valid_data(self):
+    @patch.object(AddMemberPermission, "has_permission", return_value=True)
+    def test_member_email_address_add_with_valid_data(self,mock_permission):
         """
         Test for checking member email address add api with valid data
         """
@@ -550,7 +549,34 @@ class TestMemberEmailAddressAddAndUpdate(APITestCase):
         self.assertEqual(_response['code'], 201)
         self.assertEqual(_response['status'], "success")
         self.assertIn("data", _response)
+    
+    @patch.object(AddMemberPermission, "has_permission", return_value=True)
+    def test_member_email_address_add_with_invalid_data(self,mock_permission):
+        """
+        Test for checking member email address add api with invalid data. Like missing data and wrong email type
+        """
+        # arrange
+        _data = {
+            "member_ID": self.member.member_ID,
+            "data": [
+                {
+                    "email": self.fake.email(),
+                    "is_primary": False
+                },
+                {
+                    "email_type": self.email_type.id+1,
+                    "is_primary": False
+                }
+            ]
+        }
+        # act
+        _response = self.client.post(
+            "/api/member/v1/members/email_address/", _data, format="json")
 
+        # assert
+        self.assertEqual(_response.status_code, 400)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 400)
 
 class TestMemberAddressAddAndUpdate(APITestCase):
     @classmethod
@@ -563,7 +589,8 @@ class TestMemberAddressAddAndUpdate(APITestCase):
     def setUp(self):
         self.client.force_authenticate(user=self.user)
 
-    def test_member_address_add_with_valid_data(self):
+    @patch.object(AddMemberPermission, "has_permission", return_value=True)
+    def test_member_address_add_with_valid_data(self,mock_permission):
         """
             Test for member address add with valid data
         """
@@ -597,7 +624,8 @@ class TestMemberAddressAddAndUpdate(APITestCase):
         self.assertEqual(_response['status'], "success")
         self.assertIn("data", _response)
 
-    def test_member_address_add_with_invalid_data(self):
+    @patch.object(AddMemberPermission, "has_permission", return_value=True)
+    def test_member_address_add_with_invalid_data(self,mock_permission):
         """
             Test for member address add with invalid data. Like missing data
         """
@@ -629,7 +657,6 @@ class TestMemberAddressAddAndUpdate(APITestCase):
         self.assertEqual(_response['status'], "failed")
         self.assertIn("errors", _response)
 
-
 class TestMemberJobInformationAddAndUpdate(APITestCase):
     @classmethod
     def setUpTestData(cls):
@@ -640,7 +667,8 @@ class TestMemberJobInformationAddAndUpdate(APITestCase):
     def setUp(self):
         self.client.force_authenticate(user=self.user)
 
-    def test_job_information_add_with_valid_data(self):
+    @patch.object(AddMemberPermission, "has_permission", return_value=True)
+    def test_job_information_add_with_valid_data(self,mock_permission):
         """
         Test job information add with valid data.
         """
@@ -667,7 +695,8 @@ class TestMemberJobInformationAddAndUpdate(APITestCase):
         self.assertEqual(_response["status"], "success")
         self.assertIn("data", _response)
 
-    def test_job_information_add_with_invalid_data(self):
+    @patch.object(AddMemberPermission, "has_permission", return_value=True)
+    def test_job_information_add_with_invalid_data(self,mock_permission):
         """
         Test job information add with invalid data. Like missing fields
         """
@@ -693,7 +722,6 @@ class TestMemberJobInformationAddAndUpdate(APITestCase):
         self.assertEqual(_response["status"], "failed")
         self.assertIn("errors", _response)
 
-
 class TestMemberEmergencyContactAddAndUpdate(APITestCase):
     @classmethod
     def setUpTestData(cls):
@@ -704,7 +732,8 @@ class TestMemberEmergencyContactAddAndUpdate(APITestCase):
     def setUp(self):
         self.client.force_authenticate(user=self.user)
 
-    def test_member_emergency_contact_add_with_valid_data(self):
+    @patch.object(AddMemberPermission, "has_permission", return_value=True)
+    def test_member_emergency_contact_add_with_valid_data(self,mock_permission):
         """
         Test member emergency contact add with valid data
         """
@@ -735,7 +764,8 @@ class TestMemberEmergencyContactAddAndUpdate(APITestCase):
         self.assertEqual(_response["status"], "success")
         self.assertIn("data", _response)
 
-    def test_member_emergency_contact_add_with_invalid_data(self):
+    @patch.object(AddMemberPermission, "has_permission", return_value=True)
+    def test_member_emergency_contact_add_with_invalid_data(self,mock_permission):
         """
         Test member emergency contact add with invalid data. Like missing fields
         """
@@ -765,7 +795,6 @@ class TestMemberEmergencyContactAddAndUpdate(APITestCase):
         self.assertEqual(_response["status"], "failed")
         self.assertIn("errors", _response)
 
-
 class TestMemberSpecialDayAddAndUpdate(APITestCase):
     @classmethod
     def setUpTestData(cls):
@@ -776,7 +805,8 @@ class TestMemberSpecialDayAddAndUpdate(APITestCase):
     def setUp(self):
         self.client.force_authenticate(user=self.user)
 
-    def test_member_special_day_add_with_valid_data(self):
+    @patch.object(AddMemberPermission, "has_permission", return_value=True)
+    def test_member_special_day_add_with_valid_data(self,mock_permission):
         """
         Test member special day add with valid data
         """
@@ -805,7 +835,8 @@ class TestMemberSpecialDayAddAndUpdate(APITestCase):
         self.assertEqual(_response["status"], "success")
         self.assertIn("data", _response)
 
-    def test_member_special_day_add_with_invalid_data(self):
+    @patch.object(AddMemberPermission, "has_permission", return_value=True)
+    def test_member_special_day_add_with_invalid_data(self,mock_permission):
         """
         Test member special day add with invalid data. Like missing fields
         """
