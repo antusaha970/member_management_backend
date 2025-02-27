@@ -809,6 +809,116 @@ class TestMemberAddressAddAndUpdate(APITestCase):
         self.assertEqual(_response['status'], "failed")
         self.assertIn("errors", _response)
 
+    @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
+    def test_member_address_update_endpoint_with_valid_data(self, mock_permission):
+        """
+        Test address update endpoint with valid data
+        """
+        # arrange
+        shared_member = MemberFactory()
+        shared_address_type = AddressTypeChoiceFactory()
+        new_address_type = AddressTypeChoiceFactory()
+        addresses = AddressFactory.create_batch(
+            5, member=shared_member, address_type=shared_address_type)
+        data = [
+            {
+                "id": address.id,
+                "address_type": new_address_type.id,
+                "is_primary": address.is_primary,
+                "address": fake.address()
+            } for address in addresses
+        ]
+        _data = {
+            "member_ID": shared_member.member_ID,
+            "data": data
+        }
+        # act
+        _response = self.client.patch(
+            f"/api/member/v1/members/address/{shared_member.member_ID}/", _data, format="json")
+        # assert
+        self.assertEqual(_response.status_code, 200)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 200)
+        self.assertEqual(_response['status'], "success")
+        self.assertIn("data", _response)
+        self.assertEqual(len(_response['data']), 5)
+        for obj in _response['data']:
+            self.assertEqual(obj.get("status"), "updated")
+
+    @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
+    def test_member_address_update_endpoint_with_invalid_data(self, mock_permission):
+        """
+        Test address update endpoint with invalid data. Like missing fields
+        """
+        # arrange
+        shared_member = MemberFactory()
+        shared_address_type = AddressTypeChoiceFactory()
+        new_address_type = AddressTypeChoiceFactory()
+        addresses = AddressFactory.create_batch(
+            5, member=shared_member, address_type=shared_address_type)
+        data = [
+            {
+                "id": address.id,
+                "address_type": new_address_type.id,
+                "is_primary": address.is_primary
+            } for address in addresses
+        ]
+        _data = {
+            "member_ID": shared_member.member_ID,
+            "data": data
+        }
+        # act
+        _response = self.client.patch(
+            f"/api/member/v1/members/address/{shared_member.member_ID}/", _data, format="json")
+        # assert
+        self.assertEqual(_response.status_code, 400)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 400)
+        self.assertEqual(_response['status'], "failed")
+        self.assertIn("errors", _response)
+
+    @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
+    def test_member_address_update_add_another_endpoint_with_valid_data(self, mock_permission):
+        """
+        Test address update endpoint with valid data. Try to add another address
+        """
+        # arrange
+        shared_member = MemberFactory()
+        shared_address_type = AddressTypeChoiceFactory()
+        new_address_type = AddressTypeChoiceFactory()
+        addresses = AddressFactory.create_batch(
+            5, member=shared_member, address_type=shared_address_type)
+        data = [
+            {
+                "id": address.id,
+                "address_type": new_address_type.id,
+                "is_primary": address.is_primary,
+                "address": fake.address()
+            } for address in addresses
+        ]
+
+        data.append({
+            "address_type": new_address_type.id,
+            "is_primary": False,
+            "address": fake.address()
+        })
+        _data = {
+            "member_ID": shared_member.member_ID,
+            "data": data
+        }
+        # act
+        _response = self.client.patch(
+            f"/api/member/v1/members/address/{shared_member.member_ID}/", _data, format="json")
+        # assert
+        self.assertEqual(_response.status_code, 200)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 200)
+        self.assertEqual(_response['status'], "success")
+        self.assertIn("data", _response)
+        self.assertEqual(len(_response['data']), 6)
+        for obj in _response['data']:
+            self.assertTrue(obj.get("status") in ["updated", "created"])
+
 
 class TestMemberJobInformationAddAndUpdate(APITestCase):
     @classmethod

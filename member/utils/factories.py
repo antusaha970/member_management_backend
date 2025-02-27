@@ -27,7 +27,7 @@ class AddressTypeChoiceFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = AddressTypeChoice
 
-    name = fake.name()
+    name = factory.Faker("name")
 
 
 class SpouseStatusChoiceFactory(factory.django.DjangoModelFactory):
@@ -151,6 +151,24 @@ class EmailFactory(factory.django.DjangoModelFactory):
     # relation (shared)
     member = factory.LazyAttribute(lambda _: shared_member)
     email_type = factory.LazyAttribute(lambda _: shared_contact_type)
+    # record keeping
+    status = 0
+    is_active = True
+    created_at = factory.LazyFunction(date.today)
+    updated_at = factory.LazyFunction(date.today)
+
+
+class AddressFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Address
+
+    member = factory.LazyAttribute(lambda _: shared_member)
+    address_type = factory.LazyAttribute(lambda _: shared_contact_type)
+
+    title = factory.Faker("name")
+    address = factory.Faker("name")
+    is_primary = False
+
     # record keeping
     status = 0
     is_active = True
