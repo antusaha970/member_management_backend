@@ -24,3 +24,15 @@ class AddressTypeChoiceFactory(factory.django.DjangoModelFactory):
         model = AddressTypeChoice
 
     name = fake.name()
+
+
+class SpouseStatusChoiceFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = SpouseStatusChoice
+    name = factory.LazyAttribute(lambda _: fake.unique.word())
+
+
+class DescendantRelationChoiceFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = DescendantRelationChoice
+    name = factory.LazyAttribute(lambda _: fake.unique.word())
