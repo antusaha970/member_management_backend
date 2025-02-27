@@ -13,21 +13,21 @@ class ContactTypeFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = ContactTypeChoice
 
-    name = fake.name()
+    name = factory.LazyAttribute(lambda _: fake.name())
 
 
 class EmailTypeChoiceFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = EmailTypeChoice
 
-    name = fake.name()
+    name = factory.LazyAttribute(lambda _: fake.name())
 
 
 class AddressTypeChoiceFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = AddressTypeChoice
 
-    name = fake.name()
+    name = factory.Faker("name")
 
 
 class SpouseStatusChoiceFactory(factory.django.DjangoModelFactory):
@@ -187,3 +187,86 @@ class CertificateFactory(factory.django.DjangoModelFactory):
     member = factory.SubFactory(MemberFactory)
     
     
+
+class ContactNumberFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = ContactNumber
+
+    number = fake.random_number(digits=12)
+    is_primary = False
+    # relation (shared)
+    member = factory.LazyAttribute(lambda _: shared_member)
+    contact_type = factory.LazyAttribute(lambda _: shared_contact_type)
+    # record keeping
+    status = 0
+    is_active = True
+    created_at = factory.LazyFunction(date.today)
+    updated_at = factory.LazyFunction(date.today)
+
+
+class EmailFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Email
+
+    email = factory.LazyAttribute(lambda _: fake.email())
+    is_primary = False
+    # relation (shared)
+    member = factory.LazyAttribute(lambda _: shared_member)
+    email_type = factory.LazyAttribute(lambda _: shared_contact_type)
+    # record keeping
+    status = 0
+    is_active = True
+    created_at = factory.LazyFunction(date.today)
+    updated_at = factory.LazyFunction(date.today)
+
+
+class AddressFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Address
+
+    member = factory.LazyAttribute(lambda _: shared_member)
+    address_type = factory.LazyAttribute(lambda _: shared_contact_type)
+
+    title = factory.Faker("name")
+    address = factory.Faker("name")
+    is_primary = False
+
+    # record keeping
+    status = 0
+    is_active = True
+    created_at = factory.LazyFunction(date.today)
+    updated_at = factory.LazyFunction(date.today)
+
+
+class EmergencyContactFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = EmergencyContact
+
+    contact_name = factory.Faker("name")
+    contact_number = factory.Faker("phone_number")
+    relation_with_member = factory.Faker("last_name")
+
+    # relation (shared)
+    member = factory.LazyAttribute(lambda _: shared_member)
+    # record keeping
+    status = 0
+    is_active = True
+    created_at = factory.LazyFunction(date.today)
+    updated_at = factory.LazyFunction(date.today)
+
+
+class JobFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Profession
+    title = factory.Faker("name")
+    organization_name = factory.Faker("name")
+    job_description = factory.Faker("name"
+                                    )
+    location = factory.Faker("name")
+    # relation (shared)
+    member = factory.LazyAttribute(lambda _: shared_member)
+    # record keeping
+    status = 0
+    is_active = True
+    created_at = factory.LazyFunction(date.today)
+    updated_at = factory.LazyFunction(date.today)

@@ -6,7 +6,7 @@ from member.utils.factories import *
 import pdb
 from unittest.mock import patch
 
-from member.utils.permission_classes import AddMemberPermission,UpdateMemberPermission
+from member.utils.permission_classes import AddMemberPermission, UpdateMemberPermission
 # Create a dummy image using PIL
 
 fake = Faker()
@@ -765,6 +765,118 @@ class TestMemberContactNumberAddAndUpdateTest(APITestCase):
         self.assertEqual(_response['status'], "failed")
         self.assertIn("errors", _response)
 
+    @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
+    def test_contact_number_update_endpoint_with_valid_data(self, mock_permission):
+        """
+        Test contact number update endpoint with valid data
+        """
+        # arrange
+        shared_member = MemberFactory()
+        shared_contact_type = ContactTypeFactory()
+        new_contact_type = ContactTypeFactory()
+        contact_numbers = ContactNumberFactory.create_batch(
+            5, member=shared_member, contact_type=shared_contact_type)
+        data = [
+            {
+                "id": number.id,
+                "contact_type": new_contact_type.id,
+                "is_primary": number.is_primary,
+                "number": fake.random_number(digits=12)
+
+            } for number in contact_numbers
+        ]
+        _data = {
+            "member_ID": shared_member.member_ID,
+            "data": data
+        }
+        # act
+        _response = self.client.patch(
+            f"/api/member/v1/members/contact_numbers/{shared_member.member_ID}/", _data, format="json")
+        # assert
+        self.assertEqual(_response.status_code, 200)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 200)
+        self.assertEqual(_response['status'], "success")
+        self.assertIn("data", _response)
+        self.assertEqual(len(_response['data']), 5)
+        for obj in _response['data']:
+            self.assertEqual(obj.get("status"), "updated")
+
+    @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
+    def test_contact_number_update_endpoint_with_invalid_data(self, mock_permission):
+        """
+        Test contact number update endpoint with invalid data
+        """
+        # arrange
+        shared_member = MemberFactory()
+        shared_contact_type = ContactTypeFactory()
+        new_contact_type = ContactTypeFactory()
+        contact_numbers = ContactNumberFactory.create_batch(
+            5, member=shared_member, contact_type=shared_contact_type)
+        data = [
+            {
+                "id": number.id,
+                "contact_type": new_contact_type.id+10,
+                "is_primary": number.is_primary
+
+            } for number in contact_numbers
+        ]
+        _data = {
+            "member_ID": shared_member.member_ID,
+            "data": data
+        }
+        # act
+        _response = self.client.patch(
+            f"/api/member/v1/members/contact_numbers/{shared_member.member_ID}/", _data, format="json")
+        # assert
+        self.assertEqual(_response.status_code, 400)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 400)
+        self.assertEqual(_response['status'], "failed")
+        self.assertIn("errors", _response)
+
+    @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
+    def test_contact_number_update_endpoint_add_one_more_with_valid_data(self, mock_permission):
+        """
+        Test contact number update endpoint with valid data. And try to add one more contact number
+        """
+        # arrange
+        shared_member = MemberFactory()
+        shared_contact_type = ContactTypeFactory()
+        new_contact_type = ContactTypeFactory()
+        contact_numbers = ContactNumberFactory.create_batch(
+            5, member=shared_member, contact_type=shared_contact_type)
+        data = [
+            {
+                "id": number.id,
+                "contact_type": new_contact_type.id,
+                "is_primary": number.is_primary,
+                "number": fake.random_number(digits=12)
+
+            } for number in contact_numbers
+        ]
+        data.append({
+            "contact_type": new_contact_type.id,
+            "is_primary": False,
+            "number": fake.random_number(digits=12)
+        })
+        _data = {
+            "member_ID": shared_member.member_ID,
+            "data": data
+        }
+        # act
+        _response = self.client.patch(
+            f"/api/member/v1/members/contact_numbers/{shared_member.member_ID}/", _data, format="json")
+        # assert
+        self.assertEqual(_response.status_code, 200)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 200)
+        self.assertEqual(_response['status'], "success")
+        self.assertIn("data", _response)
+        self.assertEqual(len(_response['data']), 6)
+        for obj in _response['data']:
+            self.assertTrue(obj.get("status") in ["updated", "created"])
+
 
 class TestMemberEmailAddressAddAndUpdate(APITestCase):
     @classmethod
@@ -836,6 +948,116 @@ class TestMemberEmailAddressAddAndUpdate(APITestCase):
         self.assertEqual(_response.status_code, 400)
         _response = _response.json()
         self.assertEqual(_response['code'], 400)
+
+    @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
+    def test_member_email_address_update_endpoint_with_valid_data(self, mock_permission):
+        """
+        Test email address update endpoint with valid data
+        """
+        # arrange
+        shared_member = MemberFactory()
+        shared_email_type = EmailTypeChoiceFactory()
+        new_email_type = EmailTypeChoiceFactory()
+        email_addresses = EmailFactory.create_batch(
+            5, member=shared_member, email_type=shared_email_type)
+        data = [
+            {
+                "id": email.id,
+                "email_type": new_email_type.id,
+                "is_primary": email.is_primary,
+                "email": fake.email()
+            } for email in email_addresses
+        ]
+        _data = {
+            "member_ID": shared_member.member_ID,
+            "data": data
+        }
+        # act
+        _response = self.client.patch(
+            f"/api/member/v1/members/email_address/{shared_member.member_ID}/", _data, format="json")
+        # assert
+        self.assertEqual(_response.status_code, 200)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 200)
+        self.assertEqual(_response['status'], "success")
+        self.assertIn("data", _response)
+        self.assertEqual(len(_response['data']), 5)
+        for obj in _response['data']:
+            self.assertEqual(obj.get("status"), "updated")
+
+    @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
+    def test_member_email_address_update_endpoint_with_invalid_data(self, mock_permission):
+        """
+        Test email address update endpoint with invalid data
+        """
+        # arrange
+        shared_member = MemberFactory()
+        shared_email_type = EmailTypeChoiceFactory()
+        new_email_type = EmailTypeChoiceFactory()
+        email_addresses = EmailFactory.create_batch(
+            5, member=shared_member, email_type=shared_email_type)
+        data = [
+            {
+                "id": email.id,
+                "email_type": new_email_type.id+10,
+                "is_primary": email.is_primary,
+                "email": fake.name()
+            } for email in email_addresses
+        ]
+        _data = {
+            "member_ID": shared_member.member_ID,
+            "data": data
+        }
+        # act
+        _response = self.client.patch(
+            f"/api/member/v1/members/email_address/{shared_member.member_ID}/", _data, format="json")
+        # assert
+        self.assertEqual(_response.status_code, 400)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 400)
+        self.assertEqual(_response['status'], "failed")
+        self.assertIn("errors", _response)
+
+    @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
+    def test_member_email_address_update_add_one_more_email_endpoint_with_valid_data(self, mock_permission):
+        """
+        Test email address update endpoint with valid data. We will try to add one more email address
+        """
+        # arrange
+        shared_member = MemberFactory()
+        shared_email_type = EmailTypeChoiceFactory()
+        new_email_type = EmailTypeChoiceFactory()
+        email_addresses = EmailFactory.create_batch(
+            5, member=shared_member, email_type=shared_email_type)
+        data = [
+            {
+                "id": email.id,
+                "email_type": new_email_type.id,
+                "is_primary": email.is_primary,
+                "email": fake.email()
+            } for email in email_addresses
+        ]
+        data.append({
+            "email_type": new_email_type.id,
+            "is_primary": False,
+            "email": fake.email()
+        })
+        _data = {
+            "member_ID": shared_member.member_ID,
+            "data": data
+        }
+        # act
+        _response = self.client.patch(
+            f"/api/member/v1/members/email_address/{shared_member.member_ID}/", _data, format="json")
+        # assert
+        self.assertEqual(_response.status_code, 200)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 200)
+        self.assertEqual(_response['status'], "success")
+        self.assertIn("data", _response)
+        self.assertEqual(len(_response['data']), 6)
+        for obj in _response['data']:
+            self.assertTrue(obj.get("status") in ["created", "updated"])
 
 
 class TestMemberAddressAddAndUpdate(APITestCase):
@@ -916,6 +1138,116 @@ class TestMemberAddressAddAndUpdate(APITestCase):
         self.assertEqual(_response['code'], 400)
         self.assertEqual(_response['status'], "failed")
         self.assertIn("errors", _response)
+
+    @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
+    def test_member_address_update_endpoint_with_valid_data(self, mock_permission):
+        """
+        Test address update endpoint with valid data
+        """
+        # arrange
+        shared_member = MemberFactory()
+        shared_address_type = AddressTypeChoiceFactory()
+        new_address_type = AddressTypeChoiceFactory()
+        addresses = AddressFactory.create_batch(
+            5, member=shared_member, address_type=shared_address_type)
+        data = [
+            {
+                "id": address.id,
+                "address_type": new_address_type.id,
+                "is_primary": address.is_primary,
+                "address": fake.address()
+            } for address in addresses
+        ]
+        _data = {
+            "member_ID": shared_member.member_ID,
+            "data": data
+        }
+        # act
+        _response = self.client.patch(
+            f"/api/member/v1/members/address/{shared_member.member_ID}/", _data, format="json")
+        # assert
+        self.assertEqual(_response.status_code, 200)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 200)
+        self.assertEqual(_response['status'], "success")
+        self.assertIn("data", _response)
+        self.assertEqual(len(_response['data']), 5)
+        for obj in _response['data']:
+            self.assertEqual(obj.get("status"), "updated")
+
+    @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
+    def test_member_address_update_endpoint_with_invalid_data(self, mock_permission):
+        """
+        Test address update endpoint with invalid data. Like missing fields
+        """
+        # arrange
+        shared_member = MemberFactory()
+        shared_address_type = AddressTypeChoiceFactory()
+        new_address_type = AddressTypeChoiceFactory()
+        addresses = AddressFactory.create_batch(
+            5, member=shared_member, address_type=shared_address_type)
+        data = [
+            {
+                "id": address.id,
+                "address_type": new_address_type.id,
+                "is_primary": address.is_primary
+            } for address in addresses
+        ]
+        _data = {
+            "member_ID": shared_member.member_ID,
+            "data": data
+        }
+        # act
+        _response = self.client.patch(
+            f"/api/member/v1/members/address/{shared_member.member_ID}/", _data, format="json")
+        # assert
+        self.assertEqual(_response.status_code, 400)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 400)
+        self.assertEqual(_response['status'], "failed")
+        self.assertIn("errors", _response)
+
+    @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
+    def test_member_address_update_add_another_endpoint_with_valid_data(self, mock_permission):
+        """
+        Test address update endpoint with valid data. Try to add another address
+        """
+        # arrange
+        shared_member = MemberFactory()
+        shared_address_type = AddressTypeChoiceFactory()
+        new_address_type = AddressTypeChoiceFactory()
+        addresses = AddressFactory.create_batch(
+            5, member=shared_member, address_type=shared_address_type)
+        data = [
+            {
+                "id": address.id,
+                "address_type": new_address_type.id,
+                "is_primary": address.is_primary,
+                "address": fake.address()
+            } for address in addresses
+        ]
+
+        data.append({
+            "address_type": new_address_type.id,
+            "is_primary": False,
+            "address": fake.address()
+        })
+        _data = {
+            "member_ID": shared_member.member_ID,
+            "data": data
+        }
+        # act
+        _response = self.client.patch(
+            f"/api/member/v1/members/address/{shared_member.member_ID}/", _data, format="json")
+        # assert
+        self.assertEqual(_response.status_code, 200)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 200)
+        self.assertEqual(_response['status'], "success")
+        self.assertIn("data", _response)
+        self.assertEqual(len(_response['data']), 6)
+        for obj in _response['data']:
+            self.assertTrue(obj.get("status") in ["updated", "created"])
 
 
 class TestMemberJobInformationAddAndUpdate(APITestCase):
@@ -1056,6 +1388,105 @@ class TestMemberEmergencyContactAddAndUpdate(APITestCase):
         self.assertEqual(_response['code'], 400)
         self.assertEqual(_response["status"], "failed")
         self.assertIn("errors", _response)
+
+    @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
+    def test_member_emergency_contact_update_endpoint_with_valid_data(self, mock_permission):
+        """
+        Test emergency contact update endpoint with valid data
+        """
+        # arrange
+        shared_member = MemberFactory()
+        emergency_contact = EmergencyContactFactory.create_batch(
+            5, member=shared_member)
+        data = [
+            {
+                "id": contact.id,
+                "contact_name": fake.name(),
+                "contact_number": fake.random_number(digits=12),
+            } for contact in emergency_contact
+        ]
+        _data = {
+            "member_ID": shared_member.member_ID,
+            "data": data
+        }
+        # act
+        _response = self.client.patch(
+            f"/api/member/v1/members/emergency_contact/{shared_member.member_ID}/", _data, format="json")
+        # assert
+        self.assertEqual(_response.status_code, 200)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 200)
+        self.assertEqual(_response['status'], "success")
+        self.assertIn("data", _response)
+        self.assertEqual(len(_response['data']), 5)
+        for obj in _response['data']:
+            self.assertEqual(obj.get("status"), "updated")
+
+    @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
+    def test_member_emergency_contact_update_endpoint_with_invalid_data(self, mock_permission):
+        """
+        Test emergency contact update endpoint with invalid data. Like missing fields
+        """
+        # arrange
+        shared_member = MemberFactory()
+        emergency_contact = EmergencyContactFactory.create_batch(
+            5, member=shared_member)
+        data = [
+            {
+                "id": contact.id,
+                "contact_name": fake.name(),
+            } for contact in emergency_contact
+        ]
+        _data = {
+            "member_ID": shared_member.member_ID,
+            "data": data
+        }
+        # act
+        _response = self.client.patch(
+            f"/api/member/v1/members/emergency_contact/{shared_member.member_ID}/", _data, format="json")
+        # assert
+        self.assertEqual(_response.status_code, 400)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 400)
+        self.assertEqual(_response['status'], "failed")
+        self.assertIn("errors", _response)
+
+    @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
+    def test_member_emergency_contact_update_add_another_endpoint_with_valid_data(self, mock_permission):
+        """
+        Test emergency contact update endpoint with valid data.Try to add one more emergency contact
+        """
+        # arrange
+        shared_member = MemberFactory()
+        emergency_contact = EmergencyContactFactory.create_batch(
+            5, member=shared_member)
+        data = [
+            {
+                "id": contact.id,
+                "contact_name": fake.name(),
+                "contact_number": fake.random_number(digits=12),
+            } for contact in emergency_contact
+        ]
+        data.append({
+            "contact_name": fake.name(),
+            "contact_number": fake.random_number(digits=12),
+        })
+        _data = {
+            "member_ID": shared_member.member_ID,
+            "data": data
+        }
+        # act
+        _response = self.client.patch(
+            f"/api/member/v1/members/emergency_contact/{shared_member.member_ID}/", _data, format="json")
+        # assert
+        self.assertEqual(_response.status_code, 200)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 200)
+        self.assertEqual(_response['status'], "success")
+        self.assertIn("data", _response)
+        self.assertEqual(len(_response['data']), 6)
+        for obj in _response['data']:
+            self.assertTrue(obj.get("status") in ["updated", "created"])
 
 
 class TestMemberSpecialDayAddAndUpdate(APITestCase):
