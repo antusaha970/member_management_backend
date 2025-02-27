@@ -1,6 +1,6 @@
 
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from . import serializers
 from .utils.utility_functions import generate_member_id
 from rest_framework.response import Response
@@ -8,7 +8,7 @@ from rest_framework import status
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from .models import Member, MembersFinancialBasics, MemberHistory, CompanionInformation, Documents
-from .utils.permission_classes import ViewMemberPermission
+from .utils.permission_classes import ViewMemberPermission, AddMemberPermission, UpdateMemberPermission, DeleteMemberPermission
 import logging
 from activity_log.tasks import log_activity_task
 from activity_log.utils.functions import request_data_activity_log
@@ -25,6 +25,18 @@ logger = logging.getLogger("myapp")
 
 class MemberView(APIView):
     permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsAuthenticated(), AddMemberPermission()]
+        elif self.request.method == "PATCH":
+            return [IsAuthenticated(), UpdateMemberPermission()]
+        elif self.request.method == "DELETE":
+            return [IsAuthenticated(), DeleteMemberPermission()]
+        elif self.request.method == "GET":
+            return [IsAuthenticated(), ViewMemberPermission()]
+        else:
+            return [AllowAny()]
 
     def post(self, request):
         try:
@@ -1093,12 +1105,12 @@ class MemberEmergencyContactView(APIView):
             if serializer.is_valid():
                 with transaction.atomic():
                     instance = serializer.save()
-                
+
                 log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="Emergency contact created",  
-                    severity_level="info",  
-                    description="A user has successfully added a new emergency contact.",  
+                    request_data_activity_log(request),
+                    verb="Emergency contact created",
+                    severity_level="info",
+                    description="A user has successfully added a new emergency contact.",
                 )
                 return Response({
                     "code": 201,
@@ -1108,9 +1120,9 @@ class MemberEmergencyContactView(APIView):
                 }, status=status.HTTP_201_CREATED)
             else:
                 log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="Emergency contact creation failed",  
-                    severity_level="error",  
+                    request_data_activity_log(request),
+                    verb="Emergency contact creation failed",
+                    severity_level="error",
                     description="A user tried to create a emergency contact but made an invalid request",
                 )
                 return Response({
@@ -1122,11 +1134,11 @@ class MemberEmergencyContactView(APIView):
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="Emergency contact creation failed",  
-                    severity_level="error",  
-                    description="A user tried to create a emergency contact but made an invalid request",
-                )
+                request_data_activity_log(request),
+                verb="Emergency contact creation failed",
+                severity_level="error",
+                description="A user tried to create a emergency contact but made an invalid request",
+            )
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -1146,9 +1158,9 @@ class MemberEmergencyContactView(APIView):
                 with transaction.atomic():
                     instance = serializer.save(instance=member)
                 log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="Emergency contact updated",  
-                    severity_level="info",  
+                    request_data_activity_log(request),
+                    verb="Emergency contact updated",
+                    severity_level="info",
                     description="A user has successfully updated an emergency contact.",
                 )
                 return Response({
@@ -1159,9 +1171,9 @@ class MemberEmergencyContactView(APIView):
                 }, status=status.HTTP_200_OK)
             else:
                 log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="Emergency contact update failed",  
-                    severity_level="error",  
+                    request_data_activity_log(request),
+                    verb="Emergency contact update failed",
+                    severity_level="error",
                     description="A user tried to update an emergency contact but made an invalid request",
                 )
                 return Response({
@@ -1173,10 +1185,10 @@ class MemberEmergencyContactView(APIView):
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="Emergency contact update failed",  
-                    severity_level="error",  
-                    description="A user tried to update an emergency contact but made an invalid request",
+                request_data_activity_log(request),
+                verb="Emergency contact update failed",
+                severity_level="error",
+                description="A user tried to update an emergency contact but made an invalid request",
             )
             return Response({
                 "code": 500,
@@ -1200,9 +1212,9 @@ class MemberCompanionView(APIView):
                 with transaction.atomic():
                     instance = serializer.save()
                 log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="Companion information created",  
-                    severity_level="info",  
+                    request_data_activity_log(request),
+                    verb="Companion information created",
+                    severity_level="info",
                     description="A user has successfully added a new companion information.",
                 )
                 return Response({
@@ -1215,9 +1227,9 @@ class MemberCompanionView(APIView):
                 }, status=status.HTTP_201_CREATED)
             else:
                 log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="Companion information creation failed",  
-                    severity_level="error",  
+                    request_data_activity_log(request),
+                    verb="Companion information creation failed",
+                    severity_level="error",
                     description="A user tried to create a companion information but made an invalid request",
                 )
                 return Response({
@@ -1229,10 +1241,10 @@ class MemberCompanionView(APIView):
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="Companion information creation failed",  
-                    severity_level="error",  
-                    description="A user tried to create a companion information but made an invalid request",
+                request_data_activity_log(request),
+                verb="Companion information creation failed",
+                severity_level="error",
+                description="A user tried to create a companion information but made an invalid request",
             )
             return Response({
                 "code": 500,
@@ -1261,9 +1273,9 @@ class MemberCompanionView(APIView):
                     if instance is not None:
                         instance = serializer.save(instance=instance)
                         log_activity_task.delay_on_commit(
-                            request_data_activity_log(request),  
-                            verb="Companion information updated",  
-                            severity_level="info",  
+                            request_data_activity_log(request),
+                            verb="Companion information updated",
+                            severity_level="info",
                             description="A user has successfully updated a new companion.",
                         )
                         return Response({
@@ -1277,9 +1289,9 @@ class MemberCompanionView(APIView):
                     else:
                         instance = serializer.save()
                         log_activity_task.delay_on_commit(
-                            request_data_activity_log(request),  
-                            verb="Companion information created",  
-                            severity_level="info",  
+                            request_data_activity_log(request),
+                            verb="Companion information created",
+                            severity_level="info",
                             description="A user has successfully added a new companion information.",
                         )
                         return Response({
@@ -1292,9 +1304,9 @@ class MemberCompanionView(APIView):
                         }, status=status.HTTP_201_CREATED)
             else:
                 log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="Companion information update failed",  
-                    severity_level="error",  
+                    request_data_activity_log(request),
+                    verb="Companion information update failed",
+                    severity_level="error",
                     description="A user tried to update a companion information but made an invalid request",
                 )
                 return Response({
@@ -1306,10 +1318,10 @@ class MemberCompanionView(APIView):
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="Companion information update failed",  
-                    severity_level="error",  
-                    description="A user tried to update a companion information but made an invalid request",
+                request_data_activity_log(request),
+                verb="Companion information update failed",
+                severity_level="error",
+                description="A user tried to update a companion information but made an invalid request",
             )
             return Response({
                 "code": 500,
@@ -1333,9 +1345,9 @@ class MemberDocumentView(APIView):
                 with transaction.atomic():
                     instance = serializer.save()
                 log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="Member documents created",  
-                    severity_level="info",  
+                    request_data_activity_log(request),
+                    verb="Member documents created",
+                    severity_level="info",
                     description="A user has successfully added new member documents.",
                 )
                 return Response({
@@ -1348,9 +1360,9 @@ class MemberDocumentView(APIView):
                 }, status=status.HTTP_201_CREATED)
             else:
                 log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="Member documents creation failed",  
-                    severity_level="error",  
+                    request_data_activity_log(request),
+                    verb="Member documents creation failed",
+                    severity_level="error",
                     description="A user tried to create member documents but made an invalid request",
                 )
                 return Response({
@@ -1362,10 +1374,10 @@ class MemberDocumentView(APIView):
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="Member documents creation failed",  
-                    severity_level="error",  
-                    description="A user tried to create member documents but made an invalid request",
+                request_data_activity_log(request),
+                verb="Member documents creation failed",
+                severity_level="error",
+                description="A user tried to create member documents but made an invalid request",
             )
             return Response({
                 "code": 500,
@@ -1394,9 +1406,9 @@ class MemberDocumentView(APIView):
                     if instance is not None:
                         instance = serializer.save(instance=instance)
                         log_activity_task.delay_on_commit(
-                            request_data_activity_log(request),  
-                            verb="Member documents updated",  
-                            severity_level="info",  
+                            request_data_activity_log(request),
+                            verb="Member documents updated",
+                            severity_level="info",
                             description="A user has successfully updated a new member document.",
                         )
                         return Response({
@@ -1410,9 +1422,9 @@ class MemberDocumentView(APIView):
                     else:
                         instance = serializer.save()
                         log_activity_task.delay_on_commit(
-                            request_data_activity_log(request),  
-                            verb="Member documents created",  
-                            severity_level="info",  
+                            request_data_activity_log(request),
+                            verb="Member documents created",
+                            severity_level="info",
                             description="A user has successfully added a new member document.",
                         )
                         return Response({
@@ -1425,9 +1437,9 @@ class MemberDocumentView(APIView):
                         }, status=status.HTTP_201_CREATED)
             else:
                 log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="Member documents update failed",  
-                    severity_level="error",  
+                    request_data_activity_log(request),
+                    verb="Member documents update failed",
+                    severity_level="error",
                     description="A user tried to update a member document but made an invalid request",
                 )
                 return Response({
@@ -1439,10 +1451,10 @@ class MemberDocumentView(APIView):
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="Member documents update failed",  
-                    severity_level="error",  
-                    description="A user tried to update a member document but made an invalid request",
+                request_data_activity_log(request),
+                verb="Member documents update failed",
+                severity_level="error",
+                description="A user tried to update a member document but made an invalid request",
             )
             return Response({
                 "code": 500,
@@ -1465,17 +1477,17 @@ class AddMemberIDview(APIView):
                 with transaction.atomic():
                     instance = serializer.save()
                 log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="New member id created",  
-                    severity_level="info",  
+                    request_data_activity_log(request),
+                    verb="New member id created",
+                    severity_level="info",
                     description="A user has successfully created a new Member ID.",
                 )
                 return Response({"code": 201, "status": "success", "message": "New Id has been created"}, status=status.HTTP_201_CREATED)
             else:
                 log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="New member id creation failed",  
-                    severity_level="error",  
+                    request_data_activity_log(request),
+                    verb="New member id creation failed",
+                    severity_level="error",
                     description="A user tried to create a new Member ID but made an invalid request",
                 )
                 return Response({
@@ -1487,10 +1499,10 @@ class AddMemberIDview(APIView):
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="New member id creation failed",  
-                    severity_level="error",  
-                    description="A user tried to create a new Member ID but made an invalid request",
+                request_data_activity_log(request),
+                verb="New member id creation failed",
+                severity_level="error",
+                description="A user tried to create a new Member ID but made an invalid request",
             )
             return Response({
                 "code": 500,
@@ -1536,11 +1548,11 @@ class MemberHistoryView(APIView):
             serializer = serializers.MemberHistorySerializer(
                 paginated_queryset, many=True)
             log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="Viewing all member history",  
-                    severity_level="info",  
-                    description="A user has successfully viewing all members history.",
-                )
+                request_data_activity_log(request),
+                verb="Viewing all member history",
+                severity_level="info",
+                description="A user has successfully viewing all members history.",
+            )
             return paginator.get_paginated_response({
                 "code": 200,
                 "status": "success",
@@ -1550,10 +1562,10 @@ class MemberHistoryView(APIView):
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="Viewing all member history failed",  
-                    severity_level="error",  
-                    description="A user tried to view all members history but made an invalid request",
+                request_data_activity_log(request),
+                verb="Viewing all member history failed",
+                severity_level="error",
+                description="A user tried to view all members history but made an invalid request",
             )
             return Response({
                 "code": 500,
@@ -1575,10 +1587,10 @@ class MemberSingleHistoryView(APIView):
             serializer = serializers.MemberHistorySerializer(
                 member_history, many=True)
             log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="Viewing single member history",  
-                    severity_level="info",  
-                    description="A user has successfully viewing single member history.",
+                request_data_activity_log(request),
+                verb="Viewing single member history",
+                severity_level="info",
+                description="A user has successfully viewing single member history.",
             )
             return Response({
                 'code': 200,
@@ -1588,10 +1600,10 @@ class MemberSingleHistoryView(APIView):
             }, status=status.HTTP_200_OK)
         except MemberHistory.DoesNotExist:
             log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="Viewing single member history failed",  
-                    severity_level="info",  
-                    description="A user has viewing single member history but made an invalid request.",
+                request_data_activity_log(request),
+                verb="Viewing single member history failed",
+                severity_level="info",
+                description="A user has viewing single member history but made an invalid request.",
             )
             return Response({
                 "code": 404,
@@ -1604,10 +1616,10 @@ class MemberSingleHistoryView(APIView):
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="Viewing single member history failed",  
-                    severity_level="error",  
-                    description="A user tried to view single member history but made an invalid request.",
+                request_data_activity_log(request),
+                verb="Viewing single member history failed",
+                severity_level="error",
+                description="A user tried to view single member history but made an invalid request.",
             )
             return Response({
                 "code": 500,
@@ -1631,9 +1643,9 @@ class MemberSpecialDayView(APIView):
             if serializer.is_valid():
                 instances = serializer.save()
                 log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="member special days created",  
-                    severity_level="info",  
+                    request_data_activity_log(request),
+                    verb="member special days created",
+                    severity_level="info",
                     description="A user has successfully created new member special days.",
                 )
 
@@ -1646,9 +1658,9 @@ class MemberSpecialDayView(APIView):
 
             else:
                 log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="member special days creation failed",  
-                    severity_level="error",  
+                    request_data_activity_log(request),
+                    verb="member special days creation failed",
+                    severity_level="error",
                     description="A user tried to create new member special days but made an invalid request",
                 )
                 return Response({
@@ -1660,10 +1672,10 @@ class MemberSpecialDayView(APIView):
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="member special days creation failed",  
-                    severity_level="error",  
-                    description="A user tried to create new member special days but made an invalid request",
+                request_data_activity_log(request),
+                verb="member special days creation failed",
+                severity_level="error",
+                description="A user tried to create new member special days but made an invalid request",
             )
             return Response({
                 "code": 500,
@@ -1673,8 +1685,6 @@ class MemberSpecialDayView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        
 
     def patch(self, request, member_ID):
         try:
@@ -1686,9 +1696,9 @@ class MemberSpecialDayView(APIView):
                 with transaction.atomic():
                     instance = serializer.save(instance=member)
                 log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="member special days updated",  
-                    severity_level="info",  
+                    request_data_activity_log(request),
+                    verb="member special days updated",
+                    severity_level="info",
                     description="A user has successfully updated member special days.",
                 )
                 return Response({
@@ -1699,9 +1709,9 @@ class MemberSpecialDayView(APIView):
                 }, status=status.HTTP_200_OK)
             else:
                 log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="member special days update failed",  
-                    severity_level="error",  
+                    request_data_activity_log(request),
+                    verb="member special days update failed",
+                    severity_level="error",
                     description="A user tried to update member special days but made an invalid request",
                 )
                 return Response({
@@ -1713,10 +1723,10 @@ class MemberSpecialDayView(APIView):
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="member special days update failed",  
-                    severity_level="error",  
-                    description="A user tried to update member special days but made an invalid request",
+                request_data_activity_log(request),
+                verb="member special days update failed",
+                severity_level="error",
+                description="A user tried to update member special days but made an invalid request",
             )
             return Response({
                 "code": 500,
@@ -1740,9 +1750,9 @@ class MemberCertificateView(APIView):
             if serializer.is_valid():
                 instance = serializer.save()
                 log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="member certificates created",  
-                    severity_level="info",  
+                    request_data_activity_log(request),
+                    verb="member certificates created",
+                    severity_level="info",
                     description="A user has successfully created new member certificates.",
                 )
 
@@ -1755,9 +1765,9 @@ class MemberCertificateView(APIView):
 
             else:
                 log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="member certificates creation failed",  
-                    severity_level="error",  
+                    request_data_activity_log(request),
+                    verb="member certificates creation failed",
+                    severity_level="error",
                     description="A user tried to create new member certificates but made an invalid request",
                 )
                 return Response({
@@ -1769,10 +1779,10 @@ class MemberCertificateView(APIView):
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="member certificates creation failed",  
-                    severity_level="error",  
-                    description="A user tried to create new member certificates but made an invalid request",
+                request_data_activity_log(request),
+                verb="member certificates creation failed",
+                severity_level="error",
+                description="A user tried to create new member certificates but made an invalid request",
             )
             return Response({
                 "code": 500,
@@ -1800,9 +1810,9 @@ class MemberCertificateView(APIView):
                     if instance is not None:
                         instance = serializer.save(instance=instance)
                         log_activity_task.delay_on_commit(
-                            request_data_activity_log(request),  
-                            verb="member certificates updated",  
-                            severity_level="info",  
+                            request_data_activity_log(request),
+                            verb="member certificates updated",
+                            severity_level="info",
                             description="A user has successfully updated member certificates.",
                         )
                         return Response({
@@ -1816,9 +1826,9 @@ class MemberCertificateView(APIView):
                     else:
                         instance = serializer.save()
                         log_activity_task.delay_on_commit(
-                            request_data_activity_log(request),  
-                            verb="member certificates created",  
-                            severity_level="info",  
+                            request_data_activity_log(request),
+                            verb="member certificates created",
+                            severity_level="info",
                             description="A user has successfully created new member certificates.",
                         )
                         return Response({
@@ -1831,9 +1841,9 @@ class MemberCertificateView(APIView):
                         }, status=status.HTTP_201_CREATED)
             else:
                 log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="member certificates update failed",  
-                    severity_level="error",  
+                    request_data_activity_log(request),
+                    verb="member certificates update failed",
+                    severity_level="error",
                     description="A user tried to update member certificates but made an invalid request",
                 )
                 return Response({
@@ -1845,10 +1855,10 @@ class MemberCertificateView(APIView):
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),  
-                    verb="member certificates update failed",  
-                    severity_level="error",  
-                    description="A user tried to update member certificates but made an invalid request",
+                request_data_activity_log(request),
+                verb="member certificates update failed",
+                severity_level="error",
+                description="A user tried to update member certificates but made an invalid request",
             )
             return Response({
                 "code": 500,
