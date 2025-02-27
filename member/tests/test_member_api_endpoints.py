@@ -6,7 +6,7 @@ from member.utils.factories import *
 import pdb
 from unittest.mock import patch
 
-from member.utils.permission_classes import AddMemberPermission
+from member.utils.permission_classes import AddMemberPermission,UpdateMemberPermission
 # Create a dummy image using PIL
 
 fake = Faker()
@@ -139,6 +139,80 @@ class SpouseApiEndpointTest(APITestCase):
         self.assertIn("spouse_name", response_data["errors"])
 
 
+    @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
+    def test_spouse_update_api_with_valid_data(self, mock_permission):
+        """
+        Test for checking member spouse updating perfectly with valid data
+        """
+        # arrange
+        spouse = SpouseFactory()
+        member_id=spouse.member.member_ID
+        
+        # pdb.set_trace()
+        data = {
+            "member_ID": member_id,
+            "spouse_name": "Updated Spouse",
+            "contact_number": "1234567890",
+            "id": spouse.pk
+            
+        }
+        response = self.client.patch(
+            f"/api/member/v1/members/spouse/", data, format='multipart')
+        response_data = response.json()
+        # Assert
+        if data.get('id') is not None:
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response_data['status'], "success")
+            self.assertEqual(response_data['code'], 200)
+            self.assertIn('spouse_id', response_data['data'])
+            self.assertIn("Member Spouse has been updated successfully",response_data["message"])
+
+        else:
+            self.assertEqual(response.status_code, 201)
+            self.assertEqual(response_data['status'], "success")
+            self.assertEqual(response_data['code'], 201)
+            self.assertIn('spouse_id', response_data['data'])
+            self.assertIn("Member spouse has been created successfully",response_data["message"])
+    
+    @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
+    def test_spouse_update_api_with_invalid_data(self, mock_permission): 
+        """
+        Test for checking member spouse updating perfectly with invalid data
+        """
+        # arrange
+        spouse = SpouseFactory()
+        member_id="232kll"
+        # member_id=spouse.member.member_ID
+        
+        
+        # pdb.set_trace()
+        data = {
+            "member_ID": member_id,
+            "spouse_name": "Updated Spouse",
+            "contact_number": "1234567890",
+            "id": 9
+        }
+        response = self.client.patch(
+            f"/api/member/v1/members/spouse/", data, format='multipart')
+        response_data = response.json()
+        print(response_data)
+        # Assert
+        if response_data['code'] == 500:
+            self.assertEqual(response_data['status'], "failed")
+            self.assertEqual(response_data['message'], "Something went wrong")
+            self.assertEqual(response_data['errors']['server_error'], ['Spouse matching query does not exist.'])
+        if response_data['code']==400:
+            self.assertEqual(response.status_code, 400)
+            self.assertEqual(response_data['status'], "failed")
+            self.assertEqual(response_data['errors']['member_ID'], ['232kll is not a valid member id'])
+            # self.assertEqual(response_data['errors']['id'], ['does not exist'])
+            self.assertIn("member_ID", response_data["errors"])
+            
+        
+    
+    
+    
+
 class DescendantApiEndpointTest(APITestCase):
     @classmethod
     def setUpTestData(cls):
@@ -247,6 +321,7 @@ class CompanionApiEndpointTest(APITestCase):
                          'This field is required.'])
         self.assertIn("companion_name", response_data["errors"])
 
+   
 
 class DocumentApiEndpointTest(APITestCase):
     @classmethod

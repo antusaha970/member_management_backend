@@ -124,3 +124,18 @@ class MemberFactory(factory.django.DjangoModelFactory):
     is_active = True
     created_at = factory.LazyFunction(date.today)
     updated_at = factory.LazyFunction(date.today)
+
+class SpouseFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Spouse
+        
+    spouse_name = factory.Faker("name") 
+    spouse_contact_number = factory.Faker("phone_number")  
+    spouse_dob =factory.Faker('date_of_birth', minimum_age=18, maximum_age=60)
+    image = factory.LazyFunction(lambda: generate_test_image())  
+    # Foreign Key Relations
+    member = factory.SubFactory(MemberFactory)  
+    current_status = factory.SubFactory(SpouseStatusChoiceFactory)  
+
+spouse = SpouseFactory()
+print(spouse.spouse_name,spouse.member,spouse.current_status)
