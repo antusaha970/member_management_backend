@@ -11,6 +11,9 @@ from io import BytesIO
 from PIL import Image
 from member.utils.factories import *
 import pdb
+from unittest.mock import patch
+
+from member.utils.permission_classes import AddMemberPermission
 # Create a dummy image using PIL
 
 fake = Faker()
@@ -125,6 +128,7 @@ class TestMemberCreateAndUpdateEndpoints(APITestCase):
             "nationality": "Bangladesh",
         }
 
+    @patch.object(AddMemberPermission, "has_permission", return_value=True)
     def test_member_creation_api_with_valid_data(self):
         """
         Test member creation with valid data
@@ -139,6 +143,7 @@ class TestMemberCreateAndUpdateEndpoints(APITestCase):
         self.assertEqual(_response['code'], 201)
         self.assertEqual(_response['status'], "success")
 
+    
     def test_member_creation_api_with_invalid_data(self):
         """
         Test member creation with invalid data. Check if we can create member without providing the required fields
