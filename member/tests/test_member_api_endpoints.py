@@ -1059,6 +1059,105 @@ class TestMemberEmergencyContactAddAndUpdate(APITestCase):
         self.assertEqual(_response["status"], "failed")
         self.assertIn("errors", _response)
 
+    @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
+    def test_member_emergency_contact_update_endpoint_with_valid_data(self, mock_permission):
+        """
+        Test emergency contact update endpoint with valid data
+        """
+        # arrange
+        shared_member = MemberFactory()
+        emergency_contact = EmergencyContactFactory.create_batch(
+            5, member=shared_member)
+        data = [
+            {
+                "id": contact.id,
+                "contact_name": fake.name(),
+                "contact_number": fake.random_number(digits=12),
+            } for contact in emergency_contact
+        ]
+        _data = {
+            "member_ID": shared_member.member_ID,
+            "data": data
+        }
+        # act
+        _response = self.client.patch(
+            f"/api/member/v1/members/emergency_contact/{shared_member.member_ID}/", _data, format="json")
+        # assert
+        self.assertEqual(_response.status_code, 200)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 200)
+        self.assertEqual(_response['status'], "success")
+        self.assertIn("data", _response)
+        self.assertEqual(len(_response['data']), 5)
+        for obj in _response['data']:
+            self.assertEqual(obj.get("status"), "updated")
+
+    @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
+    def test_member_emergency_contact_update_endpoint_with_invalid_data(self, mock_permission):
+        """
+        Test emergency contact update endpoint with invalid data. Like missing fields
+        """
+        # arrange
+        shared_member = MemberFactory()
+        emergency_contact = EmergencyContactFactory.create_batch(
+            5, member=shared_member)
+        data = [
+            {
+                "id": contact.id,
+                "contact_name": fake.name(),
+            } for contact in emergency_contact
+        ]
+        _data = {
+            "member_ID": shared_member.member_ID,
+            "data": data
+        }
+        # act
+        _response = self.client.patch(
+            f"/api/member/v1/members/emergency_contact/{shared_member.member_ID}/", _data, format="json")
+        # assert
+        self.assertEqual(_response.status_code, 400)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 400)
+        self.assertEqual(_response['status'], "failed")
+        self.assertIn("errors", _response)
+
+    @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
+    def test_member_emergency_contact_update_add_another_endpoint_with_valid_data(self, mock_permission):
+        """
+        Test emergency contact update endpoint with valid data.Try to add one more emergency contact
+        """
+        # arrange
+        shared_member = MemberFactory()
+        emergency_contact = EmergencyContactFactory.create_batch(
+            5, member=shared_member)
+        data = [
+            {
+                "id": contact.id,
+                "contact_name": fake.name(),
+                "contact_number": fake.random_number(digits=12),
+            } for contact in emergency_contact
+        ]
+        data.append({
+            "contact_name": fake.name(),
+            "contact_number": fake.random_number(digits=12),
+        })
+        _data = {
+            "member_ID": shared_member.member_ID,
+            "data": data
+        }
+        # act
+        _response = self.client.patch(
+            f"/api/member/v1/members/emergency_contact/{shared_member.member_ID}/", _data, format="json")
+        # assert
+        self.assertEqual(_response.status_code, 200)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 200)
+        self.assertEqual(_response['status'], "success")
+        self.assertIn("data", _response)
+        self.assertEqual(len(_response['data']), 6)
+        for obj in _response['data']:
+            self.assertTrue(obj.get("status") in ["updated", "created"])
+
 
 class TestMemberSpecialDayAddAndUpdate(APITestCase):
     @classmethod

@@ -174,3 +174,20 @@ class AddressFactory(factory.django.DjangoModelFactory):
     is_active = True
     created_at = factory.LazyFunction(date.today)
     updated_at = factory.LazyFunction(date.today)
+
+
+class EmergencyContactFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = EmergencyContact
+
+    contact_name = factory.Faker("name")
+    contact_number = factory.Faker("phone_number")
+    relation_with_member = factory.Faker("last_name")
+
+    # relation (shared)
+    member = factory.LazyAttribute(lambda _: shared_member)
+    # record keeping
+    status = 0
+    is_active = True
+    created_at = factory.LazyFunction(date.today)
+    updated_at = factory.LazyFunction(date.today)
