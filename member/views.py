@@ -24,18 +24,19 @@ logger = logging.getLogger("myapp")
 
 
 class MemberView(APIView):
+    permission_classes = [IsAuthenticated]
 
     def get_permissions(self):
         if self.request.method == "POST":
-            return [IsAuthenticated(), AddMemberPermission()]
+            return [AddMemberPermission()]
         elif self.request.method == "PATCH":
-            return [IsAuthenticated(), UpdateMemberPermission()]
+            return [UpdateMemberPermission()]
         elif self.request.method == "DELETE":
-            return [IsAuthenticated(), DeleteMemberPermission()]
+            return [DeleteMemberPermission()]
         elif self.request.method == "GET":
-            return [IsAuthenticated(), ViewMemberPermission()]
+            return [ViewMemberPermission()]
         else:
-            return [AllowAny()]
+            return [IsAuthenticated()]
 
     def post(self, request):
         try:
@@ -419,7 +420,13 @@ class MemberIdView(APIView):
 
 
 class MemberContactNumberView(APIView):
-    permission_classes = [IsAuthenticated]
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsAuthenticated(), AddMemberPermission()]
+        elif self.request.method == "PATCH":
+            return [IsAuthenticated(), UpdateMemberPermission()]
+        else:
+            return [AllowAny()]
 
     def post(self, request):
         try:
@@ -525,6 +532,14 @@ class MemberContactNumberView(APIView):
 class MemberEmailAddressView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [AddMemberPermission()]
+        elif self.request.method == "PATCH":
+            return [UpdateMemberPermission()]
+        else:
+            return [IsAuthenticated()]
+
     def post(self, request):
         try:
             data = request.data
@@ -629,6 +644,14 @@ class MemberEmailAddressView(APIView):
 class MemberAddressView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [AddMemberPermission()]
+        elif self.request.method == "PATCH":
+            return [UpdateMemberPermission()]
+        else:
+            return [IsAuthenticated()]
+
     def post(self, request):
         try:
             data = request.data
@@ -731,6 +754,14 @@ class MemberAddressView(APIView):
 
 class MemberSpouseView(APIView):
     permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [AddMemberPermission()]
+        elif self.request.method == "PATCH":
+            return [UpdateMemberPermission()]
+        else:
+            return [IsAuthenticated()]
 
     def post(self, request):
         try:
@@ -863,6 +894,14 @@ class MemberSpouseView(APIView):
 class MemberDescendsView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [AddMemberPermission()]
+        elif self.request.method == "PATCH":
+            return [UpdateMemberPermission()]
+        else:
+            return [IsAuthenticated()]
+
     def post(self, request):
         try:
             data = request.data
@@ -993,6 +1032,14 @@ class MemberDescendsView(APIView):
 class MemberJobView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [AddMemberPermission()]
+        elif self.request.method == "PATCH":
+            return [UpdateMemberPermission()]
+        else:
+            return [IsAuthenticated()]
+
     def post(self, request):
         try:
             data = request.data
@@ -1095,6 +1142,14 @@ class MemberJobView(APIView):
 
 class MemberEmergencyContactView(APIView):
     permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [AddMemberPermission()]
+        elif self.request.method == "PATCH":
+            return [UpdateMemberPermission()]
+        else:
+            return [IsAuthenticated()]
 
     def post(self, request):
         try:
@@ -1201,6 +1256,14 @@ class MemberEmergencyContactView(APIView):
 
 class MemberCompanionView(APIView):
     permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [AddMemberPermission()]
+        elif self.request.method == "PATCH":
+            return [UpdateMemberPermission()]
+        else:
+            return [IsAuthenticated()]
 
     def post(self, request):
         try:
@@ -1335,6 +1398,14 @@ class MemberCompanionView(APIView):
 class MemberDocumentView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [AddMemberPermission()]
+        elif self.request.method == "PATCH":
+            return [UpdateMemberPermission()]
+        else:
+            return [IsAuthenticated()]
+
     def post(self, request):
         try:
             data = request.data
@@ -1467,6 +1538,14 @@ class MemberDocumentView(APIView):
 
 class AddMemberIDview(APIView):
     permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [AddMemberPermission()]
+        elif self.request.method == "PATCH":
+            return [UpdateMemberPermission()]
+        else:
+            return [IsAuthenticated()]
 
     def post(self, request):
         try:
@@ -1633,6 +1712,14 @@ class MemberSingleHistoryView(APIView):
 class MemberSpecialDayView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [AddMemberPermission()]
+        elif self.request.method == "PATCH":
+            return [UpdateMemberPermission()]
+        else:
+            return [IsAuthenticated()]
+
     def post(self, request):
         try:
             data = request.data
@@ -1739,6 +1826,14 @@ class MemberSpecialDayView(APIView):
 
 class MemberCertificateView(APIView):
     permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [AddMemberPermission()]
+        elif self.request.method == "PATCH":
+            return [UpdateMemberPermission()]
+        else:
+            return [IsAuthenticated()]
 
     def post(self, request):
         try:
