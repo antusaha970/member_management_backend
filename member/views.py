@@ -1500,7 +1500,7 @@ class MemberDocumentView(APIView):
                         )
                         return Response({
                             "code": 201,
-                            "message": "Member Document has been created successfully",
+                            "message": "Member Documents has been created successfully",
                             "status": "success",
                             "data": {
                                 "document_id": instance.id

@@ -137,5 +137,53 @@ class SpouseFactory(factory.django.DjangoModelFactory):
     member = factory.SubFactory(MemberFactory)  
     current_status = factory.SubFactory(SpouseStatusChoiceFactory)  
 
-spouse = SpouseFactory()
-print(spouse.spouse_name,spouse.member,spouse.current_status)
+class DescendantFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Descendant
+        
+    name=factory.Faker("name")
+    dob = factory.Faker('date_of_birth', minimum_age=1, maximum_age=100)
+    image = factory.LazyFunction(lambda: generate_test_image())
+    descendant_contact_number=factory.Faker('phone_number')
+    # Foreign Key Relations
+    
+    relation_type = factory.SubFactory(DescendantRelationChoiceFactory)
+    member = factory.SubFactory(MemberFactory)
+    
+class CompanionInformationFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = CompanionInformation
+    
+    companion_name = factory.Faker("name")
+    companion_contact_number = factory.Faker("phone_number")
+    companion_dob = factory.Faker('date_of_birth', minimum_age=1, maximum_age=100)
+    companion_image = factory.LazyFunction(lambda: generate_test_image())
+    relation_with_member = factory.Faker("name")
+    companion_card_number=factory.Faker("phone_number")
+    # Foreign Key Relations
+    member = factory.SubFactory(MemberFactory)
+    
+
+class DocumentsFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Documents
+    
+    document_number = factory.LazyFunction(lambda: fake.random_digit())
+    document_document = factory.Faker("file_path", extension="pdf")
+    # Foreign Key Relations
+    member = factory.SubFactory(MemberFactory)
+    document_type = factory.SubFactory(DocumentTypeChoiceFactory)
+
+
+
+class CertificateFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Certificate
+    
+    title = factory.Faker("catch_phrase")
+    certificate_number = factory.Faker("random_digit")
+    certificate_document = factory.Faker("file_path", extension="pdf")
+    # Foreign Key Relations
+    member = factory.SubFactory(MemberFactory)
+    
+    
