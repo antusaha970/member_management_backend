@@ -24,7 +24,6 @@ logger = logging.getLogger("myapp")
 
 
 class MemberView(APIView):
-    permission_classes = [IsAuthenticated]
 
     def get_permissions(self):
         if self.request.method == "POST":
