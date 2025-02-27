@@ -138,7 +138,6 @@ class SpouseApiEndpointTest(APITestCase):
                          'This field is required.'])
         self.assertIn("spouse_name", response_data["errors"])
 
-
     @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
     def test_spouse_update_api_with_valid_data(self, mock_permission):
         """
@@ -146,15 +145,15 @@ class SpouseApiEndpointTest(APITestCase):
         """
         # arrange
         spouse = SpouseFactory()
-        member_id=spouse.member.member_ID
-        
+        member_id = spouse.member.member_ID
+
         # pdb.set_trace()
         data = {
             "member_ID": member_id,
             "spouse_name": "Updated Spouse",
             "contact_number": "1234567890",
             "id": spouse.pk
-            
+
         }
         response = self.client.patch(
             f"/api/member/v1/members/spouse/", data, format='multipart')
@@ -165,26 +164,27 @@ class SpouseApiEndpointTest(APITestCase):
             self.assertEqual(response_data['status'], "success")
             self.assertEqual(response_data['code'], 200)
             self.assertIn('spouse_id', response_data['data'])
-            self.assertIn("Member Spouse has been updated successfully",response_data["message"])
+            self.assertIn(
+                "Member Spouse has been updated successfully", response_data["message"])
 
         else:
             self.assertEqual(response.status_code, 201)
             self.assertEqual(response_data['status'], "success")
             self.assertEqual(response_data['code'], 201)
             self.assertIn('spouse_id', response_data['data'])
-            self.assertIn("Member spouse has been created successfully",response_data["message"])
-    
+            self.assertIn(
+                "Member spouse has been created successfully", response_data["message"])
+
     @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
-    def test_spouse_update_api_with_invalid_data(self, mock_permission): 
+    def test_spouse_update_api_with_invalid_data(self, mock_permission):
         """
         Test for checking member spouse updating perfectly with invalid data
         """
         # arrange
         spouse = SpouseFactory()
-        member_id="232kll"
+        member_id = "232kll"
         # member_id=spouse.member.member_ID
-        
-        
+
         # pdb.set_trace()
         data = {
             "member_ID": member_id,
@@ -199,15 +199,17 @@ class SpouseApiEndpointTest(APITestCase):
         if response_data['code'] == 500:
             self.assertEqual(response_data['status'], "failed")
             self.assertEqual(response_data['message'], "Something went wrong")
-            self.assertEqual(response_data['errors']['server_error'], ['Spouse matching query does not exist.'])
-        if response_data['code']==400:
+            self.assertEqual(response_data['errors']['server_error'], [
+                             'Spouse matching query does not exist.'])
+        if response_data['code'] == 400:
             self.assertEqual(response.status_code, 400)
             self.assertEqual(response_data['status'], "failed")
-            self.assertEqual(response_data['errors']['member_ID'], ['232kll is not a valid member id'])
+            self.assertEqual(response_data['errors']['member_ID'], [
+                             '232kll is not a valid member id'])
             # self.assertEqual(response_data['errors']['id'], ['does not exist'])
             self.assertIn("member_ID", response_data["errors"])
-            
-    
+
+
 class DescendantApiEndpointTest(APITestCase):
     @classmethod
     def setUpTestData(cls):
@@ -287,14 +289,16 @@ class DescendantApiEndpointTest(APITestCase):
             self.assertEqual(response_data['status'], "success")
             self.assertEqual(response_data['code'], 200)
             self.assertIn('descendant_id', response_data['data'])
-            self.assertIn("Member Descendant has been updated successfully", response_data["message"])
+            self.assertIn(
+                "Member Descendant has been updated successfully", response_data["message"])
         else:
             self.assertEqual(response.status_code, 201)
             self.assertEqual(response_data['status'], "success")
             self.assertEqual(response_data['code'], 201)
             self.assertIn('descendant_id', response_data['data'])
-            self.assertIn("Member Descendant has been created successfully", response_data["message"])
-        
+            self.assertIn(
+                "Member Descendant has been created successfully", response_data["message"])
+
     @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
     def test_descendant_update_api_with_invalid_data(self, mock_permission):
         """
@@ -316,18 +320,20 @@ class DescendantApiEndpointTest(APITestCase):
             f"/api/member/v1/members/descendants/", data, format='multipart')
         response_data = response.json()
         # Assert
-        if response_data['code'] ==500:
+        if response_data['code'] == 500:
             self.assertEqual(response_data['status'], "failed")
             self.assertEqual(response_data['message'], "Something went wrong")
-            self.assertEqual(response_data['errors']['server_error'], ['Descendant matching query does not exist.'])
-        
-        if response_data['code']==400:
+            self.assertEqual(response_data['errors']['server_error'], [
+                             'Descendant matching query does not exist.'])
+
+        if response_data['code'] == 400:
             self.assertEqual(response.status_code, 400)
             self.assertEqual(response_data['status'], "failed")
-            self.assertEqual(response_data['errors']['name'], ['This field is required.'])
+            self.assertEqual(response_data['errors']['name'], [
+                             'This field is required.'])
             self.assertIn("name", response_data["errors"])
-            
-        
+
+
 class CompanionApiEndpointTest(APITestCase):
     @classmethod
     def setUpTestData(cls):
@@ -381,7 +387,6 @@ class CompanionApiEndpointTest(APITestCase):
                          'This field is required.'])
         self.assertIn("companion_name", response_data["errors"])
 
-
     @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
     def test_companion_update_api_with_valid_data(self, mock_permission):
         """
@@ -389,7 +394,7 @@ class CompanionApiEndpointTest(APITestCase):
         """
         # arrange
         companion = CompanionInformationFactory()
-        image=generate_test_image()
+        image = generate_test_image()
         data = {
             "member_ID": companion.member.member_ID,
             "companion_name": factory.Faker("name"),
@@ -408,14 +413,16 @@ class CompanionApiEndpointTest(APITestCase):
             self.assertEqual(response_data['status'], "success")
             self.assertEqual(response_data['code'], 200)
             self.assertIn('companion_id', response_data['data'])
-            self.assertIn("Member companion has been updated successfully", response_data["message"])
+            self.assertIn(
+                "Member companion has been updated successfully", response_data["message"])
         else:
             self.assertEqual(response.status_code, 201)
             self.assertEqual(response_data['status'], "success")
             self.assertEqual(response_data['code'], 201)
             self.assertIn('companion_id', response_data['data'])
-            self.assertIn("Member companion has been created successfully", response_data["message"])
-     
+            self.assertIn(
+                "Member companion has been created successfully", response_data["message"])
+
     @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
     def test_companion_update_api_with_invalid_data(self, mock_permission):
         """
@@ -423,10 +430,10 @@ class CompanionApiEndpointTest(APITestCase):
         """
         # arrange
         companion = CompanionInformationFactory()
-        image=generate_test_image()
+        image = generate_test_image()
         data = {
             "member_ID": companion.member.member_ID,
-            "companion_name": factory.Faker("name"),
+            "companion_name": fake.name(),
             "companion_contact_number": "123444",
             "companion_image": image,
             # "id": companion.pk + 5
@@ -434,20 +441,22 @@ class CompanionApiEndpointTest(APITestCase):
         }
         data.pop("companion_name")
         response = self.client.patch(
-            f"/api/member/v1/members/companion/", data, format='multipart')
+            "/api/member/v1/members/companion/", data, format='multipart')
         response_data = response.json()
         # Assert
-        if response_data['code'] ==500:
+        if response_data['code'] == 500:
             self.assertEqual(response_data['status'], "failed")
             self.assertEqual(response_data['message'], "Something went wrong")
-            self.assertEqual(response_data['errors']['server_error'], ['CompanionInformation matching query does not exist.'])
-        
-        if response_data['code']==400:
+            self.assertEqual(response_data['errors']['server_error'], [
+                             'CompanionInformation matching query does not exist.'])
+
+        if response_data['code'] == 400:
             self.assertEqual(response.status_code, 400)
             self.assertEqual(response_data['status'], "failed")
-            self.assertEqual(response_data['errors']['companion_name'], ['This field is required.'])
+            self.assertEqual(response_data['errors']['companion_name'], [
+                             'This field is required.'])
             self.assertIn("companion_name", response_data["errors"])
-            
+
 
 class DocumentApiEndpointTest(APITestCase):
     @classmethod
@@ -507,12 +516,12 @@ class DocumentApiEndpointTest(APITestCase):
         """
         # arrange
         document = DocumentsFactory()
-        image=generate_test_image()
-        new_document_type=DocumentTypeChoiceFactory.create_batch(3)
+        image = generate_test_image()
+        new_document_type = DocumentTypeChoiceFactory.create_batch(3)
         data = {
             "member_ID": document.member.member_ID,
             "document_document": image,
-            "document_type":new_document_type[1].pk ,
+            "document_type": new_document_type[1].pk,
             "document_number": factory.Faker("number"),
             "id": document.pk
         }
@@ -526,13 +535,15 @@ class DocumentApiEndpointTest(APITestCase):
             self.assertEqual(response_data['status'], "success")
             self.assertEqual(response_data['code'], 200)
             self.assertIn('document_id', response_data['data'])
-            self.assertIn("Member Documents has been updated successfully", response_data["message"])
+            self.assertIn(
+                "Member Documents has been updated successfully", response_data["message"])
         else:
             self.assertEqual(response.status_code, 201)
             self.assertEqual(response_data['status'], "success")
             self.assertEqual(response_data['code'], 201)
             self.assertIn('document_id', response_data['data'])
-            self.assertIn("Member Documents has been created successfully", response_data["message"])
+            self.assertIn(
+                "Member Documents has been created successfully", response_data["message"])
 
     @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
     def test_document_update_api_with_invalid_data(self, mock_permission):
@@ -541,32 +552,36 @@ class DocumentApiEndpointTest(APITestCase):
         """
         # arrange
         document = DocumentsFactory()
-        image=generate_test_image()
+        image = generate_test_image()
         data = {
             "member_ID": document.member.member_ID,
             # "document_document" : image,        # this should be required field
             "document_number": factory.Faker("number"),
             "id": document.pk,
             # "id": document.pk+2,
-              
+
         }
         # data.pop("document_document")
         response = self.client.patch(
             f"/api/member/v1/members/documents/", data, format='multipart')
         response_data = response.json()
         # Assert
-        if response_data['code'] ==500:
+        if response_data['code'] == 500:
             self.assertEqual(response_data['status'], "failed")
             self.assertEqual(response_data['message'], "Something went wrong")
-            self.assertEqual(response_data['errors']['server_error'], ['Documents matching query does not exist.'])
-        
-        if response_data['code']==400:
+            self.assertEqual(response_data['errors']['server_error'], [
+                             'Documents matching query does not exist.'])
+
+        if response_data['code'] == 400:
             self.assertEqual(response.status_code, 400)
             self.assertEqual(response_data['status'], "failed")
-            self.assertEqual(response_data['errors']['document_document'], ['No file was submitted.'])
+            self.assertEqual(response_data['errors']['document_document'], [
+                             'No file was submitted.'])
             self.assertIn("document_document", response_data["errors"])
-            self.assertEqual(response_data['errors']['document_type'],['This field is required.'])
-            
+            self.assertEqual(response_data['errors']['document_type'], [
+                             'This field is required.'])
+
+
 class CertificateApiEndpointTest(APITestCase):
     @classmethod
     def setUpTestData(cls):
@@ -626,7 +641,7 @@ class CertificateApiEndpointTest(APITestCase):
         """
         # arrange
         certificate = CertificateFactory()
-        image=generate_test_image()
+        image = generate_test_image()
         data = {
             "member_ID": certificate.member.member_ID,
             "title": factory.Faker("catch_phrase"),
@@ -644,13 +659,15 @@ class CertificateApiEndpointTest(APITestCase):
             self.assertEqual(response_data['status'], "success")
             self.assertEqual(response_data['code'], 200)
             self.assertIn('certificate_id', response_data['data'])
-            self.assertIn("Member Certificate has been updated successfully", response_data["message"])
+            self.assertIn(
+                "Member Certificate has been updated successfully", response_data["message"])
         else:
             self.assertEqual(response.status_code, 201)
             self.assertEqual(response_data['status'], "success")
             self.assertEqual(response_data['code'], 201)
             self.assertIn('certificate_id', response_data['data'])
-            self.assertIn("Member Certificate has been created successfully", response_data["message"])
+            self.assertIn(
+                "Member Certificate has been created successfully", response_data["message"])
 
     @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
     def test_certificate_update_api_with_invalid_data(self, mock_permission):
@@ -666,24 +683,28 @@ class CertificateApiEndpointTest(APITestCase):
             "certificate_number": "abc123",
             "id": certificate.pk,
             # "id": certificate.pk+2,
-              
+
         }
         response = self.client.patch(
             f"/api/member/v1/members/certificate/", data, format='multipart')
         response_data = response.json()
         # Assert
-        if response_data['code'] ==500:
+        if response_data['code'] == 500:
             self.assertEqual(response_data['status'], "failed")
             self.assertEqual(response_data['message'], "Something went wrong")
-            self.assertEqual(response_data['errors']['server_error'], ['Certificate matching query does not exist.'])
-        
-        if response_data['code']==400:
+            self.assertEqual(response_data['errors']['server_error'], [
+                             'Certificate matching query does not exist.'])
+
+        if response_data['code'] == 400:
             self.assertEqual(response.status_code, 400)
             self.assertEqual(response_data['status'], "failed")
-            self.assertEqual(response_data['errors']['certificate_document'], ['No file was submitted.'])
+            self.assertEqual(response_data['errors']['certificate_document'], [
+                             'No file was submitted.'])
             self.assertIn("certificate_document", response_data["errors"])
-            self.assertEqual(response_data['errors']['title'],['This field is required.'])
-            
+            self.assertEqual(response_data['errors']['title'], [
+                             'This field is required.'])
+
+
 class TestMemberContactNumberAddAndUpdateTest(APITestCase):
     @classmethod
     def setUpTestData(cls):
