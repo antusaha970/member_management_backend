@@ -36,3 +36,8 @@ class DescendantRelationChoiceFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = DescendantRelationChoice
     name = factory.LazyAttribute(lambda _: fake.unique.word())
+
+class DocumentTypeChoiceFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = DocumentTypeChoice
+    name = factory.LazyAttribute(lambda _: fake.unique.word())
