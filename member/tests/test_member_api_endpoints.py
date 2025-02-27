@@ -58,7 +58,6 @@ class MaritalStatusChoiceFactory(factory.django.DjangoModelFactory):
     name = factory.Faker('word')
 
 
-
 class MemberFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Member
@@ -165,6 +164,7 @@ class TestMemberCreateAndUpdateEndpoints(APITestCase):
 
         self.assertEqual(1, 1)
 
+
 class SpouseApiEndpointTest(APITestCase):
     @classmethod
     def setUpTestData(cls):
@@ -182,10 +182,12 @@ class SpouseApiEndpointTest(APITestCase):
             "contact_number": faker.numerify(text='###########'),
             "spouse_dob": faker.date_of_birth(minimum_age=18, maximum_age=90).strftime('%Y-%m-%d'),
             "image": image,
-            "current_status": cls.membership_status[0].pk, 
+            "current_status": cls.membership_status[0].pk,
         }
+
     def setUp(self):
         self.client.force_authenticate(user=self.user)
+
     def test_spouse_creation_api_with_valid_data(self):
         response = self.client.post(
             "/api/member/v1/members/spouse/", self.member_spouse_create_request_body, format='multipart'
@@ -196,22 +198,24 @@ class SpouseApiEndpointTest(APITestCase):
         self.assertEqual(response_data['status'], "success")
         self.assertEqual(response_data['code'], 201)
         self.assertIn("spouse_id", response_data["data"])
-    
+
     def test_spouse_creation_api_with_invalid_data(self):
         """
         Test for checking member contact numbers are adding perfectly with invalid data
         """
         # arrange
-        data=self.member_spouse_create_request_body
+        data = self.member_spouse_create_request_body
         data.pop("spouse_name")
         response = self.client.post(
-            "/api/member/v1/members/spouse/",data, format='multipart')
+            "/api/member/v1/members/spouse/", data, format='multipart')
         response_data = response.json()
         # Assert
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response_data['status'], "failed")
-        self.assertEqual(response_data['errors']['spouse_name'], ['This field is required.'])
+        self.assertEqual(response_data['errors']['spouse_name'], [
+                         'This field is required.'])
         self.assertIn("spouse_name", response_data["errors"])
+
 
 class DescendantApiEndpointTest(APITestCase):
     @classmethod
@@ -220,8 +224,9 @@ class DescendantApiEndpointTest(APITestCase):
         cls.user = get_user_model().objects.create_superuser(
             username=faker.user_name(), password=faker.password(length=8)
         )
-        cls.descendant_relation = DescendantRelationChoiceFactory.create_batch(3)
-        image = generate_test_image()   
+        cls.descendant_relation = DescendantRelationChoiceFactory.create_batch(
+            3)
+        image = generate_test_image()
         member = MemberFactory()
 
         cls.member_descendant_create_request_body = {
@@ -230,10 +235,12 @@ class DescendantApiEndpointTest(APITestCase):
             "contact_number": faker.numerify(text='###########'),
             "descendant_dob": faker.date_of_birth(minimum_age=18, maximum_age=90).strftime('%Y-%m-%d'),
             "image": image,
-            "current_status": cls.descendant_relation[0].pk, 
+            "current_status": cls.descendant_relation[0].pk,
         }
+
     def setUp(self):
-        self.client.force_authenticate(user=self.user) 
+        self.client.force_authenticate(user=self.user)
+
     def test_descendant_creation_api_with_valid_data(self):
         response = self.client.post(
             "/api/member/v1/members/descendants/", self.member_descendant_create_request_body, format='multipart'
@@ -244,23 +251,25 @@ class DescendantApiEndpointTest(APITestCase):
         self.assertEqual(response_data['status'], "success")
         self.assertEqual(response_data['code'], 201)
         self.assertIn("descendant_id", response_data["data"])
-    
+
     def test_descendant_creation_api_with_invalid_data(self):
         """
         Test for checking member contact numbers are adding perfectly with invalid data
         """
         # arrange
-        data=self.member_descendant_create_request_body
+        data = self.member_descendant_create_request_body
         data.pop("name")
         response = self.client.post(
-            "/api/member/v1/members/descendants/",data, format='multipart')
+            "/api/member/v1/members/descendants/", data, format='multipart')
         response_data = response.json()
         # Assert
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response_data['status'], "failed")
-        self.assertEqual(response_data['errors']['name'], ['This field is required.'])
+        self.assertEqual(response_data['errors']['name'], [
+                         'This field is required.'])
         self.assertIn("name", response_data["errors"])
-     
+
+
 class CompanionApiEndpointTest(APITestCase):
     @classmethod
     def setUpTestData(cls):
@@ -268,8 +277,8 @@ class CompanionApiEndpointTest(APITestCase):
         cls.user = get_user_model().objects.create_superuser(
             username=faker.user_name(), password=faker.password(length=8)
         )
-        image = generate_test_image()  
-        member = MemberFactory()        
+        image = generate_test_image()
+        member = MemberFactory()
 
         # Request data for testing companion creation
         cls.member_companion_create_request_body = {
@@ -278,12 +287,12 @@ class CompanionApiEndpointTest(APITestCase):
             "companion_contact_number": faker.numerify(text='###########'),
             "companion_dob": faker.date_of_birth(minimum_age=18, maximum_age=90).strftime('%Y-%m-%d'),
             "companion_image": image,  # This will likely need to be a file upload
-            "relation_with_member": faker.first_name_male(), 
+            "relation_with_member": faker.first_name_male(),
         }
 
     def setUp(self):
         self.client.force_authenticate(user=self.user)
-    
+
     def test_companion_creation_api_with_valid_data(self):
         response = self.client.post(
             "/api/member/v1/members/companion/", self.member_companion_create_request_body, format='multipart'
@@ -294,23 +303,25 @@ class CompanionApiEndpointTest(APITestCase):
         self.assertEqual(response_data['status'], "success")
         self.assertEqual(response_data['code'], 201)
         self.assertIn("companion_id", response_data["data"])
-    
+
     def test_companion_creation_api_with_invalid_data(self):
         """
         Test for checking member contact numbers are adding perfectly with invalid data
         """
         # arrange
-        data=self.member_companion_create_request_body
+        data = self.member_companion_create_request_body
         data.pop("companion_name")
         response = self.client.post(
-            "/api/member/v1/members/companion/",data, format='multipart')
+            "/api/member/v1/members/companion/", data, format='multipart')
         response_data = response.json()
         # Assert
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response_data['status'], "failed")
-        self.assertEqual(response_data['errors']['companion_name'], ['This field is required.'])
+        self.assertEqual(response_data['errors']['companion_name'], [
+                         'This field is required.'])
         self.assertIn("companion_name", response_data["errors"])
-        
+
+
 class DocumentApiEndpointTest(APITestCase):
     @classmethod
     def setUpTestData(cls):
@@ -318,7 +329,7 @@ class DocumentApiEndpointTest(APITestCase):
         cls.user = get_user_model().objects.create_superuser(
             username=faker.user_name(), password=faker.password(length=8)
         )
-        member = MemberFactory() 
+        member = MemberFactory()
         cls.image = generate_test_image()
         document_type = DocumentTypeChoiceFactory.create_batch(3)
         cls.document_create_request_body = {
@@ -326,11 +337,12 @@ class DocumentApiEndpointTest(APITestCase):
             "document_document": cls.image,
             "document_type": document_type[0].pk,
             "document_number": faker.numerify(text='#########'),
-            
+
         }
+
     def setUp(self):
         self.client.force_authenticate(user=self.user)
-    
+
     def test_document_creation_api_with_valid_data(self):
         response = self.client.post(
             "/api/member/v1/members/documents/", self.document_create_request_body, format='multipart'
@@ -341,23 +353,25 @@ class DocumentApiEndpointTest(APITestCase):
         self.assertEqual(response_data['status'], "success")
         self.assertEqual(response_data['code'], 201)
         self.assertIn("document_id", response_data["data"])
-    
+
     def test_document_creation_api_with_invalid_data(self):
         """
         Test for checking member document are adding perfectly with invalid data
         """
         # arrange
-        data=self.document_create_request_body
+        data = self.document_create_request_body
         data.pop("document_document")
         response = self.client.post(
-            "/api/member/v1/members/documents/",data, format='multipart')
+            "/api/member/v1/members/documents/", data, format='multipart')
         response_data = response.json()
         # Assert
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response_data['status'], "failed")
-        self.assertEqual(response_data['errors']['document_document'], ['No file was submitted.'])
-        self.assertIn("document_document", response_data["errors"])   
-        
+        self.assertEqual(response_data['errors']['document_document'], [
+                         'No file was submitted.'])
+        self.assertIn("document_document", response_data["errors"])
+
+
 class CertificateApiEndpointTest(APITestCase):
     @classmethod
     def setUpTestData(cls):
@@ -365,19 +379,19 @@ class CertificateApiEndpointTest(APITestCase):
         cls.user = get_user_model().objects.create_superuser(
             username=faker.user_name(), password=faker.password(length=8)
         )
-        member = MemberFactory() 
+        member = MemberFactory()
         cls.image = generate_test_image()
         cls.certificate_create_request_body = {
             "member_ID": member.member_ID,
-            "title":faker.first_name(),
+            "title": faker.first_name(),
             "certificate_document": cls.image,
             "certificate_number": faker.numerify(text='#########'),
-            
+
         }
-        
+
     def setUp(self):
         self.client.force_authenticate(user=self.user)
-    
+
     def test_certificate_creation_api_with_valid_data(self):
         response = self.client.post(
             "/api/member/v1/members/certificate/", self.certificate_create_request_body, format='multipart'
@@ -390,23 +404,23 @@ class CertificateApiEndpointTest(APITestCase):
         self.assertEqual(response_data['code'], 201)
         self.assertIn("id", response_data["data"])
         self.assertIn("title", response_data["data"])
-        
+
     def test_certificate_creation_api_with_invalid_data(self):
         """
         Test for checking member certificate are adding perfectly with invalid data
         """
         # arrange
-        data=self.certificate_create_request_body
+        data = self.certificate_create_request_body
         data.pop("certificate_document")
         response = self.client.post(
-            "/api/member/v1/members/certificate/",data, format='multipart')
+            "/api/member/v1/members/certificate/", data, format='multipart')
         response_data = response.json()
-        print(response_data)
         # Assert
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response_data['status'], "failed")
         self.assertEqual(response_data['message'], "Invalid request")
-        self.assertEqual(response_data['errors']['certificate_document'], ['No file was submitted.'])
+        self.assertEqual(response_data['errors']['certificate_document'], [
+                         'No file was submitted.'])
         self.assertIn("certificate_document", response_data["errors"])
 
 
