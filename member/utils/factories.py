@@ -6,6 +6,8 @@ from io import BytesIO
 from PIL import Image
 from django.core.files.uploadedfile import SimpleUploadedFile
 from datetime import date
+import uuid
+
 fake = Faker()
 
 
@@ -87,7 +89,7 @@ class MaritalStatusChoiceFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = MaritalStatusChoice
 
-    name = factory.Faker('word')
+    name = factory.LazyAttribute(lambda _: fake.name())
 
 
 class MemberFactory(factory.django.DjangoModelFactory):
@@ -172,7 +174,8 @@ class DocumentsFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Documents
 
-    document_number = factory.LazyFunction(lambda: fake.random_digit())
+    document_number = factory.LazyFunction(
+        lambda: fake.random_int(min=100000, max=999999))
     document_document = factory.Faker("file_path", extension="pdf")
     # Foreign Key Relations
     member = factory.SubFactory(MemberFactory)
@@ -184,7 +187,7 @@ class CertificateFactory(factory.django.DjangoModelFactory):
         model = Certificate
 
     title = factory.Faker("catch_phrase")
-    certificate_number = factory.Faker("random_digit")
+    certificate_number = factory.LazyAttribute(lambda _: str(uuid.uuid4()))
     certificate_document = factory.Faker("file_path", extension="pdf")
     # Foreign Key Relations
     member = factory.SubFactory(MemberFactory)

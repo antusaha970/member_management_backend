@@ -5,7 +5,7 @@ from ..models import *
 from member.utils.factories import *
 import pdb
 from unittest.mock import patch
-
+import random
 from member.utils.permission_classes import AddMemberPermission, UpdateMemberPermission
 # Create a dummy image using PIL
 
@@ -88,20 +88,20 @@ class TestMemberCreateAndUpdateEndpoints(APITestCase):
 class SpouseApiEndpointTest(APITestCase):
     @classmethod
     def setUpTestData(cls):
-        faker = Faker()
+        cls.faker = Faker()
         cls.user = get_user_model().objects.create_superuser(
-            username=faker.user_name(), password=faker.password(length=8)
+            username=cls.faker.user_name(), password=cls.faker.password(length=8)
         )
         cls.membership_status = SpouseStatusChoiceFactory.create_batch(3)
-        image = generate_test_image()
-        member = MemberFactory()
+        cls.image = generate_test_image()
+        cls.member = MemberFactory()
 
         cls.member_spouse_create_request_body = {
-            "member_ID": member.member_ID,
-            "spouse_name": faker.first_name(),
-            "contact_number": faker.numerify(text='###########'),
-            "spouse_dob": faker.date_of_birth(minimum_age=18, maximum_age=90).strftime('%Y-%m-%d'),
-            "image": image,
+            "member_ID": cls.member.member_ID,
+            "spouse_name": cls.faker.first_name(),
+            "contact_number": cls.faker.numerify(text='###########'),
+            "spouse_dob": cls.faker.date_of_birth(minimum_age=18, maximum_age=90).strftime('%Y-%m-%d'),
+            "image": cls.image,
             "current_status": cls.membership_status[0].pk,
         }
 
@@ -150,8 +150,8 @@ class SpouseApiEndpointTest(APITestCase):
         # pdb.set_trace()
         data = {
             "member_ID": member_id,
-            "spouse_name": "Updated Spouse",
-            "contact_number": "1234567890",
+            "spouse_name":self.faker.first_name(),
+            "contact_number": self.faker.numerify(text='###########'),
             "id": spouse.pk
 
         }
@@ -185,12 +185,12 @@ class SpouseApiEndpointTest(APITestCase):
         member_id = "232kll"
         # member_id=spouse.member.member_ID
 
-        # pdb.set_trace()
         data = {
             "member_ID": member_id,
-            "spouse_name": "Updated Spouse",
-            "contact_number": "1234567890",
-            "id": 9
+            "spouse_name": self.faker.first_name(),
+            "contact_number":self.faker.numerify(text="########"),
+            # "id": self.faker.random_int(1,100),
+            "id": spouse.pk,
         }
         response = self.client.patch(
             f"/api/member/v1/members/spouse/", data, format='multipart')
@@ -213,9 +213,9 @@ class SpouseApiEndpointTest(APITestCase):
 class DescendantApiEndpointTest(APITestCase):
     @classmethod
     def setUpTestData(cls):
-        faker = Faker()
+        cls.faker = Faker()
         cls.user = get_user_model().objects.create_superuser(
-            username=faker.user_name(), password=faker.password(length=8)
+            username=cls.faker.user_name(), password=cls.faker.password(length=8)
         )
         cls.descendant_relation = DescendantRelationChoiceFactory.create_batch(
             3)
@@ -224,9 +224,9 @@ class DescendantApiEndpointTest(APITestCase):
 
         cls.member_descendant_create_request_body = {
             "member_ID": member.member_ID,
-            "name": faker.first_name(),
-            "contact_number": faker.numerify(text='###########'),
-            "descendant_dob": faker.date_of_birth(minimum_age=18, maximum_age=90).strftime('%Y-%m-%d'),
+            "name": cls.faker.first_name(),
+            "contact_number": cls.faker.numerify(text='###########'),
+            "descendant_dob": cls.faker.date_of_birth(minimum_age=18, maximum_age=90).strftime('%Y-%m-%d'),
             "image": image,
             "current_status": cls.descendant_relation[0].pk,
         }
@@ -274,8 +274,8 @@ class DescendantApiEndpointTest(APITestCase):
         member_id = descendant[0].member.member_ID
         data = {
             "member_ID": member_id,
-            "name": "abc",
-            "contact_number": "123",
+            "name": self.faker.first_name(),
+            "contact_number": self.faker.numerify(text="#########"),
             "image": generate_test_image(),
             "current_status": descendant[0].pk
             # "id": descendant[0].pk
@@ -309,13 +309,14 @@ class DescendantApiEndpointTest(APITestCase):
         member_id = descendant[0].member.member_ID
         data = {
             "member_ID": member_id,
-            "name": "abc",
-            "contact_number": "123",
+            "name": self.faker.first_name(),
+            "contact_number": self.faker.numerify(text="#########"),
             "image": generate_test_image(),
             "current_status": descendant[0].pk,
-            "id": descendant[0].pk + 5
+            # "id": descendant[0].pk + 5   # invalid id
+            "id": descendant[0].pk 
         }
-        # data.pop("name")
+        data.pop("name")
         response = self.client.patch(
             f"/api/member/v1/members/descendants/", data, format='multipart')
         response_data = response.json()
@@ -337,9 +338,9 @@ class DescendantApiEndpointTest(APITestCase):
 class CompanionApiEndpointTest(APITestCase):
     @classmethod
     def setUpTestData(cls):
-        faker = Faker()
+        cls.faker = Faker()
         cls.user = get_user_model().objects.create_superuser(
-            username=faker.user_name(), password=faker.password(length=8)
+            username=cls.faker.user_name(), password=cls.faker.password(length=8)
         )
         image = generate_test_image()
         member = MemberFactory()
@@ -347,11 +348,11 @@ class CompanionApiEndpointTest(APITestCase):
         # Request data for testing companion creation
         cls.member_companion_create_request_body = {
             "member_ID": member.member_ID,
-            "companion_name": faker.first_name(),
-            "companion_contact_number": faker.numerify(text='###########'),
-            "companion_dob": faker.date_of_birth(minimum_age=18, maximum_age=90).strftime('%Y-%m-%d'),
+            "companion_name": cls.faker.first_name(),
+            "companion_contact_number": cls.faker.numerify(text='###########'),
+            "companion_dob": cls.faker.date_of_birth(minimum_age=18, maximum_age=90).strftime('%Y-%m-%d'),
             "companion_image": image,  # This will likely need to be a file upload
-            "relation_with_member": faker.first_name_male(),
+            "relation_with_member": cls.faker.first_name_male(),
         }
 
     def setUp(self):
@@ -397,8 +398,8 @@ class CompanionApiEndpointTest(APITestCase):
         image = generate_test_image()
         data = {
             "member_ID": companion.member.member_ID,
-            "companion_name": factory.Faker("name"),
-            "companion_contact_number": "123444",
+            "companion_name": self.faker.first_name(),
+            "companion_contact_number": self.faker.numerify(text="#########"),
             "companion_dob": companion.companion_dob,
             "companion_image": image,
             "id": companion.pk
@@ -433,8 +434,8 @@ class CompanionApiEndpointTest(APITestCase):
         image = generate_test_image()
         data = {
             "member_ID": companion.member.member_ID,
-            "companion_name": fake.name(),
-            "companion_contact_number": "123444",
+            "companion_name": self.faker.name(),
+            "companion_contact_number":self.faker.numerify(text="#########") ,
             "companion_image": image,
             # "id": companion.pk + 5
             "id": companion.pk
@@ -461,9 +462,9 @@ class CompanionApiEndpointTest(APITestCase):
 class DocumentApiEndpointTest(APITestCase):
     @classmethod
     def setUpTestData(cls):
-        faker = Faker()
+        cls.faker = Faker()
         cls.user = get_user_model().objects.create_superuser(
-            username=faker.user_name(), password=faker.password(length=8)
+            username=cls.faker.user_name(), password=cls.faker.password(length=8)
         )
         member = MemberFactory()
         cls.image = generate_test_image()
@@ -472,7 +473,7 @@ class DocumentApiEndpointTest(APITestCase):
             "member_ID": member.member_ID,
             "document_document": cls.image,
             "document_type": document_type[0].pk,
-            "document_number": faker.numerify(text='#########'),
+            "document_number": cls.faker.numerify(text='#########'),
 
         }
 
@@ -522,7 +523,7 @@ class DocumentApiEndpointTest(APITestCase):
             "member_ID": document.member.member_ID,
             "document_document": image,
             "document_type": new_document_type[1].pk,
-            "document_number": factory.Faker("number"),
+            "document_number": self.faker.bothify(text="??#####"),
             "id": document.pk
         }
         data.pop("id")
@@ -556,7 +557,7 @@ class DocumentApiEndpointTest(APITestCase):
         data = {
             "member_ID": document.member.member_ID,
             # "document_document" : image,        # this should be required field
-            "document_number": factory.Faker("number"),
+            "document_number": self.faker.bothify(text="??#####"),
             "id": document.pk,
             # "id": document.pk+2,
 
@@ -585,17 +586,17 @@ class DocumentApiEndpointTest(APITestCase):
 class CertificateApiEndpointTest(APITestCase):
     @classmethod
     def setUpTestData(cls):
-        faker = Faker()
+        cls.faker = Faker()
         cls.user = get_user_model().objects.create_superuser(
-            username=faker.user_name(), password=faker.password(length=8)
+            username=cls.faker.user_name(), password=cls.faker.password(length=8)
         )
         member = MemberFactory()
         cls.image = generate_test_image()
         cls.certificate_create_request_body = {
             "member_ID": member.member_ID,
-            "title": faker.first_name(),
+            "title": cls.faker.first_name(),
             "certificate_document": cls.image,
-            "certificate_number": faker.numerify(text='#########'),
+            "certificate_number": cls.faker.numerify(text='#########'),
 
         }
 
@@ -644,9 +645,9 @@ class CertificateApiEndpointTest(APITestCase):
         image = generate_test_image()
         data = {
             "member_ID": certificate.member.member_ID,
-            "title": factory.Faker("catch_phrase"),
+            "title": self.faker.name(),
             "certificate_document": image,
-            "certificate_number": "abc123",
+            "certificate_number": self.faker.bothify(text="??#####"),
             "id": certificate.pk
         }
         data.pop("id")
@@ -666,8 +667,7 @@ class CertificateApiEndpointTest(APITestCase):
             self.assertEqual(response_data['status'], "success")
             self.assertEqual(response_data['code'], 201)
             self.assertIn('certificate_id', response_data['data'])
-            self.assertIn(
-                "Member Certificate has been created successfully", response_data["message"])
+            self.assertIn("Member Certificate has been created successfully", response_data["message"])
 
     @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
     def test_certificate_update_api_with_invalid_data(self, mock_permission):
@@ -678,9 +678,9 @@ class CertificateApiEndpointTest(APITestCase):
         certificate = CertificateFactory()
         data = {
             "member_ID": certificate.member.member_ID,
-            # "title": factory.Faker("catch_phrase"),
+            # "title": self.faker.name(),
             # "certificate_document": generate_test_image(),
-            "certificate_number": "abc123",
+            "certificate_number": self.faker.bothify(text="??#####"),
             "id": certificate.pk,
             # "id": certificate.pk+2,
 
@@ -692,8 +692,7 @@ class CertificateApiEndpointTest(APITestCase):
         if response_data['code'] == 500:
             self.assertEqual(response_data['status'], "failed")
             self.assertEqual(response_data['message'], "Something went wrong")
-            self.assertEqual(response_data['errors']['server_error'], [
-                             'Certificate matching query does not exist.'])
+            self.assertEqual(response_data['errors']['server_error'], ['Certificate matching query does not exist.'])
 
         if response_data['code'] == 400:
             self.assertEqual(response.status_code, 400)
