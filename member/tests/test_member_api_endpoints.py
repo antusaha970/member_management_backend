@@ -1703,13 +1703,48 @@ class TestMemberSpecialDayAddAndUpdate(APITestCase):
         }
         # act
         _response = self.client.patch(
-            f"/api/member/v1/members/special_day/{shared_member.member_ID}", _data, format="json")
+            f"/api/member/v1/members/special_day/{shared_member.member_ID}/", _data, format="json")
         # assert
         self.assertEqual(_response.status_code, 200)
         _response = _response.json()
+
         self.assertEqual(_response['code'], 200)
         self.assertEqual(_response['status'], "success")
         self.assertIn("data", _response)
         self.assertEqual(len(_response['data']), 5)
         for obj in _response['data']:
             self.assertEqual(obj.get("status"), "updated")
+
+    @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
+    def test_member_special_day_update_endpoint_with_invalid_data(self, mock_permission):
+        """
+        Test special day update endpoint with invalid data. Like missing title fields
+        """
+        # arrange
+        shared_member = MemberFactory()
+        special_days = SpecialDayFactory.create_batch(5, member=shared_member)
+        data = [
+            {
+                "id": special_day.id,
+                "date": fake.date_between(start_date="-10y", end_date="today").strftime("%Y-%m-%d"),
+            } for special_day in special_days
+        ]
+        _data = {
+            "member_ID": shared_member.member_ID,
+            "data": data
+        }
+        # act
+        _response = self.client.patch(
+            f"/api/member/v1/members/special_day/{shared_member.member_ID}/", _data, format="json")
+        
+        # assert
+        self.assertEqual(_response.status_code, 400)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 400)
+        self.assertEqual(_response['status'], "failed")
+        self.assertEqual(_response['message'], "Invalid request")
+        self.assertIn("errors", _response)
+
+        self.assertEqual(len(_response['errors']['data']), 5)
+        for error in _response['errors']['data']:
+            self.assertListEqual(error['title'], ['This field is required.'])
