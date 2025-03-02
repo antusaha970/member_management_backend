@@ -1682,3 +1682,35 @@ class TestMemberSpecialDayAddAndUpdate(APITestCase):
         self.assertEqual(_response['code'], 400)
         self.assertEqual(_response["status"], "failed")
         self.assertIn("errors", _response)
+
+    @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
+    def test_member_special_day_update_endpoint_with_valid_data(self, mock_permission):
+        """
+        Test special day update endpoint with valid data.
+        """
+        # arrange
+        shared_member = MemberFactory()
+        special_days = SpecialDayFactory.create_batch(5, member=shared_member)
+        data = [
+            {
+                "id": special_day.id,
+                "title": fake.name(),
+                "date": fake.date_between(start_date="-10y", end_date="today").strftime("%Y-%m-%d"),
+            } for special_day in special_days
+        ]
+        _data = {
+            "member_ID": shared_member.member_ID,
+            "data": data
+        }
+        # act
+        _response = self.client.patch(
+            f"/api/member/v1/members/special_day/{shared_member.member_ID}", _data, format="json")
+        # assert
+        self.assertEqual(_response.status_code, 200)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 200)
+        self.assertEqual(_response['status'], "success")
+        self.assertIn("data", _response)
+        self.assertEqual(len(_response['data']), 5)
+        for obj in _response['data']:
+            self.assertEqual(obj.get("status"), "updated")
