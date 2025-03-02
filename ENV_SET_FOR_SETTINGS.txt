@@ -1,0 +1,2 @@
+set DJANGO_ENV=production
+set DJANGO_ENV=development

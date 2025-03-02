@@ -2,14 +2,13 @@ import os
 from pathlib import Path
 from datetime import timedelta
 import environ
-import pdb
 # Initialize environment variables
 env = environ.Env()
 environ.Env.read_env()
 
 # Base directory
-BASE_DIR = Path(__file__).resolve().parent.parent
-# pdb.set_trace()
+BASE_DIR = Path(__file__).parents[2]
+
 
 # Secret key (should be overridden in production)
 SECRET_KEY = env("SECRET_KEY")
@@ -162,3 +161,21 @@ LOGGING = {
         },
     },
 }
+
+# template settings
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        # Look for templates in 'templates' folder
+        'DIRS': [BASE_DIR / 'templates'],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
