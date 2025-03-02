@@ -1336,6 +1336,110 @@ class TestMemberJobInformationAddAndUpdate(APITestCase):
         self.assertEqual(_response["status"], "failed")
         self.assertIn("errors", _response)
 
+    @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
+    def test_member_job_update_endpoint_with_valid_data(self, mock_permission):
+        """
+        Test job update endpoint with valid data
+        """
+        # arrange
+        shared_member = MemberFactory()
+        jobs = JobFactory.create_batch(5, member=shared_member)
+        data = [
+            {
+                "id": job.id,
+                "title": fake.job(),
+                "organization_name": fake.company(),
+                "location": fake.country(),
+                "job_description": fake.name(),
+            } for job in jobs
+        ]
+        _data = {
+            "member_ID": shared_member.member_ID,
+            "data": data
+        }
+        # act
+        _response = self.client.patch(
+            f"/api/member/v1/members/job/{shared_member.member_ID}/", _data, format="json")
+        # assert
+        self.assertEqual(_response.status_code, 200)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 200)
+        self.assertEqual(_response['status'], "success")
+        self.assertIn("data", _response)
+        self.assertEqual(len(_response['data']), 5)
+        for obj in _response['data']:
+            self.assertEqual(obj.get("status"), "updated")
+
+    @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
+    def test_member_job_update_endpoint_with_invalid_data(self, mock_permission):
+        """
+        Test job update endpoint with invalid data. Like missing fields
+        """
+        # arrange
+        shared_member = MemberFactory()
+        jobs = JobFactory.create_batch(5, member=shared_member)
+        data = [
+            {
+                "id": job.id,
+                "organization_name": fake.company(),
+                "location": fake.country(),
+                "job_description": fake.name(),
+            } for job in jobs
+        ]
+        _data = {
+            "member_ID": shared_member.member_ID,
+            "data": data
+        }
+        # act
+        _response = self.client.patch(
+            f"/api/member/v1/members/job/{shared_member.member_ID}/", _data, format="json")
+        # assert
+        self.assertEqual(_response.status_code, 400)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 400)
+        self.assertEqual(_response['status'], "failed")
+        self.assertIn("errors", _response)
+
+    @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
+    def test_member_job_update_add_one_more_endpoint_with_valid_data(self, mock_permission):
+        """
+        Test job update endpoint with valid data more job data. Try to add more job.
+        """
+        # arrange
+        shared_member = MemberFactory()
+        jobs = JobFactory.create_batch(5, member=shared_member)
+        data = [
+            {
+                "id": job.id,
+                "title": fake.job(),
+                "organization_name": fake.company(),
+                "location": fake.country(),
+                "job_description": fake.name(),
+            } for job in jobs
+        ]
+        data.append({
+            "title": fake.job(),
+            "organization_name": fake.company(),
+            "location": fake.country(),
+            "job_description": fake.name(),
+        })
+        _data = {
+            "member_ID": shared_member.member_ID,
+            "data": data
+        }
+        # act
+        _response = self.client.patch(
+            f"/api/member/v1/members/job/{shared_member.member_ID}/", _data, format="json")
+        # assert
+        self.assertEqual(_response.status_code, 200)
+        _response = _response.json()
+        self.assertEqual(_response['code'], 200)
+        self.assertEqual(_response['status'], "success")
+        self.assertIn("data", _response)
+        self.assertEqual(len(_response['data']), 6)
+        for obj in _response['data']:
+            self.assertTrue(obj.get("status") in ["updated", "created"])
+
 
 class TestMemberEmergencyContactAddAndUpdate(APITestCase):
     @classmethod
