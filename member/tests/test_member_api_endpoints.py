@@ -189,7 +189,8 @@ class SpouseApiEndpointTest(APITestCase):
             "member_ID": member_id,
             "spouse_name": self.faker.first_name(),
             "contact_number":self.faker.numerify(text="########"),
-            "id": self.faker.random_int(1,100)
+            # "id": self.faker.random_int(1,100),
+            "id": spouse.pk,
         }
         response = self.client.patch(
             f"/api/member/v1/members/spouse/", data, format='multipart')
@@ -312,9 +313,10 @@ class DescendantApiEndpointTest(APITestCase):
             "contact_number": self.faker.numerify(text="#########"),
             "image": generate_test_image(),
             "current_status": descendant[0].pk,
-            "id": descendant[0].pk + 5
+            # "id": descendant[0].pk + 5   # invalid id
+            "id": descendant[0].pk 
         }
-        # data.pop("name")
+        data.pop("name")
         response = self.client.patch(
             f"/api/member/v1/members/descendants/", data, format='multipart')
         response_data = response.json()
@@ -665,8 +667,7 @@ class CertificateApiEndpointTest(APITestCase):
             self.assertEqual(response_data['status'], "success")
             self.assertEqual(response_data['code'], 201)
             self.assertIn('certificate_id', response_data['data'])
-            self.assertIn(
-                "Member Certificate has been created successfully", response_data["message"])
+            self.assertIn("Member Certificate has been created successfully", response_data["message"])
 
     @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
     def test_certificate_update_api_with_invalid_data(self, mock_permission):
@@ -691,8 +692,7 @@ class CertificateApiEndpointTest(APITestCase):
         if response_data['code'] == 500:
             self.assertEqual(response_data['status'], "failed")
             self.assertEqual(response_data['message'], "Something went wrong")
-            self.assertEqual(response_data['errors']['server_error'], [
-                             'Certificate matching query does not exist.'])
+            self.assertEqual(response_data['errors']['server_error'], ['Certificate matching query does not exist.'])
 
         if response_data['code'] == 400:
             self.assertEqual(response.status_code, 400)
