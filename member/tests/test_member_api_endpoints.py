@@ -150,13 +150,13 @@ class SpouseApiEndpointTest(APITestCase):
         # pdb.set_trace()
         data = {
             "member_ID": member_id,
-            "spouse_name":self.faker.first_name(),
+            "spouse_name": self.faker.first_name(),
             "contact_number": self.faker.numerify(text='###########'),
             "id": spouse.pk
 
         }
         response = self.client.patch(
-            f"/api/member/v1/members/spouse/", data, format='multipart')
+            "/api/member/v1/members/spouse/", data, format='multipart')
         response_data = response.json()
         # Assert
         if data.get('id') is not None:
@@ -188,12 +188,12 @@ class SpouseApiEndpointTest(APITestCase):
         data = {
             "member_ID": member_id,
             "spouse_name": self.faker.first_name(),
-            "contact_number":self.faker.numerify(text="########"),
+            "contact_number": self.faker.numerify(text="########"),
             # "id": self.faker.random_int(1,100),
             "id": spouse.pk,
         }
         response = self.client.patch(
-            f"/api/member/v1/members/spouse/", data, format='multipart')
+            "/api/member/v1/members/spouse/", data, format='multipart')
         response_data = response.json()
         # Assert
         if response_data['code'] == 500:
@@ -281,7 +281,7 @@ class DescendantApiEndpointTest(APITestCase):
             # "id": descendant[0].pk
         }
         response = self.client.patch(
-            f"/api/member/v1/members/descendants/", data, format='multipart')
+            "/api/member/v1/members/descendants/", data, format='multipart')
         response_data = response.json()
         # Assert
         if data.get('id') is not None:
@@ -314,11 +314,11 @@ class DescendantApiEndpointTest(APITestCase):
             "image": generate_test_image(),
             "current_status": descendant[0].pk,
             # "id": descendant[0].pk + 5   # invalid id
-            "id": descendant[0].pk 
+            "id": descendant[0].pk
         }
         data.pop("name")
         response = self.client.patch(
-            f"/api/member/v1/members/descendants/", data, format='multipart')
+            "/api/member/v1/members/descendants/", data, format='multipart')
         response_data = response.json()
         # Assert
         if response_data['code'] == 500:
@@ -406,7 +406,7 @@ class CompanionApiEndpointTest(APITestCase):
         }
         # data.pop("id")
         response = self.client.patch(
-            f"/api/member/v1/members/companion/", data, format='multipart')
+            "/api/member/v1/members/companion/", data, format='multipart')
         response_data = response.json()
         # Assert
         if data.get('id') is not None:
@@ -435,7 +435,7 @@ class CompanionApiEndpointTest(APITestCase):
         data = {
             "member_ID": companion.member.member_ID,
             "companion_name": self.faker.name(),
-            "companion_contact_number":self.faker.numerify(text="#########") ,
+            "companion_contact_number": self.faker.numerify(text="#########"),
             "companion_image": image,
             # "id": companion.pk + 5
             "id": companion.pk
@@ -528,7 +528,7 @@ class DocumentApiEndpointTest(APITestCase):
         }
         data.pop("id")
         response = self.client.patch(
-            f"/api/member/v1/members/documents/", data, format='multipart')
+            "/api/member/v1/members/documents/", data, format='multipart')
         response_data = response.json()
         # Assert
         if data.get('id') is not None:
@@ -564,7 +564,7 @@ class DocumentApiEndpointTest(APITestCase):
         }
         # data.pop("document_document")
         response = self.client.patch(
-            f"/api/member/v1/members/documents/", data, format='multipart')
+            "/api/member/v1/members/documents/", data, format='multipart')
         response_data = response.json()
         # Assert
         if response_data['code'] == 500:
@@ -652,7 +652,7 @@ class CertificateApiEndpointTest(APITestCase):
         }
         data.pop("id")
         response = self.client.patch(
-            f"/api/member/v1/members/certificate/", data, format='multipart')
+            "/api/member/v1/members/certificate/", data, format='multipart')
         response_data = response.json()
         # Assert
         if data.get('id') is not None:
@@ -667,7 +667,8 @@ class CertificateApiEndpointTest(APITestCase):
             self.assertEqual(response_data['status'], "success")
             self.assertEqual(response_data['code'], 201)
             self.assertIn('certificate_id', response_data['data'])
-            self.assertIn("Member Certificate has been created successfully", response_data["message"])
+            self.assertIn(
+                "Member Certificate has been created successfully", response_data["message"])
 
     @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
     def test_certificate_update_api_with_invalid_data(self, mock_permission):
@@ -686,13 +687,14 @@ class CertificateApiEndpointTest(APITestCase):
 
         }
         response = self.client.patch(
-            f"/api/member/v1/members/certificate/", data, format='multipart')
+            "/api/member/v1/members/certificate/", data, format='multipart')
         response_data = response.json()
         # Assert
         if response_data['code'] == 500:
             self.assertEqual(response_data['status'], "failed")
             self.assertEqual(response_data['message'], "Something went wrong")
-            self.assertEqual(response_data['errors']['server_error'], ['Certificate matching query does not exist.'])
+            self.assertEqual(response_data['errors']['server_error'], [
+                             'Certificate matching query does not exist.'])
 
         if response_data['code'] == 400:
             self.assertEqual(response.status_code, 400)
@@ -1736,7 +1738,7 @@ class TestMemberSpecialDayAddAndUpdate(APITestCase):
         # act
         _response = self.client.patch(
             f"/api/member/v1/members/special_day/{shared_member.member_ID}/", _data, format="json")
-        
+
         # assert
         self.assertEqual(_response.status_code, 400)
         _response = _response.json()
