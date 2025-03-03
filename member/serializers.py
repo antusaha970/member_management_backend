@@ -100,10 +100,9 @@ class MemberSerializer(serializers.Serializer):
     def validate(self, attrs):
         if self.instance:
             member_ID = attrs.get("member_ID")
-            first_two_characters = member_ID[:2]
             membership_type = attrs.get("membership_type")
-            if membership_type != first_two_characters:
-                raise serializers.ValidationError(f"Invalid member_ID")
+            if not member_ID.startswith(membership_type):
+                raise serializers.ValidationError("Invalid member_ID")
 
         return super().validate(attrs)
 
