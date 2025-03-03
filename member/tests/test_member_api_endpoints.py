@@ -43,6 +43,9 @@ class TestMemberCreateAndUpdateEndpoints(APITestCase):
             "nationality": "Bangladesh",
         }
 
+    def setUp(self):
+        self.client.force_authenticate(user=self.user)
+
     @patch.object(AddMemberPermission, "has_permission", return_value=True)
     def test_member_creation_api_with_valid_data(self, mock_permission):
         """
@@ -83,6 +86,60 @@ class TestMemberCreateAndUpdateEndpoints(APITestCase):
         self.assertIn("profile_photo", _errors)
 
         self.assertEqual(1, 1)
+
+    @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
+    def test_member_transfer_api_with_valid_data(self, mock_permission):
+        """
+        Test membership transfer API with valid data.
+        """
+        # arrange
+        member = MemberFactory()
+        member_ship_type = MembershipTypeFactory()
+        _data = {**vars(member)}
+        _data.pop("_django_cleanup_original_cache")
+        _data.pop("_state")
+        _data["member_ID"] = f"{member_ship_type.name}0001"
+        _data["membership_type"] = member_ship_type.name
+        _data["gender"] = GenderFactory().name
+        _data["institute_name"] = InstituteNameFactory().name
+        _data["membership_status"] = MembershipStatusChoiceFactory().name
+        _data["marital_status"] = MaritalStatusChoiceFactory().name
+        # act
+        _response = self.client.patch(
+            f"/api/member/v1/members/{member.member_ID}/", _data, format='multipart')
+        # assert
+        self.assertEqual(_response.status_code, 200)
+        _response = _response.json()
+
+        self.assertEqual(_response['code'], 200)
+        self.assertEqual(_response["status"], "success")
+
+    @patch.object(UpdateMemberPermission, "has_permission", return_value=True)
+    def test_member_transfer_api_with_invalid_data(self, mock_permission):
+        """
+        Test membership transfer API with valid data. Like invalid type
+        """
+        # arrange
+        member = MemberFactory()
+        member_ship_type = MembershipTypeFactory()
+        _data = {**vars(member)}
+        _data.pop("_django_cleanup_original_cache")
+        _data.pop("_state")
+        _data["member_ID"] = "SMTP0001"
+        _data["membership_type"] = member_ship_type.name
+        _data["gender"] = GenderFactory().name
+        _data["institute_name"] = InstituteNameFactory().name
+        _data["membership_status"] = MembershipStatusChoiceFactory().name
+        _data["marital_status"] = MaritalStatusChoiceFactory().name
+        # act
+        _response = self.client.patch(
+            f"/api/member/v1/members/{member.member_ID}/", _data, format='multipart')
+        # assert
+        self.assertEqual(_response.status_code, 400)
+        _response = _response.json()
+
+        self.assertEqual(_response['code'], 400)
+        self.assertEqual(_response["status"], "failed")
 
 
 class SpouseApiEndpointTest(APITestCase):

@@ -29,7 +29,7 @@ class AddressTypeChoiceFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = AddressTypeChoice
 
-    name = factory.Faker("name")
+    name = factory.LazyFunction(fake.unique.word)
 
 
 class SpouseStatusChoiceFactory(factory.django.DjangoModelFactory):
@@ -61,14 +61,14 @@ class GenderFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Gender
 
-    name = factory.Faker('word')
+    name = factory.LazyFunction(fake.unique.word)
 
 
 class MembershipTypeFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = MembershipType
 
-    name = factory.Faker('word')
+    name = factory.LazyFunction(fake.unique.word)
 
 
 class InstituteNameFactory(factory.django.DjangoModelFactory):
@@ -82,7 +82,7 @@ class MembershipStatusChoiceFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = MembershipStatusChoice
 
-    name = factory.Faker('word')
+    name = factory.LazyFunction(fake.unique.word)
 
 
 class MaritalStatusChoiceFactory(factory.django.DjangoModelFactory):
