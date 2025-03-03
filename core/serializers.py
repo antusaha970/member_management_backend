@@ -19,7 +19,11 @@ class MembershipTypeSerializer(serializers.Serializer):
         membership_type = MembershipType.objects.create(name=name)
         return membership_type
 
-
+class MembershipTypeViewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MembershipType
+        fields = "__all__"
+    
 class InstituteNameSerializer(serializers.Serializer):
     name = serializers.CharField()
 
@@ -36,6 +40,10 @@ class InstituteNameSerializer(serializers.Serializer):
         institute_name = InstituteName.objects.create(name=name)
         return institute_name
 
+class InstituteNameViewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InstituteName
+        fields = "__all__"
 
 class GenderSerializer(serializers.ModelSerializer):
     class Meta:
