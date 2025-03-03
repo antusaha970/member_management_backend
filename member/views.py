@@ -421,6 +421,7 @@ class MemberIdView(APIView):
 
 class MemberContactNumberView(APIView):
     permission_classes = [IsAuthenticated]
+
     def get_permissions(self):
         if self.request.method == "POST":
             return [IsAuthenticated(), AddMemberPermission()]
@@ -1661,7 +1662,7 @@ class MemberSingleHistoryView(APIView):
 
     def get(self, request, member_ID):
         try:
-            member_history = MemberHistory.objects.get(
+            member_history = MemberHistory.objects.filter(
                 member__member_ID=member_ID)
             serializer = serializers.MemberHistorySerializer(
                 member_history, many=True)
