@@ -1,10 +1,9 @@
 from django.contrib import admin
-from .models import OTP, CustomUser, ForgetPasswordOTP, PermissonModel, GroupModel, AssignGroupPermission
+from django.apps import apps
 
-admin.site.register(ForgetPasswordOTP)
-admin.site.register(OTP)
-admin.site.register(CustomUser)
+app_name = "account"
+models = apps.get_app_config(app_name).get_models()
 
-admin.site.register(PermissonModel)
-admin.site.register(GroupModel)
-admin.site.register(AssignGroupPermission)
+
+for model in models:
+    admin.site.register(model)
