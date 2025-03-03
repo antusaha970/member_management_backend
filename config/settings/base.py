@@ -2,6 +2,8 @@ import os
 from pathlib import Path
 from datetime import timedelta
 import environ
+import sys
+
 # Initialize environment variables
 env = environ.Env()
 environ.Env.read_env()
@@ -84,6 +86,15 @@ AUTH_USER_MODEL = 'account.CustomUser'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': ['rest_framework_simplejwt.authentication.JWTAuthentication'],
     'EXCEPTION_HANDLER': 'account.utils.exceptions.custom_exception_handler',
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.UserRateThrottle',  # Throttles per user
+        # Throttles for unauthenticated users
+        'rest_framework.throttling.AnonRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'user': '60/minute',  # Limit to 60 requests per minute for authenticated users
+        'anon': '60/minute',  # Limit to 60 requests per minute for anonymous users
+    }
 }
 
 # JWT Configuration
@@ -186,3 +197,9 @@ EMAIL_USE_TLS = True
 EMAIL_PORT = 587
 EMAIL_HOST_USER = env("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")
+
+
+if 'test' in sys.argv:
+    # Disable throttling in tests
+    REST_FRAMEWORK['DEFAULT_THROTTLE_CLASSES'] = []
+    REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = {}
