@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     'django_cleanup',
     'django_celery_results',
+    'django_filters',
     # Custom apps
     'account',
     'club',
