@@ -222,6 +222,23 @@ class TestMemberCreateAndUpdateEndpoints(APITestCase):
             self.assertIn("Member not found by this member_ID",
                           _response.data["errors"]["member"])
 
+    @patch.object(ViewMemberPermission, "has_permission", return_value=True)
+    def test_view_all_members(self, mock_permission):
+        """
+            Test view_all_members list api endpoint. Without any query parameters
+        """
+        # arrange
+        members = MemberFactory.create_batch(150)
+        # act
+        _response = self.client.get("/api/member/v1/members/list/")
+        # assert
+        self.assertEqual(_response.status_code, 200)
+        _response = _response.json()
+        self.assertIn("data", _response)
+        self.assertEqual(_response["code"], 200)
+        self.assertIn("pagination", _response)
+        self.assertEqual(len(_response["data"]), 100)
+
 
 class SpouseApiEndpointTest(APITestCase):
     @classmethod

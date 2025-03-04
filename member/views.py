@@ -368,11 +368,12 @@ class MemberView(APIView):
 
 
 class MemberListView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, ViewMemberPermission]
 
     def get(self, request):
         try:
-            queryset = Member.objects.all().order_by("id")
+            queryset = Member.objects.filter(
+                status=0, is_active=True).order_by("id")
 
             # Apply filtering only if filters are provided in the request
             if request.GET:  # Check if any query parameters exist
