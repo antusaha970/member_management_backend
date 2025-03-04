@@ -98,11 +98,11 @@ class MemberSerializer(serializers.Serializer):
         return value
 
     def validate(self, attrs):
-        if self.instance:
-            member_ID = attrs.get("member_ID")
-            membership_type = attrs.get("membership_type")
-            if not member_ID.startswith(membership_type):
-                raise serializers.ValidationError("Invalid member_ID")
+        member_ID = attrs.get("member_ID")
+        membership_type = attrs.get("membership_type")
+        if not member_ID.startswith(membership_type):
+            raise serializers.ValidationError(
+                {"member_ID": "Invalid member_ID"})
 
         return super().validate(attrs)
 

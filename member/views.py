@@ -16,6 +16,7 @@ from core.models import MembershipType
 from datetime import datetime
 from django.utils import timezone
 from core.utils.pagination import CustomPageNumberPagination
+from .utils.filters import MemberFilter
 from .import models
 import pdb
 from .models import Spouse, Profession
@@ -364,6 +365,65 @@ class MemberView(APIView):
                     "server_error": [str(server_error)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class MemberListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            queryset = Member.objects.all().order_by("id")
+
+            # Apply filtering only if filters are provided in the request
+            if request.GET:  # Check if any query parameters exist
+                filterset = MemberFilter(request.GET, queryset=queryset)
+                if not filterset.is_valid():
+                    return Response({
+                        "code": 400,
+                        "status": "failed",
+                        "message": "Invalid filters",
+                        "errors": filterset.errors
+                    }, status=400)
+                queryset = filterset.qs  # Apply filters
+
+            paginator = CustomPageNumberPagination()
+
+            paginated_queryset = paginator.paginate_queryset(queryset, request)
+
+            if paginated_queryset is None:
+                paginated_queryset = queryset
+
+            serializer = serializers.MemberSerializer(
+                paginated_queryset, many=True)
+            log_activity_task.delay(
+                request_data_activity_log(request),
+                verb="Member list view success",
+                severity_level="info",
+                description="user viewed member list",
+            )
+            return paginator.get_paginated_response({
+                "code": 200,
+                "status": "success",
+                "message": "View all members",
+                "data": serializer.data
+            }, 200)
+
+        except Exception as server_error:
+            logger.exception(str(server_error))
+            log_activity_task.delay(
+                request_data_activity_log(request),
+                verb="Member list view failed",
+                severity_level="error",
+                description="user tried to view member list. But made an invalid request",
+            )
+            return Response({
+                'code': 500,
+                'status': "failed",
+                "message": "An error occurred",
+                "errors": {
+                    "server_error": [str(server_error)],
+                }
+            })
 
 
 class MemberIdView(APIView):

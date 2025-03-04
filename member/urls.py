@@ -3,6 +3,8 @@ from . import views
 urlpatterns = [
     path('v1/members/', views.MemberView.as_view(),
          name="member_view"),
+    path('v1/members/list/', views.MemberListView.as_view(),
+         name="member_list_view"),
     path('v1/members/contact_numbers/', views.MemberContactNumberView.as_view(),
          name="member_contact_number_view"),
     path('v1/members/contact_numbers/<str:member_ID>/', views.MemberContactNumberView.as_view(),
