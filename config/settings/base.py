@@ -85,7 +85,9 @@ AUTH_USER_MODEL = 'account.CustomUser'
 
 # REST Framework
 REST_FRAMEWORK = {
+    
     'DEFAULT_AUTHENTICATION_CLASSES': ['rest_framework_simplejwt.authentication.JWTAuthentication'],
+    
     'EXCEPTION_HANDLER': 'account.utils.exceptions.custom_exception_handler',
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.UserRateThrottle',  # Throttles per user
