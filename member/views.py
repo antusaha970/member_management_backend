@@ -395,7 +395,12 @@ class MemberListView(APIView):
 
             serializer = serializers.MemberSerializer(
                 paginated_queryset, many=True)
-
+            log_activity_task.delay(
+                request_data_activity_log(request),
+                verb="Member list view success",
+                severity_level="info",
+                description="user viewed member list",
+            )
             return paginator.get_paginated_response({
                 "code": 200,
                 "status": "success",
@@ -405,6 +410,12 @@ class MemberListView(APIView):
 
         except Exception as server_error:
             logger.exception(str(server_error))
+            log_activity_task.delay(
+                request_data_activity_log(request),
+                verb="Member list view failed",
+                severity_level="error",
+                description="user tried to view member list. But made an invalid request",
+            )
             return Response({
                 'code': 500,
                 'status': "failed",
