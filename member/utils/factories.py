@@ -122,11 +122,11 @@ class MemberFactory(factory.django.DjangoModelFactory):
     marital_status = factory.SubFactory(MaritalStatusChoiceFactory)
 
     # Record keeping
-    status = factory.Iterator([0, 1, 2])
+    status = 0
     is_active = True
     created_at = factory.LazyFunction(date.today)
     updated_at = factory.LazyFunction(date.today)
-
+    
 
 class SpouseFactory(factory.django.DjangoModelFactory):
     class Meta:
