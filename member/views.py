@@ -285,6 +285,9 @@ class MemberView(APIView):
                 member=member)
             jobs = models.Profession.objects.filter(member=member)
             special_days = models.SpecialDay.objects.filter(member=member)
+
+            if request.GET.get("download_excel"):
+                return self.download_excel_file_for_single_member(member, contact_numbers)
             # pass the data to the serializers
             member_serializer = serializers.MemberSerializerForViewSingleMember(
                 member)
@@ -368,6 +371,61 @@ class MemberView(APIView):
                     "server_error": [str(server_error)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def download_excel_file_for_single_member(self, member, contact):
+        member_dict = {
+            "id": member.id,
+            "member_ID": member.member_ID,
+            "first_name": member.first_name,
+            "last_name": member.last_name,
+            "date_of_birth": member.date_of_birth,
+            "batch_number": member.batch_number,
+            "anniversary_date": member.anniversary_date,
+            "profile_photo": member.profile_photo.url if member.profile_photo else "",
+            "blood_group": member.blood_group,
+            "nationality": member.nationality,
+            "status": member.status,
+            "is_active": member.is_active,
+            "created_at": member.created_at,
+            "updated_at": member.updated_at,
+            "gender": member.gender.name,
+            "membership_type": member.membership_type.name,
+            "institute_name": member.institute_name.name,
+            "membership_status": member.membership_status.name,
+            "marital_status": member.marital_status.name,
+        }
+        contact_data = list(contact.values(
+            "id", "number", "is_primary", "status", "is_active", "created_at", "updated_at"
+        ))
+        # Create Excel file in memory
+        excel_buffer = BytesIO()
+        writer = pd.ExcelWriter(excel_buffer, engine="xlsxwriter")
+
+        # Create "Member Info" sheet (one row DataFrame)
+        df_member = pd.DataFrame([member_dict])
+        df_member = df_member.apply(
+            lambda col: col.dt.tz_localize(None) if pd.api.types.is_datetime64_any_dtype(
+                col) and getattr(col.dtype, 'tz', None) else col
+        )
+        df_member.to_excel(writer, index=False, sheet_name="Member Info")
+
+        # Create "Contact Info" sheet (multiple rows)
+        df_contact = pd.DataFrame(contact_data)
+        df_contact = df_contact.apply(
+            lambda col: col.dt.tz_localize(None) if pd.api.types.is_datetime64_any_dtype(
+                col) and getattr(col.dtype, 'tz', None) else col
+        )
+        df_contact.to_excel(writer, index=False, sheet_name="Contact Info")
+
+        writer.close()
+
+        # Create HTTP response with Excel file
+        response = HttpResponse(
+            excel_buffer.getvalue(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        response["Content-Disposition"] = f'attachment; filename="member_{member.id}_details.xlsx"'
+        return response
 
 
 class MemberListView(APIView):
