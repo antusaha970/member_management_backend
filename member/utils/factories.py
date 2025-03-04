@@ -15,39 +15,39 @@ class ContactTypeFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = ContactTypeChoice
 
-    name = factory.LazyAttribute(lambda _: fake.name())
+    name = factory.Sequence(lambda n: f"{fake.name()}{n}")
 
 
 class EmailTypeChoiceFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = EmailTypeChoice
 
-    name = factory.LazyAttribute(lambda _: fake.name())
+    name = factory.Sequence(lambda n: f"{fake.name()}{n}")
 
 
 class AddressTypeChoiceFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = AddressTypeChoice
 
-    name = factory.LazyFunction(fake.unique.word)
+    name = factory.Sequence(lambda n: f"{fake.name()}{n}")
 
 
 class SpouseStatusChoiceFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = SpouseStatusChoice
-    name = factory.LazyAttribute(lambda _: fake.unique.word())
+    name = factory.Sequence(lambda n: f"{fake.name()}{n}")
 
 
 class DescendantRelationChoiceFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = DescendantRelationChoice
-    name = factory.LazyAttribute(lambda _: fake.unique.word())
+    name = factory.Sequence(lambda n: f"{fake.name()}{n}")
 
 
 class DocumentTypeChoiceFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = DocumentTypeChoice
-    name = factory.LazyAttribute(lambda _: fake.unique.word())
+    name = factory.Sequence(lambda n: f"{fake.name()}{n}")
 
 
 def generate_test_image():
@@ -61,35 +61,35 @@ class GenderFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Gender
 
-    name = factory.LazyFunction(fake.unique.word)
+    name = factory.Sequence(lambda n: f"{fake.name()}{n}")
 
 
 class MembershipTypeFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = MembershipType
 
-    name = factory.LazyFunction(fake.unique.word)
+    name = factory.Sequence(lambda n: f"{fake.name()}{n}")
 
 
 class InstituteNameFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = InstituteName
 
-    name = factory.Faker('company')
+    name = factory.Sequence(lambda n: f"{fake.name()}{n}")
 
 
 class MembershipStatusChoiceFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = MembershipStatusChoice
 
-    name = factory.LazyFunction(fake.unique.word)
+    name = factory.Sequence(lambda n: f"{fake.name()}{n}")
 
 
 class MaritalStatusChoiceFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = MaritalStatusChoice
 
-    name = factory.LazyAttribute(lambda _: fake.name())
+    name = factory.Sequence(lambda n: f"{fake.name()}{n}")
 
 
 class MemberFactory(factory.django.DjangoModelFactory):
@@ -126,7 +126,7 @@ class MemberFactory(factory.django.DjangoModelFactory):
     is_active = True
     created_at = factory.LazyFunction(date.today)
     updated_at = factory.LazyFunction(date.today)
-    
+
 
 class SpouseFactory(factory.django.DjangoModelFactory):
     class Meta:

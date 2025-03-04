@@ -252,6 +252,70 @@ class TestMemberCreateAndUpdateEndpoints(APITestCase):
             self.assertIn("Member not found by this member_ID",
                           _response.data["errors"]["member"])
 
+    @patch.object(ViewMemberPermission, "has_permission", return_value=True)
+    def test_view_all_members(self, mock_permission):
+        """
+            Test view_all_members list api endpoint. Without any query parameters
+        """
+        # arrange
+        members = MemberFactory.create_batch(150)
+        # act
+        _response = self.client.get("/api/member/v1/members/list/")
+        # assert
+        self.assertEqual(_response.status_code, 200)
+        _response = _response.json()
+        self.assertIn("data", _response)
+        self.assertEqual(_response["code"], 200)
+        self.assertIn("pagination", _response)
+        self.assertEqual(len(_response["data"]), 100)
+
+    @patch.object(ViewMemberPermission, "has_permission", return_value=True)
+    def test_view_all_members_with_filtering(self, mock_permission):
+        """
+            Test view_all_members list api endpoint. with filtering- Gender
+        """
+        # arrange
+        gender1 = GenderFactory()
+        gender2 = GenderFactory()
+        members1 = MemberFactory.create_batch(50, gender=gender1)
+        members2 = MemberFactory.create_batch(50, gender=gender2)
+        # act
+        _response = self.client.get(
+            f"/api/member/v1/members/list/?gender={gender1.name}")
+        # assert
+        self.assertEqual(_response.status_code, 200)
+        _response = _response.json()
+        self.assertIn("data", _response)
+        self.assertEqual(_response["code"], 200)
+        self.assertIn("pagination", _response)
+        self.assertEqual(len(_response["data"]), 50)
+
+    @patch.object(ViewMemberPermission, "has_permission", return_value=True)
+    def test_view_all_members_with_pagination(self, mock_permission):
+        """
+            Test view_all_members list api endpoint. with pagination
+        """
+        # arrange
+        members1 = MemberFactory.create_batch(200)
+        # act
+        _response = self.client.get(
+            "/api/member/v1/members/list/")
+        # assert
+        self.assertEqual(_response.status_code, 200)
+        _response = _response.json()
+        self.assertIn("data", _response)
+        self.assertEqual(_response["code"], 200)
+        self.assertIn("pagination", _response)
+        self.assertEqual(len(_response["data"]), 100)
+        _response = self.client.get(
+            "/api/member/v1/members/list/?page=2")
+        self.assertEqual(_response.status_code, 200)
+        _response = _response.json()
+        self.assertIn("data", _response)
+        self.assertEqual(_response["code"], 200)
+        self.assertIn("pagination", _response)
+        self.assertEqual(len(_response["data"]), 100)
+
 
 class SpouseApiEndpointTest(APITestCase):
     @classmethod
