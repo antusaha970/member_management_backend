@@ -147,18 +147,46 @@ class TestMemberCreateAndUpdateEndpoints(APITestCase):
         Test specific member view API with valid data.
         """
         # arrange
-        member = MemberFactory(status=1)
+        member = MemberFactory()
+        contact_type_choice= ContactTypeFactory()
+        email_type=EmailTypeChoiceFactory()
+        address_type=AddressTypeChoiceFactory()
+        
+        contact_info=ContactNumberFactory(member=member,contact_type=contact_type_choice)
+        email_address= EmailFactory(member=member,email_type=email_type)
+        address=AddressFactory(member=member,address_type=address_type)
+        job=JobFactory(member=member)
+        special_days=SpecialDayFactory(member=member)
+        emergency_contact=EmergencyContactFactory(member=member)
+        spouse=SpouseFactory(member=member)
+        descendant=DescendantFactory(member=member)
+        certificate=CertificateFactory(member=member)
+        companion=CompanionInformationFactory(member=member)
+        document=DocumentsFactory(member=member)
         # act
         _response = self.client.get(
             f"/api/member/v1/members/{member.member_ID}/")
         _response_data = _response.json()
 
         if _response_data["code"] == 200:
-
             self.assertEqual(_response_data["code"], 200)
             self.assertEqual(_response_data["status"], "success")
-            self.assertEqual(
-                _response_data["data"]['member_info']["member_ID"], member.member_ID)
+            self.assertEqual(_response_data["data"]['member_info']["member_ID"], member.member_ID)
+            self.assertEqual(_response_data["data"]['member_info']["first_name"], member.first_name)
+            self.assertEqual(_response_data["data"]['member_info']["last_name"], member.last_name)
+            self.assertEqual(_response_data["data"]['contact_info'][0]["contact_type"]['name'], contact_type_choice.name) 
+            self.assertEqual(_response_data['data']['email_address'][0]['email_type']['name'], email_type.name)
+            self.assertEqual(_response_data['data']['address'][0]['address_type']['name'], address_type.name)
+            self.assertEqual(_response_data['data']['job'][0]['title'], job.title)
+            
+            self.assertEqual(_response_data['data']['special_days'][0]['title'], special_days.title)
+            self.assertEqual(_response_data['data']['emergency_contact'][0]['contact_name'], emergency_contact.contact_name)
+            self.assertEqual(_response_data['data']['spouse'][0]['spouse_name'], spouse.spouse_name)
+            self.assertEqual(_response_data['data']['descendant'][0]['name'], descendant.name)
+            self.assertEqual(_response_data['data']['certificate'][0]['title'], certificate.title)
+            self.assertEqual(_response_data['data']['companion'][0]['companion_name'], companion.companion_name)
+            self.assertEqual(_response_data['data']['document'][0]['document_number'], document.document_number)
+    
         elif _response_data["code"] == 204:
             self.assertEqual(_response.code, 204)
             self.assertEqual(_response_data["status"], "failed")
@@ -172,7 +200,7 @@ class TestMemberCreateAndUpdateEndpoints(APITestCase):
         Test specific member view API with invalid data. Like invalid type
         """
         # arrange
-        member = MemberFactory(status=1)
+        member = MemberFactory()
         # act
         _response = self.client.get("/api/member/v1/members/SMTP0001/")
         _response_data = _response.json()
@@ -196,9 +224,11 @@ class TestMemberCreateAndUpdateEndpoints(APITestCase):
         _response = self.client.delete(
             f"/api/member/v1/members/{member.member_ID}/")
         # assert
+        # member_inactive = Member.objects.filter(member_ID=member.member_ID, is_active=False).exists()
         self.assertEqual(_response.status_code, 204)
-        self.assertEqual(Member.objects.filter(
-            member_ID=member.member_ID).exists(), False)
+        self.assertEqual(Member.objects.filter(member_ID=member.member_ID).exists(), False)
+        
+
 
     @patch.object(DeleteMemberPermission, "has_permission", return_value=True)
     def test_specific_member_delete_api_with_invalid_data(self, mock_permission):

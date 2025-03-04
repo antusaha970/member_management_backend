@@ -174,8 +174,8 @@ class DocumentsFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Documents
 
-    document_number = factory.LazyFunction(
-        lambda: fake.random_int(min=100000, max=999999))
+    document_number = factory.LazyFunction(lambda: str(fake.random_number(digits=10)))
+
     document_document = factory.Faker("file_path", extension="pdf")
     # Foreign Key Relations
     member = factory.SubFactory(MemberFactory)
@@ -207,7 +207,23 @@ class ContactNumberFactory(factory.django.DjangoModelFactory):
     is_active = True
     created_at = factory.LazyFunction(date.today)
     updated_at = factory.LazyFunction(date.today)
+    
+class ContactNumberFakeFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = ContactNumber
 
+    number = fake.random_number(digits=12)
+    is_primary = False
+    # relation (shared)
+    member = factory.LazyAttribute(lambda _: shared_member)
+    contact_type = factory.LazyAttribute(lambda _: getattr(_, 'shared_contact_type', "default_value"))
+    
+
+    # record keeping
+    status = 0
+    is_active = True
+    created_at = factory.LazyFunction(date.today)
+    updated_at = factory.LazyFunction(date.today)
 
 class EmailFactory(factory.django.DjangoModelFactory):
     class Meta:
