@@ -16,6 +16,9 @@ from core.models import MembershipType
 from datetime import datetime
 from django.utils import timezone
 from core.utils.pagination import CustomPageNumberPagination
+import pandas as pd
+from django.http import HttpResponse
+from io import BytesIO
 from .utils.filters import MemberFilter
 from .import models
 import pdb
@@ -386,7 +389,9 @@ class MemberListView(APIView):
                         "errors": filterset.errors
                     }, status=400)
                 queryset = filterset.qs  # Apply filters
-
+                # Check if "download_excel" is in query params
+            if request.GET.get("download_excel"):
+                return self.export_to_excel(queryset)
             paginator = CustomPageNumberPagination()
 
             paginated_queryset = paginator.paginate_queryset(queryset, request)
@@ -425,6 +430,40 @@ class MemberListView(APIView):
                     "server_error": [str(server_error)],
                 }
             })
+
+    def export_to_excel(self, queryset):
+        """Generate Excel file and return as response"""
+        # Convert queryset to list of dicts
+        data = list(queryset.values(
+            "member_ID", "first_name", "last_name", "gender__name",
+            "date_of_birth", "batch_number", "anniversary_date",
+            "profile_photo", "blood_group", "nationality",
+            "membership_type__name", "institute_name__name",
+            "membership_status__name", "marital_status__name"
+        ))
+
+        # Rename keys to match expected headers
+        df = pd.DataFrame(data)
+        df.rename(columns={
+            "gender__name": "gender",
+            "membership_type__name": "membership_type",
+            "institute_name__name": "institute_name",
+            "membership_status__name": "membership_status",
+            "marital_status__name": "marital_status"
+        }, inplace=True)
+        # Create Excel file in memory
+        excel_buffer = BytesIO()
+        writer = pd.ExcelWriter(excel_buffer, engine="xlsxwriter")
+        df.to_excel(writer, index=False, sheet_name="Members")
+        writer.close()
+
+        # Return as downloadable response
+        response = HttpResponse(
+            excel_buffer.getvalue(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        response["Content-Disposition"] = 'attachment; filename="members.xlsx"'
+        return response
 
 
 class MemberIdView(APIView):
