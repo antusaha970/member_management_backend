@@ -30,4 +30,7 @@ CORS_ORIGIN_ALLOW_ALL = True
 SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False
 
+REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"].append(
+    "rest_framework.authentication.SessionAuthentication")
+
 print("Using development settings")
