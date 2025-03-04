@@ -6,7 +6,7 @@ from member.utils.factories import *
 import pdb
 from unittest.mock import patch
 import random
-from member.utils.permission_classes import AddMemberPermission, UpdateMemberPermission,DeleteMemberPermission,ViewMemberPermission
+from member.utils.permission_classes import AddMemberPermission, UpdateMemberPermission, DeleteMemberPermission, ViewMemberPermission
 # Create a dummy image using PIL
 
 fake = Faker()
@@ -149,20 +149,23 @@ class TestMemberCreateAndUpdateEndpoints(APITestCase):
         # arrange
         member = MemberFactory(status=1)
         # act
-        _response = self.client.get(f"/api/member/v1/members/{member.member_ID}/")
+        _response = self.client.get(
+            f"/api/member/v1/members/{member.member_ID}/")
         _response_data = _response.json()
+
         if _response_data["code"] == 200:
-            
+
             self.assertEqual(_response_data["code"], 200)
             self.assertEqual(_response_data["status"], "success")
-            self.assertEqual(_response_data["data"]['member_info']["member_ID"], member.member_ID)
+            self.assertEqual(
+                _response_data["data"]['member_info']["member_ID"], member.member_ID)
         elif _response_data["code"] == 204:
             self.assertEqual(_response.code, 204)
             self.assertEqual(_response_data["status"], "failed")
-            self.assertEqual(_response_data["message"], "Member is already deleted")
-            self.assertIn(_response_data["errors"],"member_ID")
-    
-    
+            self.assertEqual(
+                _response_data["message"], "Member is already deleted")
+            self.assertIn(_response_data["errors"], "member_ID")
+
     @patch.object(ViewMemberPermission, "has_permission", return_value=True)
     def test_specific_member_api_with_invalid_data(self, mock_permission):
         """
@@ -171,15 +174,15 @@ class TestMemberCreateAndUpdateEndpoints(APITestCase):
         # arrange
         member = MemberFactory(status=1)
         # act
-        _response = self.client.get(f"/api/member/v1/members/SMTP0001/")
+        _response = self.client.get("/api/member/v1/members/SMTP0001/")
         _response_data = _response.json()
 
         self.assertEqual(_response.status_code, 404)
         self.assertEqual(_response_data["code"], 404)
         self.assertEqual(_response_data["status"], "failed")
-        self.assertIn("member",_response_data["errors"])
-        self.assertIn("Member not found by this member_ID",_response_data["errors"]["member"])
-    
+        self.assertIn("member", _response_data["errors"])
+        self.assertIn("Member not found by this member_ID",
+                      _response_data["errors"]["member"])
 
     @patch.object(DeleteMemberPermission, "has_permission", return_value=True)
     def test_specific_member_delete_api_with_valid_data(self, mock_permission):
@@ -187,46 +190,38 @@ class TestMemberCreateAndUpdateEndpoints(APITestCase):
         Test specific member delete API with valid data.
         """
         # arrange
-        member = MemberFactory() 
-        
+        member = MemberFactory()
+
         # act
-        _response = self.client.delete(f"/api/member/v1/members/{member.member_ID}/")
+        _response = self.client.delete(
+            f"/api/member/v1/members/{member.member_ID}/")
         # assert
         self.assertEqual(_response.status_code, 204)
-        self.assertEqual(Member.objects.filter(member_ID=member.member_ID).exists(), False)
-    
+        self.assertEqual(Member.objects.filter(
+            member_ID=member.member_ID).exists(), False)
+
     @patch.object(DeleteMemberPermission, "has_permission", return_value=True)
     def test_specific_member_delete_api_with_invalid_data(self, mock_permission):
         """
         Test specific member delete API with invalid data. Like invalid type
         """
         # arrange
-        member = MemberFactory() 
+        member = MemberFactory()
         # act
-        _response = self.client.delete(f"/api/member/v1/members/SMTP0001/")
+        _response = self.client.delete("/api/member/v1/members/SMTP0001/")
         # _response = self.client.delete(f"/api/member/v1/members/{member.member_ID}/")
         # assert
         if _response.status_code == 204:
             self.assertEqual(_response.status_code, 204)
-            
-            
-        elif _response.status_code ==404:
+
+        elif _response.status_code == 404:
             self.assertEqual(_response.status_code, 404)
             self.assertEqual(_response.data["code"], 404)
             self.assertEqual(_response.data["status"], "failed")
-            self.assertIn("member",_response.data["errors"])
-            self.assertIn("Member not found by this member_ID",_response.data["errors"]["member"])
-        
-                
-            
-            
-        
-        
+            self.assertIn("member", _response.data["errors"])
+            self.assertIn("Member not found by this member_ID",
+                          _response.data["errors"]["member"])
 
-    
-    
-          
-        
 
 class SpouseApiEndpointTest(APITestCase):
     @classmethod
