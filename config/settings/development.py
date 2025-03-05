@@ -14,6 +14,9 @@ DATABASES = {
     }
 }
 
+# database connection 
+
+
 # Email settings (use console backend for development)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'

@@ -3,7 +3,7 @@ from pathlib import Path
 from datetime import timedelta
 import environ
 import sys
-
+from celery.schedules import crontab
 # Initialize environment variables
 env = environ.Env()
 environ.Env.read_env()
@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     'django_cleanup',
     'django_celery_results',
     'django_filters',
+    'django_celery_beat',
     # Custom apps
     'account',
     'club',
@@ -204,3 +205,14 @@ if 'test' in sys.argv:
     # Disable throttling in tests
     REST_FRAMEWORK['DEFAULT_THROTTLE_CLASSES'] = []
     REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = {}
+
+# DATABASES = {
+#      'default': {
+#          'ENGINE': 'django.db.backends.postgresql',
+#          'NAME': os.getenv('DB_NAME'),
+#          'USER': os.getenv('DB_USER'),
+#          'PASSWORD': os.getenv('DB_PASSWORD'),
+#          'HOST': os.getenv('DB_HOST'),
+#          'PORT': os.getenv('DB_PORT'),
+#      }
+#  }
