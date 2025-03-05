@@ -266,28 +266,22 @@ class MemberView(APIView):
                         'member_ID': [f"{member_id} member has been deleted"]
                     }
                 }, status=status.HTTP_204_NO_CONTENT)
-            contact_numbers = models.ContactNumber.objects.filter(
-                member=member)
-            emails = models.Email.objects.filter(
-                member=member)
-            addresses = models.Address.objects.filter(
-                member=member)
-            spouse = models.Spouse.objects.filter(
-                member=member)
-            descendant = models.Descendant.objects.filter(
-                member=member)
-            emergency = models.EmergencyContact.objects.filter(
-                member=member)
-            companion = models.CompanionInformation.objects.filter(
-                member=member)
-            certificate = models.Certificate.objects.filter(member=member)
-            documents = models.Documents.objects.filter(
-                member=member)
-            jobs = models.Profession.objects.filter(member=member)
-            special_days = models.SpecialDay.objects.filter(member=member)
+            all_data = Member.objects.prefetch_related(
+                "contact_numbers", "emails", "addresses", "spouse", "descendants", "professions", "emergency_contacts", "companions", "credentials", "certificates", "special_days").get(member_ID=member_id)
+            contact_numbers = all_data.contact_numbers
+            emails = all_data.emails
+            addresses = all_data.addresses
+            spouse = all_data.spouse
+            descendant = all_data.descendants
+            emergency = all_data.emergency_contacts
+            companion = all_data.companions
+            certificate = all_data.certificates
+            documents = all_data.credentials
+            jobs = all_data.professions
+            special_days = all_data.special_days
 
             if request.GET.get("download_excel"):
-                return self.download_excel_file_for_single_member(member, contact_numbers)
+                return self.download_excel_file_for_single_member(member, contact_numbers, emails, addresses, spouse, descendant, emergency, companion, certificate, documents, jobs, special_days)
             # pass the data to the serializers
             member_serializer = serializers.MemberSerializerForViewSingleMember(
                 member)
@@ -372,7 +366,18 @@ class MemberView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def download_excel_file_for_single_member(self, member, contact):
+    def remove_time_conflicts_from_data(self, df):
+        return df.apply(
+            lambda col: col.dt.tz_localize(None) if pd.api.types.is_datetime64_any_dtype(
+                col) and getattr(col.dtype, 'tz', None) else col
+        )
+
+    def write_to_excel_file(self, data, writer, sheet_name):
+        df = pd.DataFrame(data)
+        df = self.remove_time_conflicts_from_data(df)
+        df.to_excel(writer, index=False, sheet_name=sheet_name)
+
+    def download_excel_file_for_single_member(self, member, contact_numbers, emails, addresses, spouse, descendant, emergency, companion, certificate, documents, jobs, special_days):
         member_dict = {
             "id": member.id,
             "member_ID": member.member_ID,
@@ -394,28 +399,39 @@ class MemberView(APIView):
             "membership_status": member.membership_status.name,
             "marital_status": member.marital_status.name,
         }
-        contact_data = list(contact.values(
-            "id", "number", "is_primary", "status", "is_active", "created_at", "updated_at"
-        ))
+        contact_data = list(contact_numbers.values(
+        ).all())
+        email_data = list(emails.values().all())
+        address_data = list(addresses.values().all())
+        spouse_data = list(spouse.values().all())
+        descendants_data = list(descendant.values().all())
+        emergency_data = list(emergency.values().all())
+        companion_data = list(companion.values().all())
+        certificate_data = list(certificate.values().all())
+        documents_data = list(documents.values().all())
+        jobs_data = list(jobs.values().all())
+        special_days_data = list(special_days.values().all())
+
         # Create Excel file in memory
         excel_buffer = BytesIO()
         writer = pd.ExcelWriter(excel_buffer, engine="xlsxwriter")
 
         # Create "Member Info" sheet (one row DataFrame)
         df_member = pd.DataFrame([member_dict])
-        df_member = df_member.apply(
-            lambda col: col.dt.tz_localize(None) if pd.api.types.is_datetime64_any_dtype(
-                col) and getattr(col.dtype, 'tz', None) else col
-        )
+        df_member = self.remove_time_conflicts_from_data(df_member)
         df_member.to_excel(writer, index=False, sheet_name="Member Info")
 
-        # Create "Contact Info" sheet (multiple rows)
-        df_contact = pd.DataFrame(contact_data)
-        df_contact = df_contact.apply(
-            lambda col: col.dt.tz_localize(None) if pd.api.types.is_datetime64_any_dtype(
-                col) and getattr(col.dtype, 'tz', None) else col
-        )
-        df_contact.to_excel(writer, index=False, sheet_name="Contact Info")
+        self.write_to_excel_file(contact_data, writer, "contact numbers")
+        self.write_to_excel_file(email_data, writer, "email addresses")
+        self.write_to_excel_file(address_data, writer, "addresses")
+        self.write_to_excel_file(descendants_data, writer, "descendants")
+        self.write_to_excel_file(spouse_data, writer, "spouse")
+        self.write_to_excel_file(emergency_data, writer, "emergency contact")
+        self.write_to_excel_file(companion_data, writer, "companion")
+        self.write_to_excel_file(certificate_data, writer, "certificate")
+        self.write_to_excel_file(documents_data, writer, "documents")
+        self.write_to_excel_file(jobs_data, writer, "jobs")
+        self.write_to_excel_file(special_days_data, writer, "special days")
 
         writer.close()
 
@@ -424,7 +440,7 @@ class MemberView(APIView):
             excel_buffer.getvalue(),
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-        response["Content-Disposition"] = f'attachment; filename="member_{member.id}_details.xlsx"'
+        response["Content-Disposition"] = f'attachment; filename="member_{member.member_ID}_details.xlsx"'
         return response
 
 
