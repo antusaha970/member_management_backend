@@ -18,7 +18,9 @@ from django.utils import timezone
 from core.utils.pagination import CustomPageNumberPagination
 import pandas as pd
 from django.http import HttpResponse
-from io import BytesIO
+from io import BytesIO, StringIO
+from xhtml2pdf import pisa
+from django.shortcuts import render
 from .utils.filters import MemberFilter
 from .import models
 import pdb
@@ -282,6 +284,8 @@ class MemberView(APIView):
 
             if request.GET.get("download_excel"):
                 return self.download_excel_file_for_single_member(member, contact_numbers, emails, addresses, spouse, descendant, emergency, companion, certificate, documents, jobs, special_days)
+            if request.GET.get("download_pdf"):
+                return self.download_pdf_file_for_single_member(member, contact_numbers, emails, addresses, spouse, descendant, emergency, companion, certificate, documents, jobs, special_days)
             # pass the data to the serializers
             member_serializer = serializers.MemberSerializerForViewSingleMember(
                 member)
@@ -441,6 +445,26 @@ class MemberView(APIView):
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
         response["Content-Disposition"] = f'attachment; filename="member_{member.member_ID}_details.xlsx"'
+        return response
+
+    def download_pdf_file_for_single_member(self, member, contact_numbers, emails, addresses, spouse, descendant, emergency, companion, certificate, documents, jobs, special_days):
+        # TODO: add all context and update the html to pdf file.
+        context = {
+            "member": member,
+            "emails": emails.all(),
+            "contacts": contact_numbers.all(),
+        }
+        # Render HTML template with context
+        html_string = render(self.request, "member_pdf.html",
+                             context).content.decode("utf-8")
+        # Convert HTML to PDF
+        pdf_buffer = BytesIO()
+        pisa.CreatePDF(StringIO(html_string), dest=pdf_buffer)
+
+        # Return PDF as response
+        response = HttpResponse(pdf_buffer.getvalue(),
+                                content_type="application/pdf")
+        response["Content-Disposition"] = f"attachment; filename=member_{member.member_ID}.pdf"
         return response
 
 
