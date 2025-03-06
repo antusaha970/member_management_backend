@@ -2,15 +2,20 @@ import django_filters
 from ..models import *
 from django.db.models import Q
 import pycountry
+import pdb
 
 country_code = [country.name
                 for country in pycountry.countries]
 
 
 class MemberFilter(django_filters.FilterSet):
-    first_name = django_filters.CharFilter(
-        lookup_expr='icontains')  # Case-insensitive search
+    name = django_filters.CharFilter(method='filter_name', label='name')
+    member_ID = django_filters.CharFilter(
+        field_name="member_ID", lookup_expr="icontains")
     date_of_birth = django_filters.DateFilter()
+    email = django_filters.CharFilter(method="filter_email", label="email")
+    contact_number = django_filters.CharFilter(
+        method="filter_contact_number", label="contact_number")
     blood_group = django_filters.CharFilter(
         lookup_expr='icontains')
     nationality = django_filters.CharFilter(
@@ -30,6 +35,22 @@ class MemberFilter(django_filters.FilterSet):
     class Meta:
         model = Member
         fields = [
-            'first_name', 'date_of_birth', 'blood_group', 'nationality',
+            "member_ID", 'date_of_birth', 'blood_group', 'nationality',
             'gender', 'membership_type', 'institute_name', 'membership_status', 'marital_status'
         ]
+
+    def filter_name(self, queryset, name, value):
+        """
+        This method filters the queryset by searching both first_name and last_name.
+        It performs a case-insensitive partial match.
+        """
+        return queryset.filter(Q(first_name__icontains=value) | Q(last_name__icontains=value))
+
+    def filter_email(self, queryset, name, value):
+        return queryset.filter(emails__email__icontains=value)
+
+    def filter_contact_number(self, queryset, name, value):
+        return queryset.filter(emails__email__icontains=value)
+
+    def filter_contact_number(self, queryset, name, value):
+        return queryset.filter(contact_numbers__number__icontains=value)
