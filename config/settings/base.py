@@ -44,6 +44,7 @@ INSTALLED_APPS = [
 # Middleware
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',  # 3rd party
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -118,19 +119,21 @@ SIMPLE_JWT = {
 }
 
 # Celery settings
-CELERY_BROKER_URL = 'redis://127.0.0.1:6379'
-CELERY_RESULT_BACKEND = 'django-db'
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_SERIALIZER = 'json'
-CELERY_TIMEZONE = 'Asia/Dhaka'
+# CELERY_BROKER_URL = 'redis://127.0.0.1:6379'
+CELERY_BROKER_URL = "redis://redis:6379/1"
+result_backend = 'django-db'
+accept_content = ['json']
+task_serializer = 'json'
+result_serializer = 'json'
+timezone = 'Asia/Dhaka'
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
 
 # Caching settings (Redis)
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6379",
+        # "LOCATION": "redis://127.0.0.1:6379",
+        "LOCATION": "redis://redis:6379/1",
     }
 }
 
@@ -206,13 +209,14 @@ if 'test' in sys.argv:
     REST_FRAMEWORK['DEFAULT_THROTTLE_CLASSES'] = []
     REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] = {}
 
-# DATABASES = {
-#      'default': {
-#          'ENGINE': 'django.db.backends.postgresql',
-#          'NAME': os.getenv('DB_NAME'),
-#          'USER': os.getenv('DB_USER'),
-#          'PASSWORD': os.getenv('DB_PASSWORD'),
-#          'HOST': os.getenv('DB_HOST'),
-#          'PORT': os.getenv('DB_PORT'),
-#      }
-#  }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('DB_NAME'),
+        'USER': os.getenv('DB_USER'),
+        'PASSWORD': os.getenv('DB_PASSWORD'),
+        'HOST': os.getenv('DB_HOST'),
+        'PORT': os.getenv('DB_PORT'),
+    }
+}
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # Collected files

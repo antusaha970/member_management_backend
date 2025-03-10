@@ -14,7 +14,7 @@ DATABASES = {
     }
 }
 
-# database connection 
+# database connection
 
 
 # Email settings (use console backend for development)
@@ -35,5 +35,6 @@ CSRF_COOKIE_SECURE = False
 
 REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"].append(
     "rest_framework.authentication.SessionAuthentication")
+
 
 print("Using development settings")
