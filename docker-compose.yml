@@ -7,7 +7,9 @@ services:
     build: 
         context: .
         dockerfile: "docker/django/Dockerfile"
-    command: gunicorn --workers 4 --threads 2 config.wsgi:application --bind 0.0.0.0:8000
+    command: gunicorn --workers 4 --threads 2 --bind 0.0.0.0:8000 config.wsgi:application --access-logfile - --log-level info --access-logformat '%(h)s %(l)s %(u)s [%(t)s] "%(r)s" %(s)s %(b)s Worker-%(p)s'
+
+    # command: gunicorn --workers 4 --threads 2 config.wsgi:application --bind 0.0.0.0:8000
     volumes:
       - .:/app
     ports:
