@@ -1,11 +1,11 @@
 #!/bin/sh
 # entrypoint.sh
 
-# Apply database migrations
+# Run database migrations
 python manage.py migrate --noinput
 
-# Optionally, collect static files (for production)
+# Optionally collect static files
 python manage.py collectstatic --noinput
 
-# Execute the container's main command
+# Execute the main command passed to the container
 exec "$@"
