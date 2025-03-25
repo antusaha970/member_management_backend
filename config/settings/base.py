@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'product',
     'restaurant',
     'member_financial_management',
+    'facility',
 ]
 
 # Middleware
