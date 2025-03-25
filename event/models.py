@@ -36,6 +36,9 @@ class Venue(models.Model):
     # record keeping
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ('street_address', 'city', 'country')
 
     def __str__(self):
         return f"{self.street_address}, {self.city}"
@@ -53,7 +56,7 @@ class EventMedia(models.Model):
 
 
 class Event(models.Model):
-    title = models.CharField(max_length=255)
+    title = models.CharField(max_length=255,unique=True)
     description = models.TextField()
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
@@ -75,7 +78,7 @@ class Event(models.Model):
 
 class EventTicket(models.Model):
     event = models.ForeignKey(Event, on_delete=models.RESTRICT)
-    ticket_name = models.CharField(max_length=255)
+    ticket_name = models.CharField(max_length=255,unique=True)
     ticket_description = models.TextField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
     capacity = models.PositiveIntegerField()
@@ -85,6 +88,8 @@ class EventTicket(models.Model):
     # record keeping
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    
+    
 
     def __str__(self):
         return self.ticket_name
@@ -98,5 +103,7 @@ class EventFee(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        unique_together = ('event', 'membership_type')
     def __str__(self):
         return self.fee

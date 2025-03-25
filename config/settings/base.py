@@ -40,6 +40,9 @@ INSTALLED_APPS = [
     'member',
     'activity_log',
     'event',
+    'product',
+    
+    
     
 ]
 
