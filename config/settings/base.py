@@ -38,7 +38,9 @@ INSTALLED_APPS = [
     'club',
     'core',
     'member',
-    'activity_log'
+    'activity_log',
+    'event',
+    
 ]
 
 # Middleware
