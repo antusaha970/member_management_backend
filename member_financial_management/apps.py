@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 
 
-class MamberFinancialManagementConfig(AppConfig):
+class MemberFinancialManagementConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'mamber_financial_management'
+    name = 'member_financial_management'

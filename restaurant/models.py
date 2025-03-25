@@ -43,7 +43,7 @@ class Restaurant(RestaurantBaseModel):
     opening_time = models.TimeField(blank=True, null=True, default=None)
     closing_time = models.TimeField(blank=True, null=True, default=None)
     booking_fees_per_seat = models.DecimalField(
-        blank=True, null=True, default=None)
+        blank=True, null=True, default=None, decimal_places=2, max_digits=10)
 
     # relations
     cuisine_type = models.ForeignKey(
