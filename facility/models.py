@@ -2,7 +2,16 @@ from django.db import models
 from member.models import MembershipType
 
 
-class Facility(models.Model):
+class FacilityBaseModel(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        abstract = True
+
+
+class Facility(FacilityBaseModel):
     FACILITY_STATUS_CHOICES = [
         ('open', 'Open'),
         ('closed', 'Closed'),
@@ -28,10 +37,12 @@ class Facility(models.Model):
         return self.name
 
 
-class FacilityUseFee(models.Model):
-    facility = models.ForeignKey(Facility, on_delete=models.RESTRICT)
-    membership_type = models.ForeignKey(MembershipType, on_delete=models.RESTRICT)
+class FacilityUseFee(FacilityBaseModel):
+    
     fee = models.DecimalField(max_digits=10, decimal_places=2)
+    # foreignkey relations
+    facility = models.ForeignKey(Facility, on_delete=models.RESTRICT,related_name="facility_use_fees")
+    membership_type = models.ForeignKey(MembershipType, on_delete=models.RESTRICT,related_name="membership_type_facility_fees")
 
     def __str__(self):
         return f"Fee {self.fee} for {self.facility.name} "

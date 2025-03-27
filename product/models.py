@@ -1,53 +1,59 @@
 from django.db import models
 from member.models import MembershipType
 
+class ProductBaseModel(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
 
-class ProductCategory(models.Model):
+    class Meta:
+        abstract = True
+
+
+class ProductCategory(ProductBaseModel):
     name = models.CharField(max_length=255,unique=True)
 
     def __str__(self):
         return self.name
 
-class Brand(models.Model):
+class Brand(ProductBaseModel):
     name = models.CharField(max_length=255,unique=True)
 
     def __str__(self):
         return self.name
 
 
-class Product(models.Model):
+class Product(ProductBaseModel):
     name = models.CharField(max_length=255)
     description = models.TextField()
-    # forign key reletion
-    category = models.ForeignKey(ProductCategory, on_delete=models.RESTRICT)
-    brand = models.ForeignKey(Brand, on_delete=models.RESTRICT,null=True, blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     discount_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0.0)
     quantity_in_stock = models.PositiveIntegerField()
     sku = models.CharField(max_length=50, unique=True)
-    # record keeping
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    # forign key reletion
+    category = models.ForeignKey(ProductCategory, on_delete=models.RESTRICT,related_name="category_products")
+    brand = models.ForeignKey(Brand, on_delete=models.RESTRICT,null=True, blank=True,related_name="brand_products")
+  
 
     def __str__(self):
         return self.name
 
 
-class ProductMedia(models.Model):
+class ProductMedia(ProductBaseModel):
     image = models.ImageField(upload_to='product_photos/')
-    product = models.ForeignKey(Product, on_delete=models.RESTRICT)
+    # foreignkey relations
+    product = models.ForeignKey(Product, on_delete=models.RESTRICT,related_name="product_media")
 
     def __str__(self):
         return f"Image for {self.product.name}"
 
 
-class ProductPrice(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.RESTRICT)
-    membership_type = models.ForeignKey(MembershipType, on_delete=models.RESTRICT)
+class ProductPrice(ProductBaseModel):
     price = models.DecimalField(max_digits=10, decimal_places=2)
-    # record keeping
-    updated_at = models.DateTimeField(auto_now=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    # Foreignkey relations
+    product = models.ForeignKey(Product, on_delete=models.RESTRICT,related_name="product_prices")
+    membership_type = models.ForeignKey(MembershipType, on_delete=models.RESTRICT,related_name="membership_type_prices")
+   
 
     def __str__(self):
         return f"Price {self.price} for {self.product.name}"
