@@ -210,3 +210,50 @@ class Income(FinancialBaseModel):
         Member, on_delete=models.PROTECT, related_name="income_member")
     received_by = models.ForeignKey(
         PaymentMethod, on_delete=models.PROTECT, related_name="income_received_by")
+
+
+class MemberAccount(FinancialBaseModel):
+    balance = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_credits = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0)
+    total_debits = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0)
+    last_transaction_date = models.DateField(
+        blank=True, null=True, default=None)
+    status = models.CharField(max_length=150, blank=True, default="")
+    overdue_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    due_date = models.DateField(null=True, blank=True, default=None)
+    notes = models.TextField(blank=True, default="")
+    credit_limit = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0)
+
+    # relation
+    member = models.ForeignKey(
+        Member, on_delete=models.PROTECT, related_name="member_account_member")
+
+    def __str__(self):
+        return self.member.member_ID
+
+
+class Due(FinancialBaseModel):
+    due_type = models.CharField(max_length=255, default="")
+    original_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    due_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    paid_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    currency = models.CharField(max_length=255, default="BDT")
+    due_date = models.DateField(null=True, blank=True, default=None)
+    payment_status = models.CharField(max_length=255, default="")
+    last_payment_date = models.DateField(null=True, blank=True, default=None)
+
+    # relations
+    member = models.ForeignKey(
+        Member, related_name="due_member", on_delete=models.PROTECT)
+    invoice = models.ForeignKey(
+        Invoice, on_delete=models.PROTECT, related_name="due_invoice")
+    payment = models.ForeignKey(
+        Payment, on_delete=models.PROTECT, related_name="due_payment")
+    transaction = models.ForeignKey(
+        Transaction, on_delete=models.PROTECT, related_name="due_transaction")
+
+    def __str__(self):
+        return self.member.member_ID
