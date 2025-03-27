@@ -31,8 +31,8 @@ class Product(ProductBaseModel):
     quantity_in_stock = models.PositiveIntegerField()
     sku = models.CharField(max_length=50, unique=True)
     # forign key reletion
-    category = models.ForeignKey(ProductCategory, on_delete=models.RESTRICT,related_name="category_products")
-    brand = models.ForeignKey(Brand, on_delete=models.RESTRICT,null=True, blank=True,related_name="brand_products")
+    category = models.ForeignKey(ProductCategory, on_delete=models.RESTRICT,related_name="products_category")
+    brand = models.ForeignKey(Brand, on_delete=models.RESTRICT,null=True, blank=True,related_name="products_brand")
   
 
     def __str__(self):
@@ -52,7 +52,7 @@ class ProductPrice(ProductBaseModel):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     # Foreignkey relations
     product = models.ForeignKey(Product, on_delete=models.RESTRICT,related_name="product_prices")
-    membership_type = models.ForeignKey(MembershipType, on_delete=models.RESTRICT,related_name="membership_type_prices")
+    membership_type = models.ForeignKey(MembershipType, on_delete=models.RESTRICT,related_name="product_prices_membership_type")
    
 
     def __str__(self):

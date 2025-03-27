@@ -57,7 +57,7 @@ class Event(EventBaseModel):
     reminder_time = models.DateTimeField()
     # ForeignKey relations
     venue = models.ForeignKey(Venue, on_delete=models.RESTRICT, null=True, blank=True, related_name='events_at_venue')
-    organizer = models.ForeignKey(Member, on_delete=models.RESTRICT, null=True, blank=True, related_name='member_events')
+    organizer = models.ForeignKey(Member, on_delete=models.RESTRICT, null=True, blank=True, related_name='events_member')
    
           
     def __str__(self):
@@ -94,7 +94,7 @@ class EventFee(EventBaseModel):
     fee = models.DecimalField(max_digits=10, decimal_places=2)
     # Foreignkey relations
     event = models.ForeignKey(Event, on_delete=models.RESTRICT, related_name='event_fees')
-    membership_type = models.ForeignKey(MembershipType, on_delete=models.RESTRICT, related_name='membership_type_eventfees')
+    membership_type = models.ForeignKey(MembershipType, on_delete=models.RESTRICT, related_name='eventfees_membership_type')
    
     class Meta:
         unique_together = ('event', 'membership_type')

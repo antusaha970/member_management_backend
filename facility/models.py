@@ -42,7 +42,7 @@ class FacilityUseFee(FacilityBaseModel):
     fee = models.DecimalField(max_digits=10, decimal_places=2)
     # foreignkey relations
     facility = models.ForeignKey(Facility, on_delete=models.RESTRICT,related_name="facility_use_fees")
-    membership_type = models.ForeignKey(MembershipType, on_delete=models.RESTRICT,related_name="membership_type_facility_fees")
+    membership_type = models.ForeignKey(MembershipType, on_delete=models.RESTRICT,related_name="facility_fees_membership_type")
 
     def __str__(self):
-        return f"Fee {self.fee} for {self.facility.name} "
+        return f"Fee {self.fee} for {self.facility.name}"
