@@ -60,6 +60,8 @@ class ProductPrice(ProductBaseModel):
         Product, on_delete=models.RESTRICT, related_name="product_prices")
     membership_type = models.ForeignKey(
         MembershipType, on_delete=models.RESTRICT, related_name="product_prices_membership_type")
-
+    
+    class Meta:
+        unique_together = ('product', 'membership_type')
     def __str__(self):
         return f"Price {self.price} for {self.product.name}"

@@ -44,5 +44,8 @@ class FacilityUseFee(FacilityBaseModel):
     facility = models.ForeignKey(Facility, on_delete=models.RESTRICT,related_name="facility_use_fees")
     membership_type = models.ForeignKey(MembershipType, on_delete=models.RESTRICT,related_name="facility_fees_membership_type")
 
+    class Meta:
+        unique_together = ('facility', 'membership_type')
+        
     def __str__(self):
         return f"Fee {self.fee} for {self.facility.name}"
