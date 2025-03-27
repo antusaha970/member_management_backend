@@ -257,3 +257,24 @@ class Due(FinancialBaseModel):
 
     def __str__(self):
         return self.member.member_ID
+
+
+class MemberDue(FinancialBaseModel):
+    amount_due = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0)
+    due_date = models.DateField(blank=True, null=True, default=None)
+    amount_paid = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0)
+    payment_date = models.DateField(blank=True, null=True, default=None)
+    overdue_amount = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0)
+    notes = models.TextField(default="")
+
+    # relations
+    member = models.ForeignKey(
+        Member, on_delete=models.PROTECT, related_name="member_due_member")
+    due_reference = models.ForeignKey(
+        Due, on_delete=models.PROTECT, related_name="member_due_due_reference")
+
+    def __str__(self):
+        return self.member.member_ID
