@@ -30,8 +30,8 @@ EVENT_TICKET_STATUS_CHOICES = [
 class Venue(models.Model):
     street_address = models.CharField(max_length=255)
     city = models.CharField(max_length=255)
-    state_province = models.CharField(max_length=255, null=True, blank=True) 
-    postal_code = models.CharField(max_length=20, null=True, blank=True)  
+    state_province = models.CharField(max_length=255, blank=True,default="") 
+    postal_code = models.CharField(max_length=20, blank=True,default="")  
     country = models.CharField(max_length=2,choices=COUNTRY_CHOICES)
     # record keeping
     created_at = models.DateTimeField(auto_now_add=True)
