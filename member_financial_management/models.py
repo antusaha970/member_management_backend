@@ -2,7 +2,10 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from member.models import Member
 from restaurant.models import Restaurant
-
+from event.models import Event
+from product.models import Product
+from facility.models import Facility
+from event.models import EventTicket
 User = get_user_model()
 
 
@@ -50,8 +53,8 @@ class Invoice(FinancialBaseModel):
     # invoice of
     restaurant = models.ForeignKey(Restaurant, on_delete=models.PROTECT,
                                    related_name="restaurant_invoice", blank=True, null=True, default=None)
-    # event = models.ForeignKey(Event, on_delete=models.PROTECT,
-    #                                related_name="restaurant_invoice", blank=True, null=True, default=None)
+    event = models.ForeignKey(Event, on_delete=models.PROTECT,
+                              related_name="invoice_event", blank=True, null=True, default=None)
 
     def __str__(self):
         return f"${self.invoice_number}"
@@ -63,7 +66,12 @@ class InvoiceItem(FinancialBaseModel):
         Invoice, on_delete=models.PROTECT, related_name="invoice_items")
     restaurant_items = models.ManyToManyField(
         Restaurant, related_name="restaurant_items")
-    # TODO: add event,product,facility
+    products = models.ManyToManyField(
+        Product, related_name="invoice_item_products")
+    facility = models.ManyToManyField(
+        Facility, related_name="invoice_item_facilities")
+    event_tickets = models.ManyToManyField(
+        EventTicket, related_name="invoice_item_event_tickets")
 
     def __str__(self):
         return f"${self.invoice.invoice_number}"
