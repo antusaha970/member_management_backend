@@ -4,7 +4,9 @@ from rest_framework.response import Response
 from rest_framework import status
 from . import serializers
 from .models import RestaurantCuisineCategory, RestaurantCategory, Restaurant, RestaurantItemCategory, RestaurantItem
+import logging
 import pdb
+logger = logging.getLogger("myapp")
 
 
 class RestaurantCuisineCategoryView(APIView):
@@ -32,6 +34,7 @@ class RestaurantCuisineCategoryView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
+            logger.exception(str(e))
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -53,6 +56,7 @@ class RestaurantCuisineCategoryView(APIView):
                 "data": serializer.data
             })
         except Exception as e:
+            logger.exception(str(e))
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -88,6 +92,7 @@ class RestaurantCategoryView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
+            logger.exception(str(e))
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -109,6 +114,7 @@ class RestaurantCategoryView(APIView):
                 "data": serializer.data
             })
         except Exception as e:
+            logger.exception(str(e))
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -133,6 +139,7 @@ class RestaurantView(APIView):
                 "data": serializer.data
             })
         except Exception as e:
+            logger.exception(str(e))
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -161,6 +168,7 @@ class RestaurantView(APIView):
                     "errors": serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            logger.exception(str(e))
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -217,6 +225,7 @@ class RestaurantItemCategoryView(APIView):
                 "data": serializer.data
             })
         except Exception as e:
+            logger.exception(str(e))
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -264,6 +273,7 @@ class RestaurantItemView(APIView):
                     }
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            logger.exception(str(e))
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -294,6 +304,7 @@ class RestaurantItemView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
+            logger.exception(str(e))
             return Response({
                 "code": 500,
                 "status": "failed",
