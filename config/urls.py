@@ -11,6 +11,7 @@ urlpatterns = [
     path('api/member/', include('member.urls')),
     path('api/core/', include('core.urls')),
     path('api/activity_log/', include('activity_log.urls')),
+    path('api/event/', include('event.urls')),
     path('api-auth/', include('rest_framework.urls')),
 ]
 
