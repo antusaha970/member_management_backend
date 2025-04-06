@@ -375,7 +375,7 @@ class RestaurantItemView(APIView):
                         }
                     }, status=status.HTTP_400_BAD_REQUEST)
                 else:
-                    items = RestaurantItem.objects.filter(
+                    items = RestaurantItem.objects.prefetch_related("item_media").filter(
                         restaurant__id=restaurant_id)
                     serializer = serializers.RestaurantItemForViewSerializer(
                         items, many=True)

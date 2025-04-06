@@ -102,3 +102,7 @@ class RestaurantItemMediaSerializer(serializers.Serializer):
     def create(self, validated_data):
         instance = RestaurantItemMedia.objects.create(**validated_data)
         return instance
+
+
+class RestaurantItemMediaForViewSerializer(serializers.Serializer):
+    image = serializers.ImageField()
