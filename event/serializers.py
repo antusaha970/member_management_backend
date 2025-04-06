@@ -66,17 +66,31 @@ class EventSerializer(serializers.Serializer):
     registration_deadline = serializers.DateTimeField()
     event_type = serializers.CharField(max_length=255)
     reminder_time = serializers.DateTimeField()
-    venue_id = serializers.PrimaryKeyRelatedField(queryset=Venue.objects.all(), required=False)
-    organizer_id = serializers.PrimaryKeyRelatedField(queryset=Member.objects.all(), required=False)
+    venue = serializers.IntegerField(required=False, allow_null=True)
+    organizer = serializers.IntegerField(required=False, allow_null=True)
 
     def validate_title(self, value):
         
         if Event.objects.filter(title=value).exists():
             raise serializers.ValidationError({"title": ["An event with this title already exists."]})
+    
         return value
+    def validate_venue(self, value):
+        venue_instance = Venue.objects.get(pk=value)
+        if not venue_instance:
+            raise serializers.ValidationError({"venue": ["Venue does not exist."]})
+        return venue_instance
+    def validate_organizer(self, value):
+        organizer_instance = Member.objects.get(pk=value)
+        if not organizer_instance:
+            raise serializers.ValidationError({"organizer": ["Organizer does not exist."]})
+        return organizer_instance
+        
 
     def create(self, validated_data):
-        venue = validated_data.pop('venue_id', None)
-        organizer = validated_data.pop('organizer_id', None)
-        event = Event.objects.create(venue=venue, organizer=organizer, **validated_data)
+        """
+        Create a new Event instance.
+        """
+        event = Event.objects.create(**validated_data)
         return event
+       
