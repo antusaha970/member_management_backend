@@ -1,7 +1,7 @@
 
 from rest_framework import serializers
 from .models import Venue
-from .models import COUNTRY_CHOICES,Event
+from .models import COUNTRY_CHOICES,Event,EVENT_STATUS_CHOICES
 from member.models import Member
 
 class EventVenueSerializer(serializers.Serializer):
@@ -62,7 +62,7 @@ class EventSerializer(serializers.Serializer):
     description = serializers.CharField()
     start_date = serializers.DateTimeField()
     end_date = serializers.DateTimeField()
-    status = serializers.ChoiceField(choices=["planned", "ongoing", "completed", "cancelled"])
+    status = serializers.ChoiceField(choices=EVENT_STATUS_CHOICES)
     registration_deadline = serializers.DateTimeField()
     event_type = serializers.CharField(max_length=255)
     reminder_time = serializers.DateTimeField()
