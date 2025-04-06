@@ -73,6 +73,8 @@ class RestaurantItem(RestaurantBaseModel):
     # relations
     category = models.ForeignKey(
         RestaurantItemCategory, on_delete=models.PROTECT, related_name="item_category")
+    restaurant = models.ForeignKey(
+        Restaurant, on_delete=models.PROTECT, related_name="restaurant_item_restaurant")
 
     def __str__(self):
         return self.name
