@@ -465,3 +465,47 @@ class RestaurantItemView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class RestaurantItemMediaView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def post(self, request):
+        try:
+            serializer = serializers.RestaurantItemMediaSerializer(
+                data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Creation",
+                    severity_level="info",
+                    description="User added restaurant item media",
+                )
+                return Response({
+                    "code": 201,
+                    "status": "success",
+                    "message": "Restaurant item media was successfully added"
+                }, status=status.HTTP_201_CREATED)
+            else:
+                return Response({"code": 400,
+                                 "status": "failed",
+                                 "message": "Bad request",
+                                 "errors": serializer.errors
+                                 }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Creation",
+                severity_level="info",
+                description="User tried to add restaurant item media but failed",
+            )
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

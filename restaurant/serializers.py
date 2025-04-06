@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import RestaurantCuisineCategory, RestaurantCategory, Restaurant, RestaurantItemCategory, RestaurantItem
+from .models import RestaurantCuisineCategory, RestaurantCategory, Restaurant, RestaurantItemCategory, RestaurantItem, RestaurantItemMedia
 
 
 class RestaurantCuisineCategorySerializer(serializers.ModelSerializer):
@@ -92,3 +92,13 @@ class RestaurantItemForViewSerializer(serializers.ModelSerializer):
         model = RestaurantItem
         fields = "__all__"
         depth = 1
+
+
+class RestaurantItemMediaSerializer(serializers.Serializer):
+    image = serializers.ImageField()
+    item = serializers.PrimaryKeyRelatedField(
+        queryset=RestaurantItem.objects.all())
+
+    def create(self, validated_data):
+        instance = RestaurantItemMedia.objects.create(**validated_data)
+        return instance
