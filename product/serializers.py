@@ -112,4 +112,4 @@ class ProductMediaViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductMedia
         fields = "__all__"
-        depth = 1
+        depth = 2
