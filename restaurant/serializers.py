@@ -84,9 +84,16 @@ class RestaurantItemSerializer(serializers.Serializer):
         return instance
 
 
+class ItemMediaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RestaurantItemMedia
+        fields = ['image']
+
+
 class RestaurantItemForViewSerializer(serializers.ModelSerializer):
     restaurant = serializers.CharField()
     category = serializers.CharField()
+    item_media = ItemMediaSerializer(many=True, read_only=True)
 
     class Meta:
         model = RestaurantItem
