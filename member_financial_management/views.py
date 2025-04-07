@@ -5,7 +5,10 @@ from rest_framework import status
 import logging
 from activity_log.tasks import log_activity_task
 from activity_log.utils.functions import request_data_activity_log
-from .models import PaymentMethod
+from django.db import transaction
+from datetime import date
+import pdb
+from .models import PaymentMethod, Transaction, Payment
 from . import serializers
 logger = logging.getLogger("myapp")
 
@@ -90,3 +93,65 @@ class PaymentMethodView(APIView):
                     "server_errors": [str(e)]
                 }
             }, status=status.HTTP_501_NOT_IMPLEMENTED)
+
+
+class InvoicePaymentView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            serializer = serializers.InvoicePaymentSerializer(
+                data=request.data)
+            if serializer.is_valid():
+                invoice = serializer.validated_data["invoice_id"]
+                payment_method = serializer.validated_data["payment_method"]
+                amount = serializer.validated_data["amount"]
+                with transaction.atomic():
+                    if amount >= invoice.total_amount:
+                        invoice.paid_amount = invoice.total_amount
+                        invoice.is_full_paid = True
+                        invoice.status = "paid"
+                        invoice.balance_due = 0
+                        invoice.save(update_fields=[
+                            "paid_amount", "is_full_paid", "status", "balance_due"])
+                        transaction_obj = Transaction.objects.create(
+                            amount=amount,
+                            transaction_date=date.today(),
+                            status="paid",
+                            member=invoice.member,
+                            invoice=invoice,
+                            payment_method=payment_method
+                        )
+                        payment_obj = Payment.objects.create(
+                            payment_amount=amount,
+                            payment_status="paid",
+                            payment_date=date.today(),
+                            invoice=invoice,
+                            member=invoice.member,
+                            payment_method=payment_method,
+                            processed_by=request.user,
+                            transaction=transaction_obj
+                        )
+
+                    elif amount < invoice.total_amount and amount != 0:
+                        pass
+                    else:
+                        pass
+
+                return Response("ok")
+            else:
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Bad request",
+                    "errors": serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong.",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
