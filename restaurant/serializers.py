@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import RestaurantCuisineCategory, RestaurantCategory, Restaurant, RestaurantItemCategory, RestaurantItem, RestaurantItemMedia
+from member.models import Member
 
 
 class RestaurantCuisineCategorySerializer(serializers.ModelSerializer):
@@ -84,9 +85,16 @@ class RestaurantItemSerializer(serializers.Serializer):
         return instance
 
 
+class ItemMediaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RestaurantItemMedia
+        fields = ['image']
+
+
 class RestaurantItemForViewSerializer(serializers.ModelSerializer):
     restaurant = serializers.CharField()
     category = serializers.CharField()
+    item_media = ItemMediaSerializer(many=True, read_only=True)
 
     class Meta:
         model = RestaurantItem
@@ -106,3 +114,22 @@ class RestaurantItemMediaSerializer(serializers.Serializer):
 
 class RestaurantItemMediaForViewSerializer(serializers.Serializer):
     image = serializers.ImageField()
+
+
+class RestaurantSingleItemForBuySerializer(serializers.Serializer):
+    id = serializers.PrimaryKeyRelatedField(
+        queryset=RestaurantItem.objects.filter(is_active=True))
+    quantity = serializers.IntegerField()
+
+
+class RestaurantItemBuySerializer(serializers.Serializer):
+    restaurant_items = serializers.ListSerializer(
+        child=RestaurantSingleItemForBuySerializer(), allow_empty=False)
+    member_ID = serializers.CharField()
+    restaurant = serializers.PrimaryKeyRelatedField(
+        queryset=Restaurant.objects.filter(is_active=True))
+
+    def validate_member_ID(self, value):
+        if not Member.objects.filter(member_ID=value).exists():
+            raise serializers.ValidationError(f"{value} is not a member")
+        return value

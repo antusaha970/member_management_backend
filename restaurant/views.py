@@ -7,6 +7,13 @@ from .models import RestaurantCuisineCategory, RestaurantCategory, Restaurant, R
 import logging
 from activity_log.tasks import log_activity_task
 from activity_log.utils.functions import request_data_activity_log
+from member_financial_management.models import Invoice, InvoiceItem, InvoiceType
+from member_financial_management.utils.functions import generate_unique_invoice_number
+from member.models import Member
+from django.db import transaction
+from functools import reduce
+from datetime import date
+from member_financial_management.serializers import InvoiceSerializer
 import pdb
 logger = logging.getLogger("myapp")
 
@@ -505,6 +512,70 @@ class RestaurantItemMediaView(APIView):
                 "code": 500,
                 "status": "failed",
                 "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class RestaurantItemBuyView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            serializer = serializers.RestaurantItemBuySerializer(
+                data=request.data)
+            if serializer.is_valid():
+                restaurant = serializer.validated_data["restaurant"]
+                restaurant_items = serializer.validated_data["restaurant_items"]
+                member = serializer.validated_data["member_ID"]
+                member = Member.objects.get(member_ID=member)
+                total_amount = reduce(
+                    lambda acc, item: acc + item["id"].selling_price*item["quantity"], restaurant_items, 0)
+                invoice_type, _ = InvoiceType.objects.get_or_create(
+                    name="Restaurant")
+
+                with transaction.atomic():
+                    invoice = Invoice.objects.create(
+                        currency="BDT",
+                        invoice_number=generate_unique_invoice_number(),
+                        balance_due=total_amount,
+                        paid_amount=0,
+                        issue_date=date.today(),
+                        total_amount=total_amount,
+                        is_full_paid=False,
+                        status="unpaid",
+                        invoice_type=invoice_type,
+                        generated_by=request.user,
+                        member=member,
+                        restaurant=restaurant,
+                    )
+                    restaurant_items_objs = []
+                    for item in restaurant_items:
+                        restaurant_items_objs.append(item["id"].id)
+                    invoice_item = InvoiceItem.objects.create(
+                        invoice=invoice
+                    )
+                    invoice_item.restaurant_items.set(restaurant_items_objs)
+                return Response({
+                    "code": 201,
+                    "status": "success",
+                    "message": "Invoice created successfully",
+                    "data": InvoiceSerializer(invoice).data
+                }, status=status.HTTP_201_CREATED)
+            else:
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "bad request",
+                    "errors": serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong. Please try again.",
                 "errors": {
                     "server_error": [str(e)]
                 }
