@@ -38,6 +38,8 @@ class Product(ProductBaseModel):
         ProductCategory, on_delete=models.RESTRICT, related_name="products_category")
     brand = models.ForeignKey(Brand, on_delete=models.RESTRICT,
                               null=True, blank=True, related_name="products_brand")
+    class Meta:
+        unique_together = ('name', 'category')
 
     def __str__(self):
         return self.name
