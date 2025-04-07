@@ -57,7 +57,7 @@ class Invoice(FinancialBaseModel):
                               related_name="invoice_event", blank=True, null=True, default=None)
 
     def __str__(self):
-        return f"${self.invoice_number}"
+        return f"{self.invoice_number}"
 
 
 class InvoiceItem(FinancialBaseModel):
@@ -74,7 +74,7 @@ class InvoiceItem(FinancialBaseModel):
         EventTicket, related_name="invoice_item_event_tickets")
 
     def __str__(self):
-        return f"${self.invoice.invoice_number}"
+        return f"{self.invoice.invoice_number}"
 
 
 class PaymentMethod(FinancialBaseModel):
@@ -116,7 +116,7 @@ class Payment(FinancialBaseModel):
         max_length=30, choices=PAYMENT_STATUS_CHOICES)
     payment_date = models.DateTimeField(auto_now_add=True)
     payment_gateway = models.CharField(max_length=100, blank=True, default="")
-    notes = models.TextField()
+    notes = models.TextField(blank=True, default="")
 
     # relations
     invoice = models.ForeignKey(
