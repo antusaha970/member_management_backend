@@ -1,9 +1,10 @@
 
 from rest_framework import serializers
 from .models import Venue
-from .models import COUNTRY_CHOICES,Event,EventTicket,EVENT_STATUS_CHOICES,EVENT_TICKET_STATUS_CHOICES
-
+from .models import COUNTRY_CHOICES,Event,EventTicket,EventFee,EventMedia,EVENT_STATUS_CHOICES,EVENT_TICKET_STATUS_CHOICES
+from core.models import MembershipType
 from member.models import Member
+import pdb
 
 class EventVenueSerializer(serializers.Serializer):
     street_address = serializers.CharField(max_length=255)
@@ -17,7 +18,7 @@ class EventVenueSerializer(serializers.Serializer):
         Ensure street address is not too short.
         """
         if len(value) < 5:
-            raise serializers.ValidationError({"street_address":["Street address must be at least 5 characters"]})
+            raise serializers.ValidationError("Street address must be at least 5 characters")
         return value
 
     def validate_city(self, value):
@@ -25,7 +26,7 @@ class EventVenueSerializer(serializers.Serializer):
         Ensure city is not too short.
         """
         if len(value) < 3:
-            raise serializers.ValidationError({"city": ["City name is too short."]})
+            raise serializers.ValidationError("City name is too short.")
         return value
 
     def validate_postal_code(self, value):
@@ -33,7 +34,7 @@ class EventVenueSerializer(serializers.Serializer):
         Ensure postal code is valid if provided.
         """
         if value and len(value) < 5:
-            raise serializers.ValidationError({"postal_code": ["Postal code must be at least 4 characters."]})
+            raise serializers.ValidationError("Postal code must be at least 4 characters.")
         return value
 
     def validate(self, data):
@@ -73,20 +74,22 @@ class EventSerializer(serializers.Serializer):
     def validate_title(self, value):
         
         if Event.objects.filter(title=value).exists():
-            raise serializers.ValidationError({"title": ["An event with this title already exists."]})
-    
+            raise serializers.ValidationError("An event with this title already exists.")
         return value
+    
     def validate_venue(self, value):
-        venue_instance = Venue.objects.get(pk=value)
-        if not venue_instance:
-            raise serializers.ValidationError({"venue": ["Venue does not exist."]})
-        return venue_instance
+        try:
+            venue_instance = Venue.objects.get(pk=value)
+        except Venue.DoesNotExist:
+            raise serializers.ValidationError("Venue does not exist.")
+        return venue_instance 
+    
     def validate_organizer(self, value):
-        organizer_instance = Member.objects.get(pk=value)
-        if not organizer_instance:
-            raise serializers.ValidationError({"organizer": ["Organizer does not exist."]})
-        return organizer_instance
-        
+        try:
+            organizer_instance = Member.objects.get(pk=value)
+        except Member.DoesNotExist:
+            raise serializers.ValidationError("Organizer does not exist.")
+        return organizer_instance    
 
     def create(self, validated_data):
         """
@@ -110,19 +113,76 @@ class EventTicketSerializer(serializers.Serializer):
     start_sale_date = serializers.DateTimeField()
     end_sale_date = serializers.DateTimeField()
     status = serializers.ChoiceField(choices=EVENT_TICKET_STATUS_CHOICES, default='available')
-    event_id = serializers.IntegerField() 
+    event = serializers.IntegerField() 
 
     def validate_ticket_name(self, value):
         if EventTicket.objects.filter(ticket_name=value).exists():
-            raise serializers.ValidationError({"ticket_name":["An event ticket with this name already exists."]})
+            raise serializers.ValidationError("An event ticket with this name already exists.")
         return value
 
-    def validate_event_id(self,value):
-        event_instance = Event.objects.get(pk=value)
-        if not event_instance:
-            raise serializers.ValidationError({"event": ["Event does not exist."]})
+    def validate_event(self, value):
+        try:
+            event_instance = Event.objects.get(pk=value)
+        except Event.DoesNotExist:
+            raise serializers.ValidationError("Event does not exist.")
         return event_instance
 
     def create(self, validated_data):
         ticket = EventTicket.objects.create(**validated_data)
         return ticket
+
+class EventTicketViewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EventTicket
+        fields = "__all__"
+        depth = 2
+
+class EventMediaSerializer(serializers.Serializer):
+    image = serializers.FileField()
+    event = serializers.IntegerField()
+
+    def validate_event(self, value):
+        try:
+            event_instance = Event.objects.get(pk=value)
+        except Event.DoesNotExist:
+            raise serializers.ValidationError("Event does not exist.")
+        return event_instance
+
+    def create(self, validated_data):
+        media = EventMedia.objects.create(**validated_data)
+        return media
+
+class EventMediaViewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EventMedia
+        fields = "__all__"
+        depth = 2
+        
+class EventFeeSerializer(serializers.Serializer):
+    fee = serializers.DecimalField(max_digits=10, decimal_places=2)
+    event = serializers.IntegerField()
+    membership_type = serializers.CharField()
+    
+    def validate_event(self, value):
+        try:
+            event_instance = Event.objects.get(pk=value)
+        except Event.DoesNotExist:
+            raise serializers.ValidationError("Event does not exist.")
+        return event_instance
+
+    def validate_membership_type(self, value):
+        try:
+            membership_type_instance = MembershipType.objects.get(name=value)
+        except MembershipType.DoesNotExist:
+            raise serializers.ValidationError("Membership type does not exist.")
+        return membership_type_instance
+
+    def create(self, validated_data):
+        fee = EventFee.objects.create(**validated_data)
+        return fee
+
+class EventFeeViewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EventFee
+        fields = "__all__"
+        depth = 2
