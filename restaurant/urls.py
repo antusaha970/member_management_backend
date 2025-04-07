@@ -11,4 +11,6 @@ urlpatterns = [
          name="restaurant_categories_view"),
     path("v1/restaurants/items/", views.RestaurantItemView.as_view(),
          name="restaurant_items_view"),
+    path("v1/restaurants/items/media/", views.RestaurantItemMediaView.as_view(),
+         name="restaurant_items_media_view"),
 ]
