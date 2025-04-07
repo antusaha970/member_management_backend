@@ -5,12 +5,19 @@ from rest_framework.views import APIView
 from event import serializers
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Venue
+from .models import Venue,Event
+from rest_framework.permissions import IsAdminUser,IsAuthenticated
+from activity_log.tasks import get_location, get_client_ip, log_activity_task
+from activity_log.utils.functions import request_data_activity_log
 import logging
 logger = logging.getLogger("myapp")
 
+
+
+
 # Create your views here.
 class EventVenueView(APIView):
+    permission_classes = [IsAuthenticated,IsAdminUser]
     def post(self,request):
         try:
             data = request.data
@@ -19,6 +26,12 @@ class EventVenueView(APIView):
                 venue_instance=serializer.save()
                 street_address = serializer.validated_data["street_address"]
                 city = serializer.validated_data["city"]
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Venue created successfully",
+                    severity_level="info",
+                    description="Venue created successfully for register a event",
+                )
                 return Response({
                         "code": 201,
                         "message": "Venue created successfully",
@@ -31,14 +44,27 @@ class EventVenueView(APIView):
                         }
                         }, status=status.HTTP_201_CREATED)
             else:
-               return Response({
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Venue creation failed",
+                    severity_level="error",
+                    description="user tried to create a new venue but made an invalid request",
+                )
+                return Response({
                     "code": 400,
                     "status": "failed",
                     "message": "Invalid request",
                     "errors": serializer.errors,
                 }, status=status.HTTP_400_BAD_REQUEST)
+               
         except Exception as e:
             logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Venue creation failed",
+                    severity_level="error",
+                    description="user tried to create a new venue but made an invalid request",
+                )
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
                 "message": "Error occurred",
@@ -48,9 +74,15 @@ class EventVenueView(APIView):
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def get(self, request):
+        
         try:
             venues = Venue.objects.all()
             serializer = serializers.EventVenueViewSerializer(venues, many=True)
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Retrieve all venues",
+                severity_level="info",
+                description="User retrieved all venues successfully",)
             return Response({
                 "code": 200,
                 "message": "Venues retrieved successfully",
@@ -59,6 +91,12 @@ class EventVenueView(APIView):
             }, status=status.HTTP_200_OK)
         except Exception as e:
             logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Venues retrieve failed",
+                severity_level="error",
+                description="Error occurred while retrieving all venues",)
+            
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
                 "message": "Error occurred",
@@ -70,6 +108,7 @@ class EventVenueView(APIView):
             
 
 class EventView(APIView):
+    permission_classes = [IsAuthenticated,IsAdminUser]
     def post(self,request):
         try:
             data = request.data
@@ -77,6 +116,11 @@ class EventView(APIView):
             if serializer.is_valid():
                 event_instance=serializer.save()
                 event_title=serializer.validated_data["title"]
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Event created successfully",
+                    severity_level="info",
+                    description="Event created successfully for register a event",)
                 return Response({
                         "code": 201,
                         "message": "Event created successfully",
@@ -88,6 +132,11 @@ class EventView(APIView):
                         }
                         }, status=status.HTTP_201_CREATED)
             else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Event creation failed",
+                    severity_level="error",
+                    description="user tried to create a new event but made an invalid request",)
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -98,6 +147,92 @@ class EventView(APIView):
                 
         except Exception as e:
             logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Event creation failed",
+                severity_level="error",
+                description="user tried to create a new event but made an invalid request",)
+            return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
+                'errors': {
+                    'server_error': [str(e)]
+                }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def get(self, request):
+        try:
+            events = Event.objects.all()
+            serializer = serializers.EventViewSerializer(events, many=True)
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Retrieve all events",
+                severity_level="info",
+                description="User retrieved all events successfully",)
+            return Response({
+                "code": 200,
+                "message": "Events retrieved successfully",
+                "status": "success",
+                "data": serializer.data  
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Events retrieve failed",
+                severity_level="error",
+                description="Error occurred while retrieving all events",)
+            return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
+                'errors': {
+                    'server_error': [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)      
+                 
+                
+class EventTicketView(APIView):
+    permission_classes = [IsAuthenticated,IsAdminUser]
+    def post(self,request):
+        try:
+            data = request.data
+            serializer = serializers.EventTicketSerializer(data=data)
+            if serializer.is_valid():
+                ticket_instance=serializer.save()
+                ticket_name=serializer.validated_data["ticket_name"]
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Event ticket created successfully",
+                    severity_level="info",
+                    description="Event ticket created successfully for register a event",)
+                return Response({
+                        "code": 201,
+                        "message": "Event ticket created successfully",
+                        "status": "success",
+                        "data": {
+                            "ticket_id": ticket_instance.id,
+                            "ticket_name": ticket_name
+                }})
+            else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Event ticket creation failed",
+                    severity_level="error",
+                    description="user tried to create a new event ticket but made an invalid request",)
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Invalid request",
+                    "errors": serializer.errors,
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Event ticket creation failed",
+                severity_level="error",
+                description="user tried to create a new event ticket but made an invalid request",)
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
                 "message": "Error occurred",
@@ -106,8 +241,12 @@ class EventView(APIView):
                     'server_error': [str(e)]
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
-                 
-                
-                
+            
+            
+            
+            
+                            
+        
+                     
         
         

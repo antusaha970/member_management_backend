@@ -1,7 +1,8 @@
 
 from rest_framework import serializers
 from .models import Venue
-from .models import COUNTRY_CHOICES,Event,EVENT_STATUS_CHOICES
+from .models import COUNTRY_CHOICES,Event,EventTicket,EVENT_STATUS_CHOICES,EVENT_TICKET_STATUS_CHOICES
+
 from member.models import Member
 
 class EventVenueSerializer(serializers.Serializer):
@@ -94,3 +95,34 @@ class EventSerializer(serializers.Serializer):
         event = Event.objects.create(**validated_data)
         return event
        
+class EventViewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Event
+        fields = "__all__"
+        depth = 1
+        
+
+class EventTicketSerializer(serializers.Serializer):
+    ticket_name = serializers.CharField(max_length=255)
+    ticket_description = serializers.CharField()
+    price = serializers.DecimalField(max_digits=10, decimal_places=2)
+    capacity = serializers.IntegerField(min_value=1)
+    start_sale_date = serializers.DateTimeField()
+    end_sale_date = serializers.DateTimeField()
+    status = serializers.ChoiceField(choices=EVENT_TICKET_STATUS_CHOICES, default='available')
+    event_id = serializers.IntegerField() 
+
+    def validate_ticket_name(self, value):
+        if EventTicket.objects.filter(ticket_name=value).exists():
+            raise serializers.ValidationError({"ticket_name":["An event ticket with this name already exists."]})
+        return value
+
+    def validate_event_id(self,value):
+        event_instance = Event.objects.get(pk=value)
+        if not event_instance:
+            raise serializers.ValidationError({"event": ["Event does not exist."]})
+        return event_instance
+
+    def create(self, validated_data):
+        ticket = EventTicket.objects.create(**validated_data)
+        return ticket
