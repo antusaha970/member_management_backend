@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Invoice
+from .models import Invoice, PaymentMethod
 
 
 class InvoiceSerializer(serializers.ModelSerializer):
@@ -10,4 +10,10 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Invoice
+        fields = "__all__"
+
+
+class PaymentMethodSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PaymentMethod
         fields = "__all__"
