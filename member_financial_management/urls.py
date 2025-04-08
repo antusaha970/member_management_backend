@@ -9,4 +9,6 @@ urlpatterns = [
          name="income_particular_view"),
     path("v1/income/receiving_options/", views.IncomeReceivedFromView.as_view(),
          name="income_receiving_option_view"),
+    path("v1/invoices/", views.InvoiceShowView.as_view(),
+         name="invoice_show_view"),
 ]

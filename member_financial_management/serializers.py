@@ -1,5 +1,9 @@
 from rest_framework import serializers
-from .models import Invoice, PaymentMethod, IncomeParticular, IncomeReceivingOption
+from .models import Invoice, PaymentMethod, IncomeParticular, IncomeReceivingOption, InvoiceItem
+from restaurant.models import Restaurant
+from event.models import Event, EventTicket
+from product.models import Product
+from facility.models import Facility
 import pdb
 
 
@@ -53,4 +57,58 @@ class IncomeParticularSerializer(serializers.ModelSerializer):
 class IncomeReceivingOptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = IncomeReceivingOption
+        fields = "__all__"
+
+
+class RestaurantSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Restaurant
+        fields = ["id", "name"]  # Add other fields as needed
+
+
+class ProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = ["id", "name"]
+
+
+class FacilitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Facility
+        fields = ["id", "name"]
+
+
+class EventTicketSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EventTicket
+        fields = ["id", "ticket_name"]
+
+
+class InvoiceItemSerializer(serializers.ModelSerializer):
+    restaurant_items = RestaurantSerializer(many=True)
+    products = ProductSerializer(many=True)
+    facility = FacilitySerializer(many=True)
+    event_tickets = EventTicketSerializer(many=True)
+
+    class Meta:
+        model = InvoiceItem
+        fields = [
+            "id",
+            "restaurant_items",
+            "products",
+            "facility",
+            "event_tickets",
+        ]
+
+
+class InvoiceForViewSerializer(serializers.ModelSerializer):
+    invoice_type = serializers.StringRelatedField()
+    generated_by = serializers.StringRelatedField()
+    member = serializers.StringRelatedField()
+    restaurant = serializers.StringRelatedField()
+    event = serializers.StringRelatedField()
+    invoice_items = InvoiceItemSerializer(many=True)
+
+    class Meta:
+        model = Invoice
         fields = "__all__"

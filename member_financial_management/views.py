@@ -7,8 +7,9 @@ from activity_log.tasks import log_activity_task
 from activity_log.utils.functions import request_data_activity_log
 from django.db import transaction
 from datetime import date
+from django.db.models import Prefetch
 import pdb
-from .models import PaymentMethod, Transaction, Payment, Sale, SaleType, IncomeParticular, IncomeReceivingOption, Income, IncomeReceivingType, MemberAccount, Due, MemberDue
+from .models import PaymentMethod, Transaction, Payment, Sale, SaleType, IncomeParticular, IncomeReceivingOption, Income, IncomeReceivingType, MemberAccount, Due, MemberDue, Invoice
 from . import serializers
 from .utils.functions import generate_unique_sale_number
 logger = logging.getLogger("myapp")
@@ -501,6 +502,38 @@ class IncomeReceivedFromView(APIView):
                 "code": 200,
                 "status": "success",
                 "message": "list of all income receiving option",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class InvoiceShowView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            invoices = Invoice.objects.select_related(
+                "invoice_type", "generated_by", "member", "restaurant", "event"
+            ).prefetch_related(
+                Prefetch("invoice_items__restaurant_items"),
+                Prefetch("invoice_items__products"),
+                Prefetch("invoice_items__facility"),
+                Prefetch("invoice_items__event_tickets"),
+            ).order_by("id")
+            serializer = serializers.InvoiceForViewSerializer(
+                invoices, many=True)
+            return Response({
+                "code": 200,
+                "status": "success",
+                "message": "List of all invoices",
                 "data": serializer.data
             }, status=status.HTTP_200_OK)
         except Exception as e:
