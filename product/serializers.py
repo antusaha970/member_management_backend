@@ -113,3 +113,39 @@ class ProductMediaViewSerializer(serializers.ModelSerializer):
         model = ProductMedia
         fields = "__all__"
         depth = 2
+        
+class ProductPriceSerializer(serializers.Serializer):
+    price = serializers.DecimalField(max_digits=10, decimal_places=2)
+    membership_type = serializers.CharField()
+    product = serializers.IntegerField()
+
+    def validate_price(self, value):
+
+        if value <= 0:
+            raise serializers.ValidationError("Price must be greater than 0.")
+        return value
+
+    def validate_membership_type(self, value):
+        try:
+            membership_type_instance = MembershipType.objects.get(pk=value)
+        except MembershipType.DoesNotExist:
+            raise serializers.ValidationError("Membership type does not exist.")
+        return membership_type_instance
+
+    def validate_product(self, value):
+        try:
+            product_instance = Product.objects.get(pk=value)
+        except Product.DoesNotExist:
+            raise serializers.ValidationError("Product does not exist.")
+        return product_instance
+
+    def create(self, validated_data):
+        product_price = ProductPrice.objects.create(**validated_data)
+        return product_price
+        
+    
+class ProductPriceViewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductPrice
+        fields = "__all__"
+        depth = 2

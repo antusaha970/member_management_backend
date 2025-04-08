@@ -15,6 +15,13 @@ import pdb
 class BrandView(APIView):
     permission_classes = [IsAuthenticated,IsAdminUser]
     def post(self,request):
+        """
+        This endpoint allows you to create a new product brands  and logs an activity.
+        Args:
+            request (Request): The request containing the data for the new product brand instance.
+        Returns:
+            Response: The response containing the new product brand id and name .
+        """
         try:
             data = request.data
             serializer = serializers.BrandSerializer(data=data)
@@ -65,6 +72,11 @@ class BrandView(APIView):
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     def get(self,request):
+        """
+        Retrieves a list of all product brands and logs an activity.
+        Returns:
+            Response: The response containing the list of all product brands.
+        """
         try:
             brands = Brand.objects.all()
             serializer = serializers.BrandViewSerializer(brands, many=True)
@@ -99,6 +111,13 @@ class ProductCategoryView(APIView):
     permission_classes = [IsAuthenticated,IsAdminUser]
     
     def post(self,request):
+        """
+        This endpoint allows you to create a new product categories and logs an activity.
+        Args:
+            request (Request): The request containing the data for the new product category instance.
+        Returns:
+            Response: The response containing the new product category id and name .
+        """
         try:
             data = request.data
             serializer = serializers.ProductCategorySerializer(data=data)
@@ -149,6 +168,11 @@ class ProductCategoryView(APIView):
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
     def get(self,request):
+        """
+        Retrieves a list of all product categories and logs an activity.
+        Returns:
+            Response: The response containing the list of all product categories.
+        """
         try:
             product_categories = ProductCategory.objects.all()
             serializer = serializers.ProductCategoryViewSerializer(product_categories, many=True)
@@ -184,6 +208,13 @@ class ProductView(APIView):
     permission_classes = [IsAuthenticated,IsAdminUser]
     
     def post(self, request):
+        """
+        This endpoint allows you to create a new product and logs an activity.
+        Args:
+            request (Request): The request containing the data for the new product  instance.
+        Returns:
+            Response: The response containing the new product id and name .
+        """ 
         try:
             data = request.data
             serializer = serializers.ProductSerializer(data=data)
@@ -235,6 +266,11 @@ class ProductView(APIView):
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     def get(self, request):
+        """
+        Retrieves a list of all products  and logs an activity.
+        Returns:
+            Response: The response containing the list of all products.
+        """
         try:
             products = Product.objects.all()
             serializer = serializers.ProductViewSerializer(products, many=True)
@@ -269,6 +305,13 @@ class ProductMediaView(APIView):
     permission_classes = [IsAuthenticated,IsAdminUser]
     
     def post(self, request):
+        """
+        This endpoint allows you to create a new product media and logs an activity.
+        Args:
+            request (Request): The request containing the data for the new product media instance.
+        Returns:
+            Response: The response containing the new product media instance id .
+        """
         try:
             data = request.data
             serializer = serializers.ProductMediaSerializer(data=data)
@@ -317,6 +360,11 @@ class ProductMediaView(APIView):
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     def get(self,request):
+        """
+        Retrieves a list of all product media and logs an activity.
+        Returns:
+            Response: The response containing the list of all product media.
+        """
         try :
             media = ProductMedia.objects.filter(is_active=True)
             serializer = serializers.ProductMediaViewSerializer(media, many=True)
@@ -346,8 +394,145 @@ class ProductMediaView(APIView):
                     'server_error': [str(e)]
                 }
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class ProductPriceView(APIView):
+    permission_classes = [IsAuthenticated,IsAdminUser]
+    def post(self, request):
+        """
+        Creates a new product price instance and logs an activity.
+        Args:
+            request (Request): The request containing the data for the new product price instance.
+        Returns:
+            Response: The response containing the new product price instance's id and price.
+        """
+        try:
+            data = request.data
+            serializer = serializers.ProductPriceSerializer(data=data)
+            if serializer.is_valid():
+                product_price_instance=serializer.save()
+                product_price = serializer.validated_data["price"]
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Product price created successfully",
+                    severity_level="info",
+                    description="Product price created successfully ")
+                return Response({
+                        "code": 201,
+                        "message": "Product price created successfully ",
+                        "status": "success",
+                        "data": {
+                            "id": product_price_instance.id,
+                            "price": product_price,
+                           
+                        }
+                        
+                },status=status.HTTP_201_CREATED)
+            else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Product price creation failed",
+                    severity_level="error",
+                    description="user tried to create a new product price but made an invalid request",)
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Invalid request",
+                    "errors": serializer.errors,
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Product price creation failed",
+                severity_level="error",
+                description="user tried to create a new product price but made an invalid request",)
+            return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
+                'errors': {
+                    'server_error': [str(e)]
+                }
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def get(self,request):
+        """
+        Retrieves a list of all product prices and logs an activity.
+        Returns:
+            Response: The response containing the list of product prices.
+        """
+        try:
+            price = ProductPrice.objects.filter(is_active=True)
+            serializer = serializers.ProductPriceViewSerializer(price, many=True)
+            log_activity_task.delay_on_commit(
+                
+                request_data_activity_log(request),
+                verb="Product price retrieval successful",
+                severity_level="info",
+                description="User successfully retrieved all product prices"
+                )
+            return Response({
+                "code": 200,
+                "message": "Product price list retrieved successfully",
+                "status": "success",
+                "data": serializer.data,
+                
+            })
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Product price retrieval failed",
+                severity_level="error", 
+                description="An error occurred while retrieving product price for product",)
+            return Response({
+                
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
+                'errors': {
+                    'server_error': [str(e)]
+                }
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                  
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
         
         
+        
+        
+        
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+         
         
         
         
