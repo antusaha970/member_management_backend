@@ -288,7 +288,104 @@ class InvoicePaymentView(APIView):
                             }, status=status.HTTP_200_OK
                         )
                     else:
-                        pass
+                        invoice.paid_amount = amount
+                        invoice.is_full_paid = False
+                        invoice.status = "due"
+                        invoice.balance_due = invoice.total_amount - amount
+                        invoice.save(update_fields=[
+                            "paid_amount", "is_full_paid", "status", "balance_due"])
+                        full_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
+                            name="partial")
+                        transaction_obj = Transaction.objects.create(
+                            amount=amount,
+                            transaction_date=date.today(),
+                            status="due",
+                            member=invoice.member,
+                            invoice=invoice,
+                            payment_method=payment_method
+                        )
+                        payment_obj = Payment.objects.create(
+                            payment_amount=amount,
+                            payment_status="due",
+                            payment_date=date.today(),
+                            invoice=invoice,
+                            member=invoice.member,
+                            payment_method=payment_method,
+                            processed_by=request.user,
+                            transaction=transaction_obj
+                        )
+                        sale_type, _ = SaleType.objects.get_or_create(
+                            name=invoice.invoice_type.name)
+                        sale_obj = Sale.objects.create(
+                            sale_number=generate_unique_sale_number(),
+                            sub_total=invoice.total_amount,
+                            total_amount=invoice.paid_amount,
+                            payment_status="due",
+                            sale_source_type=sale_type,
+                            customer=invoice.member,
+                            payment_method=payment_method,
+                            invoice=invoice,
+                            due_date=date.today()
+                        )
+                        Income.objects.create(
+                            receivable_amount=invoice.total_amount,
+                            final_receivable=sale_obj.total_amount,
+                            actual_received=amount,
+                            reaming_due=invoice.total_amount-amount,
+                            particular=income_particular,
+                            received_from_type=received_from,
+                            receiving_type=full_receiving_type,
+                            member=invoice.member,
+                            received_by=payment_method,
+                            sale=sale_obj
+                        )
+                        due_obj = Due.objects.create(
+                            original_amount=invoice.total_amount,
+                            due_amount=invoice.total_amount-amount,
+                            paid_amount=amount,
+                            due_date=date.today(),
+                            member=invoice.member,
+                            invoice=invoice,
+                            payment=payment_obj,
+                            transaction=transaction_obj
+                        )
+                        MemberDue.objects.create(
+                            amount_due=due_obj.due_amount,
+                            due_date=date.today(),
+                            amount_paid=due_obj.paid_amount,
+                            payment_date=date.today(),
+                            member=invoice.member,
+                            due_reference=due_obj
+                        )
+                        is_member_account_exist = MemberAccount.objects.filter(
+                            member=invoice.member).exists()
+
+                        if is_member_account_exist:
+                            member_account = MemberAccount.objects.get(
+                                member=invoice.member)
+                            member_account.balance = member_account.balance + amount
+                            member_account.total_credits = member_account.total_credits + due_obj.due_amount
+                            member_account.total_debits = member_account.total_debits + amount
+                            member_account.save(
+                                update_fields=["balance", "total_credits", "total_debits"])
+                        else:
+                            MemberAccount.objects.create(
+                                balance=amount,
+                                total_credits=due_obj.due_amount,
+                                total_debits=amount,
+                                member=invoice.member,
+                                last_transaction_date=date.today()
+                            )
+                        return Response(
+                            {
+                                "code": 200,
+                                "status": "success",
+                                "message": "Invoice payment successful",
+                                "data": {
+                                    "invoice_id": invoice.id
+                                }
+                            }, status=status.HTTP_200_OK
+                        )
 
                 return Response("ok")
             else:
