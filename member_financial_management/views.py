@@ -8,7 +8,7 @@ from activity_log.utils.functions import request_data_activity_log
 from django.db import transaction
 from datetime import date
 import pdb
-from .models import PaymentMethod, Transaction, Payment, Sale, SaleType, IncomeParticular, IncomeReceivingOption
+from .models import PaymentMethod, Transaction, Payment, Sale, SaleType, IncomeParticular, IncomeReceivingOption, Income, IncomeReceivingType, MemberAccount
 from . import serializers
 from .utils.functions import generate_unique_sale_number
 logger = logging.getLogger("myapp")
@@ -107,6 +107,8 @@ class InvoicePaymentView(APIView):
                 invoice = serializer.validated_data["invoice_id"]
                 payment_method = serializer.validated_data["payment_method"]
                 amount = serializer.validated_data["amount"]
+                income_particular = serializer.validated_data["income_particular"]
+                received_from = serializer.validated_data["received_from"]
                 with transaction.atomic():
                     if amount >= invoice.total_amount:
                         invoice.paid_amount = invoice.total_amount
@@ -115,6 +117,8 @@ class InvoicePaymentView(APIView):
                         invoice.balance_due = 0
                         invoice.save(update_fields=[
                             "paid_amount", "is_full_paid", "status", "balance_due"])
+                        full_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
+                            name="full")
                         transaction_obj = Transaction.objects.create(
                             amount=amount,
                             transaction_date=date.today(),
@@ -123,7 +127,7 @@ class InvoicePaymentView(APIView):
                             invoice=invoice,
                             payment_method=payment_method
                         )
-                        payment_obj = Payment.objects.create(
+                        Payment.objects.create(
                             payment_amount=amount,
                             payment_status="paid",
                             payment_date=date.today(),
@@ -134,17 +138,56 @@ class InvoicePaymentView(APIView):
                             transaction=transaction_obj
                         )
                         sale_type, _ = SaleType.objects.get_or_create(
-                            name=invoice.invoice_type__name)
+                            name=invoice.invoice_type.name)
                         sale_obj = Sale.objects.create(
                             sale_number=generate_unique_sale_number(),
                             sub_total=invoice.total_amount,
+                            total_amount=invoice.paid_amount,
                             payment_status="paid",
                             sale_source_type=sale_type,
                             customer=invoice.member,
                             payment_method=payment_method,
                             invoice=invoice
                         )
-
+                        Income.objects.create(
+                            receivable_amount=invoice.total_amount,
+                            final_receivable=sale_obj.total_amount,
+                            actual_received=invoice.paid_amount,
+                            reaming_due=0,
+                            particular=income_particular,
+                            received_from_type=received_from,
+                            receiving_type=full_receiving_type,
+                            member=invoice.member,
+                            received_by=payment_method,
+                            sale=sale_obj
+                        )
+                        is_member_account_exist = MemberAccount.objects.filter(
+                            member=invoice.member).exists()
+                        if is_member_account_exist:
+                            member_account = MemberAccount.objects.get(
+                                member=invoice.member)
+                            member_account.balance = member_account.balance + \
+                                (amount-invoice.paid_amount)
+                            member_account.total_credits = member_account.total_credits + amount
+                            member_account.save(
+                                update_fields=["balance", "total_credits"])
+                        else:
+                            MemberAccount.objects.create(
+                                balance=amount-invoice.paid_amount,
+                                total_credits=amount,
+                                member=invoice.member,
+                                last_transaction_date=date.today()
+                            )
+                        return Response(
+                            {
+                                "code": 200,
+                                "status": "success",
+                                "message": "Invoice payment successful",
+                                "data": {
+                                    "invoice_id": invoice.id
+                                }
+                            }, status=status.HTTP_200_OK
+                        )
                     elif amount < invoice.total_amount and amount != 0:
                         pass
                     else:

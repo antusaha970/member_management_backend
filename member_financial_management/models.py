@@ -194,7 +194,8 @@ class IncomeReceivingType(FinancialBaseModel):
 class Income(FinancialBaseModel):
     date = models.DateTimeField(auto_now_add=True)
     receivable_amount = models.DecimalField(max_digits=10, decimal_places=2)
-    discount_applied = models.DecimalField(max_digits=10, decimal_places=2)
+    discount_applied = models.DecimalField(
+        max_digits=10, decimal_places=2, blank=True, null=True, default=None)
     discount_name = models.CharField(max_length=255, blank=True, default="")
     discounted_amount = models.DecimalField(
         max_digits=10, decimal_places=2, default=0)
@@ -218,6 +219,8 @@ class Income(FinancialBaseModel):
         Member, on_delete=models.PROTECT, related_name="income_member")
     received_by = models.ForeignKey(
         PaymentMethod, on_delete=models.PROTECT, related_name="income_received_by")
+    sale = models.ForeignKey(
+        Sale, on_delete=models.PROTECT, related_name="income_sale")
 
 
 class MemberAccount(FinancialBaseModel):
@@ -229,7 +232,8 @@ class MemberAccount(FinancialBaseModel):
     last_transaction_date = models.DateField(
         blank=True, null=True, default=None)
     status = models.CharField(max_length=150, blank=True, default="")
-    overdue_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    overdue_amount = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0)
     due_date = models.DateField(null=True, blank=True, default=None)
     notes = models.TextField(blank=True, default="")
     credit_limit = models.DecimalField(
