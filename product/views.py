@@ -495,6 +495,66 @@ class ProductPriceView(APIView):
                 }
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                   
+class ProductDetailView(APIView):
+    permission_classes = [IsAuthenticated,IsAdminUser]
+    def get(self, request, product_id):
+        """
+        Retrieves a specific product by its product_id and logs an activity.
+        Args:
+            request (Request): The request object.
+            product_id (int): The product_id of the product to retrieve.
+        Returns:
+            Response: The response containing the product details.
+        """          
+        try:
+            product = Product.objects.get(id=product_id)
+            serializer = serializers.ProductViewSerializer(product)
+            log_activity_task.delay_on_commit(
+                
+                request_data_activity_log(request),
+                verb="Product details retrieved successfully",
+                severity_level="info",
+                description="User successfully retrieved specific product details"
+                )
+            return Response({
+                
+                "code": 200,
+                "message": "Product details retrieved successfully",
+                "status": "success",
+                "data": serializer.data,
+                
+            }, status=status.HTTP_200_OK)
+        except Product.DoesNotExist:
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Product details retrieval failed",
+                severity_level="error",
+                description="An error occurred while retrieving product details for product",)
+            return Response({
+                "code": status.HTTP_404_NOT_FOUND,
+                "message": "Product not found",
+                "status": "failed",
+                "errors": {
+                    "product": ["Product not found"]
+                }
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Product details retrieval failed",
+                severity_level="error",
+                description="An error occurred while retrieving product details for product",)
+            return Response({
+                
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
+                'errors': {
+                    'server_error': [str(e)]    
+                }                
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
             
             
             

@@ -1,5 +1,4 @@
 
-
 from django.shortcuts import render
 from rest_framework.views import APIView
 from event import serializers
@@ -19,6 +18,13 @@ import pdb
 class EventVenueView(APIView):
     permission_classes = [IsAuthenticated,IsAdminUser]
     def post(self,request):
+        """
+        Creates a new event venue instance and logs an activity.
+        Args:
+            request (Request): The request containing the data for the new event venue instance.
+        Returns:
+            Response: The response containing the new event venue instance's id, street address and city
+        """
         try:
             data = request.data
             serializer = serializers.EventVenueSerializer(data=data)
@@ -74,7 +80,11 @@ class EventVenueView(APIView):
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def get(self, request):
-        
+        """
+        Retrieves a list of all event venues and logs an activity.
+        Returns:
+            Response: The response containing the list of event venues.
+        """
         try:
             venues = Venue.objects.all()
             serializer = serializers.EventVenueViewSerializer(venues, many=True)
@@ -110,6 +120,13 @@ class EventVenueView(APIView):
 class EventView(APIView):
     permission_classes = [IsAuthenticated,IsAdminUser]
     def post(self,request):
+        """
+        Creates a new event instance and logs an activity.
+        Args:
+            request (Request): The request containing the data for the new event instance.
+        Returns:
+            Response: The response containing the new event instance's id and title
+        """
         try:
             data = request.data
             serializer = serializers.EventSerializer(data=data)
@@ -161,6 +178,11 @@ class EventView(APIView):
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     def get(self, request):
+        """
+        Retrieves a list of all events and logs an activity.
+        Returns:
+            Response: The response containing the list of events.
+        """
         try:
             events = Event.objects.all()
             serializer = serializers.EventViewSerializer(events, many=True)
@@ -190,11 +212,76 @@ class EventView(APIView):
                     'server_error': [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)      
+
                  
+class EventDetailView(APIView):
+    permission_classes = [IsAuthenticated,IsAdminUser]
+    def get(self, request, event_id):
+        """
+        Retrieves a specific event by its event_id and logs an activity.
+        Args:
+            request (Request): The request object.
+            event_id (int): The event_id of the event to retrieve.
+        Returns:
+            Response: The response containing the event details.
+        """
+        try:
+            event = Event.objects.get(pk=event_id)
+            serializer = serializers.EventViewSerializer(event)
+            log_activity_task.delay_on_commit(
                 
+                request_data_activity_log(request),
+                verb="Retrieve event details",
+                severity_level="info",
+                description="User retrieved event details successfully",)
+            return Response({
+                "code": 200,
+                "message": "Event details retrieved successfully",
+                "status": "success",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except Event.DoesNotExist:
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Event details retrieve failed",
+                severity_level="error",
+                description="Error occurred while retrieving specific event details",)
+            return Response({
+                "code": status.HTTP_404_NOT_FOUND,
+                "message": "Event not found",
+                "status": "failed",
+                "errors": {
+                    "event": ["Event not found"]
+                }})
+                
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Event details retrieve failed",
+                severity_level="error",
+                description="Error occurred while retrieving event details",)
+            return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
+                'errors': {
+                    'server_error': [str(e)] 
+                }
+            })
+            
+            
+                        
 class EventTicketView(APIView):
     permission_classes = [IsAuthenticated,IsAdminUser]
     def post(self,request):
+        """
+        Creates a new event ticket and logs an activity.
+        Args:
+            request (Request): The request containing the data for the new event ticket instance.
+        Returns:
+            Response: The response containing the event ticket id and name.
+        """
         try:
             data = request.data
             serializer = serializers.EventTicketSerializer(data=data)
@@ -242,6 +329,11 @@ class EventTicketView(APIView):
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     def get(self, request):
+        """
+        Retrieves a list of all event tickets and logs an activity.
+        Returns:
+            Response: The response containing the list of event tickets.
+        """
         try:
             event_ticket = EventTicket.objects.all()
             serializer = serializers.EventTicketViewSerializer(event_ticket, many=True)
@@ -276,6 +368,13 @@ class EventTicketView(APIView):
 class EventMediaView(APIView):
     permission_classes = [IsAuthenticated,IsAdminUser]
     def post(self,request):
+        """
+        Creates a new event media and logs an activity.
+        Args:
+            request (Request): The request containing the data for the new event media instance.
+        Returns:
+            Response: The response containing the event media id and name.
+        """
         try:
             data = request.data
             serializer = serializers.EventMediaSerializer(data=data)
@@ -325,6 +424,11 @@ class EventMediaView(APIView):
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)       
      
     def get(self, request):
+        """
+        Retrieves a list of all event medias and logs an activity.
+        Returns:
+            Response: The response containing the list of event medias.
+        """
         try:
             event_media = EventMedia.objects.all()
             serializer = serializers.EventMediaViewSerializer(event_media, many=True)
@@ -358,6 +462,13 @@ class EventMediaView(APIView):
 class EventFeeView(APIView):
     permission_classes = [IsAuthenticated,IsAdminUser]   
     def post(self,request):
+        """
+        Creates a new event fee and logs an activity.
+        Args:
+            request (Request): The request containing the data for the new event fee instance.
+        Returns:
+            Response: The response containing the event fee id and fee.
+        """
         try:
             data = request.data
             serializer = serializers.EventFeeSerializer(data=data)
@@ -407,6 +518,11 @@ class EventFeeView(APIView):
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
      
     def get(self, request):
+         """
+         Retrieves a list of all event fees and logs an activity.
+         Returns:
+             Response: The response containing the list of event fees.
+         """
          try:
             event_fees = EventFee.objects.all()
             serializer = serializers.EventFeeViewSerializer(event_fees, many=True)
@@ -437,7 +553,7 @@ class EventFeeView(APIView):
                 }
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                
-         
+   
             
             
                             
