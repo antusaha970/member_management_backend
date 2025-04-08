@@ -31,6 +31,11 @@ class InvoicePaymentSerializer(serializers.Serializer):
     received_from = serializers.PrimaryKeyRelatedField(
         queryset=IncomeReceivingOption.objects.all())
 
+    def validate_amount(self, value):
+        if value < 0:
+            raise serializers.ValidationError("Please pass a valid amount")
+        return value
+
     def validate(self, attrs):
         invoice = attrs["invoice_id"]
         if invoice.is_full_paid:
