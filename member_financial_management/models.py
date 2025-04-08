@@ -40,6 +40,11 @@ class Invoice(FinancialBaseModel):
     issue_date = models.DateField(auto_now_add=True)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     is_full_paid = models.BooleanField()
+    discount = models.DecimalField(
+        max_digits=10, decimal_places=2, blank=True, null=True, default=None)
+    promo_code = models.CharField(max_length=300, blank=True, default="")
+    tax = models.DecimalField(
+        max_digits=10, decimal_places=2, blank=True, null=True, default=None)
     status = models.CharField(
         max_length=30, choices=INVOICE_STATUS_CHOICES, default="unpaid")
 
@@ -144,17 +149,12 @@ class SaleType(models.Model):
 class Sale(FinancialBaseModel):
     sale_number = models.CharField(max_length=300, unique=True)
     sale_source_id = models.CharField(max_length=10, blank=True, null=True)
-    quantity = models.IntegerField()
-    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
     sub_total = models.DecimalField(max_digits=10, decimal_places=2)
-    discount = models.DecimalField(max_digits=10, decimal_places=2)
-    tax = models.DecimalField(max_digits=10, decimal_places=2)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     payment_status = models.CharField(max_length=150, blank=True, default="")
     sales_date = models.DateField(auto_now_add=True)
     due_date = models.DateField(blank=True, null=True, default=None)
     notes = models.TextField(blank=True, default="")
-    promo_code = models.CharField(max_length=300, blank=True, default="")
 
     # relation
     sale_source_type = models.ForeignKey(

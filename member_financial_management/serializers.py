@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Invoice, PaymentMethod
+from .models import Invoice, PaymentMethod, IncomeParticular, IncomeReceivingOption
 
 
 class InvoiceSerializer(serializers.ModelSerializer):
@@ -25,3 +25,15 @@ class InvoicePaymentSerializer(serializers.Serializer):
     payment_method = serializers.PrimaryKeyRelatedField(
         queryset=PaymentMethod.objects.all())
     amount = serializers.DecimalField(max_digits=12, decimal_places=2)
+
+
+class IncomeParticularSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = IncomeParticular
+        fields = "__all__"
+
+
+class IncomeReceivingOptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = IncomeReceivingOption
+        fields = "__all__"

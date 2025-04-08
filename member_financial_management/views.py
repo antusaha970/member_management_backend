@@ -8,8 +8,9 @@ from activity_log.utils.functions import request_data_activity_log
 from django.db import transaction
 from datetime import date
 import pdb
-from .models import PaymentMethod, Transaction, Payment
+from .models import PaymentMethod, Transaction, Payment, Sale, SaleType, IncomeParticular, IncomeReceivingOption
 from . import serializers
+from .utils.functions import generate_unique_sale_number
 logger = logging.getLogger("myapp")
 
 
@@ -132,6 +133,17 @@ class InvoicePaymentView(APIView):
                             processed_by=request.user,
                             transaction=transaction_obj
                         )
+                        sale_type, _ = SaleType.objects.get_or_create(
+                            name=invoice.invoice_type__name)
+                        sale_obj = Sale.objects.create(
+                            sale_number=generate_unique_sale_number(),
+                            sub_total=invoice.total_amount,
+                            payment_status="paid",
+                            sale_source_type=sale_type,
+                            customer=invoice.member,
+                            payment_method=payment_method,
+                            invoice=invoice
+                        )
 
                     elif amount < invoice.total_amount and amount != 0:
                         pass
@@ -151,6 +163,114 @@ class InvoicePaymentView(APIView):
                 "code": 500,
                 "status": "failed",
                 "message": "Something went wrong.",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class IncomeParticularView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            serializer = serializers.IncomeParticularSerializer(
+                data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({
+                    "code": 201,
+                    "status": "success",
+                    "message": "New income particular created",
+                    "data": serializer.data
+                }, status=status.HTTP_201_CREATED)
+            else:
+                return Response({
+                    "code": 400,
+                    "status": "success",
+                    "message": "Bad request",
+                    "errors": serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_errors": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def get(self, request):
+        try:
+            data = IncomeParticular.objects.filter(is_active=True)
+            serializer = serializers.IncomeParticularSerializer(
+                data, many=True)
+            return Response({
+                "code": 200,
+                "status": "success",
+                "message": "list of all income particulars",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class IncomeReceivedFromView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            serializer = serializers.IncomeReceivingOptionSerializer(
+                data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({
+                    "code": 201,
+                    "status": "success",
+                    "message": "New income receiving option created",
+                    "data": serializer.data
+                }, status=status.HTTP_201_CREATED)
+            else:
+                return Response({
+                    "code": 400,
+                    "status": "success",
+                    "message": "Bad request",
+                    "errors": serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_errors": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def get(self, request):
+        try:
+            data = IncomeReceivingOption.objects.filter(is_active=True)
+            serializer = serializers.IncomeReceivingOptionSerializer(
+                data, many=True)
+            return Response({
+                "code": 200,
+                "status": "success",
+                "message": "list of all income receiving option",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
                 "errors": {
                     "server_error": [str(e)]
                 }
