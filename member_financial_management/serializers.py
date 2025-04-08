@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import Invoice, PaymentMethod
+from .models import Invoice, PaymentMethod, IncomeParticular, IncomeReceivingOption
+import pdb
 
 
 class InvoiceSerializer(serializers.ModelSerializer):
@@ -25,3 +26,26 @@ class InvoicePaymentSerializer(serializers.Serializer):
     payment_method = serializers.PrimaryKeyRelatedField(
         queryset=PaymentMethod.objects.all())
     amount = serializers.DecimalField(max_digits=12, decimal_places=2)
+    income_particular = serializers.PrimaryKeyRelatedField(
+        queryset=IncomeParticular.objects.all())
+    received_from = serializers.PrimaryKeyRelatedField(
+        queryset=IncomeReceivingOption.objects.all())
+
+    def validate(self, attrs):
+        invoice = attrs["invoice_id"]
+        if invoice.is_full_paid:
+            raise serializers.ValidationError(
+                "This invoice is already fully paid")
+        return attrs
+
+
+class IncomeParticularSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = IncomeParticular
+        fields = "__all__"
+
+
+class IncomeReceivingOptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = IncomeReceivingOption
+        fields = "__all__"
