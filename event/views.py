@@ -8,6 +8,12 @@ from .models import Venue,Event,EventTicket,EventMedia,EventFee
 from rest_framework.permissions import IsAdminUser,IsAuthenticated
 from activity_log.tasks import get_location, get_client_ip, log_activity_task
 from activity_log.utils.functions import request_data_activity_log
+from member_financial_management.utils.functions import generate_unique_invoice_number
+from member.models import Member
+from django.db import transaction
+from member_financial_management.serializers import InvoiceSerializer
+from member_financial_management.models import Invoice, InvoiceItem, InvoiceType
+from datetime import date
 import logging
 logger = logging.getLogger("myapp")
 import pdb
@@ -553,8 +559,92 @@ class EventFeeView(APIView):
                 }
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                
-   
-            
+ 
+
+class EventTicketBuyView(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request):
+        """
+        Creates an invoice for an event ticket purchase.
+        Args:
+            request (Request): The request containing the data for the invoice instance.
+        Returns:
+            Response: The response containing the created invoice and a success message.
+        """
+        try:
+            data = request.data
+            serializer = serializers.EventTicketBuySerializer(data=data)
+            if serializer.is_valid():
+                
+                member = serializer.validated_data["member_ID"]
+                member = Member.objects.get(member_ID=member)
+                event_ticket = serializer.validated_data["event_ticket"]
+                
+                invoice_type, _ = InvoiceType.objects.get_or_create(
+                    name="Event")
+
+                with transaction.atomic():
+                    invoice = Invoice.objects.create(
+                        currency="BDT",
+                        invoice_number=generate_unique_invoice_number(),
+                        balance_due=event_ticket.price,
+                        paid_amount=0,
+                        issue_date=date.today(),
+                        total_amount=event_ticket.price,
+                        is_full_paid=False,
+                        status="unpaid",
+                        invoice_type=invoice_type,
+                        generated_by=request.user,
+                        member=member,
+                        event=event_ticket.event,
+                    )
+                    invoice_item = InvoiceItem.objects.create(
+                        invoice=invoice
+                    )
+                    invoice_item.event_tickets.set([event_ticket.id])    
+                    
+                
+                
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Invoice created successfully",
+                    severity_level="info",
+                    description="user generated an invoice successfully",)
+                return Response({
+                    "code": 200,
+                    "message": "Invoice created successfully",
+                    "status": "success",
+                    "data": InvoiceSerializer(invoice).data    
+                }, status=status.HTTP_200_OK)
+            else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Invoice creation failed",
+                    severity_level="error",
+                    description="user tried to generate an invoice but made an invalid request",)
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Invalid request",
+                    "errors": serializer.errors,
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:  
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Invoice creation failed",
+                severity_level="error",
+                description="user tried to generate an invoice but made an invalid request",)
+            return Response({
+
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
+                'errors': {
+                    'server_error': [str(e)]
+                }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+      
+                
             
                             
         

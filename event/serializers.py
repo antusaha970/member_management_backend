@@ -186,3 +186,13 @@ class EventFeeViewSerializer(serializers.ModelSerializer):
         model = EventFee
         fields = "__all__"
         depth = 2
+        
+class EventTicketBuySerializer(serializers.Serializer):
+    event_ticket = serializers.PrimaryKeyRelatedField(queryset=EventTicket.objects.filter(status='available'))
+    member_ID = serializers.CharField()
+    
+    def validate_member_ID(self, value):
+        if not Member.objects.filter(member_ID=value).exists():
+            raise serializers.ValidationError(f"{value} is not a member")
+        return value
+        
