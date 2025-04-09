@@ -1,5 +1,17 @@
 from django.db import models
 from member.models import MembershipType
+FACILITY_STATUS_CHOICES = [
+        ('open', 'Open'),
+        ('closed', 'Closed'),
+        ('maintenance', 'Under Maintenance'),
+    ]
+    
+USAGES_ROLES_CHOICES = [
+        ('member', 'Member'),
+        ('staff', 'Staff'),
+        ('admin', 'Admin'),
+        ('manager', 'Manager'),
+    ]
 
 
 class FacilityBaseModel(models.Model):
@@ -12,19 +24,7 @@ class FacilityBaseModel(models.Model):
 
 
 class Facility(FacilityBaseModel):
-    FACILITY_STATUS_CHOICES = [
-        ('open', 'Open'),
-        ('closed', 'Closed'),
-        ('maintenance', 'Under Maintenance'),
-    ]
     
-    USAGES_ROLES_CHOICES = [
-        ('member', 'Member'),
-        ('staff', 'Staff'),
-        ('admin', 'Admin'),
-        ('manager', 'Manager'),
-    ]
-
     name = models.CharField(max_length=255,unique=True)
     description = models.TextField()
     usages_fee = models.DecimalField(max_digits=10, decimal_places=2)
