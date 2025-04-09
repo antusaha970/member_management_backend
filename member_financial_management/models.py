@@ -106,7 +106,7 @@ class Transaction(FinancialBaseModel):
         PaymentMethod, on_delete=models.PROTECT, related_name="transaction_payment_method")
 
     def __str__(self):
-        return self.amount
+        return f"{self.amount}"
 
 
 class Payment(FinancialBaseModel):
@@ -167,7 +167,7 @@ class Sale(FinancialBaseModel):
         Invoice, on_delete=models.PROTECT, related_name="sale_invoice")
 
     def __str__(self):
-        return self.sale_number
+        return f"{self.sale_number}"
 
 
 class IncomeParticular(FinancialBaseModel):
@@ -244,7 +244,7 @@ class MemberAccount(FinancialBaseModel):
         Member, on_delete=models.PROTECT, related_name="member_account_member")
 
     def __str__(self):
-        return self.member.member_ID
+        return f"{self.member.member_ID}"
 
 
 class Due(FinancialBaseModel):
@@ -268,7 +268,7 @@ class Due(FinancialBaseModel):
         Transaction, on_delete=models.PROTECT, related_name="due_transaction")
 
     def __str__(self):
-        return self.member.member_ID
+        return f"{self.member.member_ID}"
 
 
 class MemberDue(FinancialBaseModel):
@@ -289,4 +289,4 @@ class MemberDue(FinancialBaseModel):
         Due, on_delete=models.PROTECT, related_name="member_due_due_reference")
 
     def __str__(self):
-        return self.member.member_ID
+        return f"{self.member.member_ID}"

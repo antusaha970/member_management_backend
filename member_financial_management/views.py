@@ -10,6 +10,7 @@ from datetime import date
 from django.db.models import Prefetch
 import pdb
 from core.utils.pagination import CustomPageNumberPagination
+from django.shortcuts import get_object_or_404
 from .models import PaymentMethod, Transaction, Payment, Sale, SaleType, IncomeParticular, IncomeReceivingOption, Income, IncomeReceivingType, MemberAccount, Due, MemberDue, Invoice
 from . import serializers
 from .utils.functions import generate_unique_sale_number
@@ -661,6 +662,51 @@ class InvoiceShowView(APIView):
                 verb="View",
                 severity_level="info",
                 description="User tried to view all invoices but faced an error",
+            )
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class InvoiceSpecificView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, id):
+        try:
+            queryset = get_object_or_404(Invoice.objects.select_related(
+                "invoice_type", "generated_by", "member", "restaurant", "event"
+            ).prefetch_related(
+                Prefetch("invoice_items__restaurant_items"),
+                Prefetch("invoice_items__products"),
+                Prefetch("invoice_items__facility"),
+                Prefetch("invoice_items__event_tickets"),
+            ), pk=id)
+            serializer = serializers.InvoiceForViewSerializer(
+                queryset)
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="View",
+                severity_level="info",
+                description="User viewed a single invoice",
+            )
+            return Response({
+                "code": 200,
+                "status": "success",
+                "message": "Viewing a single invoice",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="View",
+                severity_level="info",
+                description="User tried to view a single invoice and faced error",
             )
             return Response({
                 "code": 500,
