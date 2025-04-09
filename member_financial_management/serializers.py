@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Invoice, PaymentMethod, IncomeParticular, IncomeReceivingOption, InvoiceItem, Income, Sale
+from .models import Invoice, PaymentMethod, IncomeParticular, IncomeReceivingOption, InvoiceItem, Income, Sale, Transaction
 from restaurant.models import Restaurant
 from event.models import Event, EventTicket
 from product.models import Product
@@ -172,3 +172,29 @@ class SaleSpecificSerializer(serializers.ModelSerializer):
 
     def get_customer(self, obj):
         return obj.customer.member_ID
+
+
+class TransactionSerializer(serializers.ModelSerializer):
+    invoice = serializers.StringRelatedField()
+    payment_method = serializers.StringRelatedField()
+    member = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Transaction
+        fields = "__all__"
+
+    def get_member(self, obj):
+        return obj.member.member_ID
+
+
+class TransactionSpecificSerializer(serializers.ModelSerializer):
+    invoice = InvoiceForViewSerializer()
+    payment_method = serializers.StringRelatedField()
+    member = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Transaction
+        fields = "__all__"
+
+    def get_member(self, obj):
+        return obj.member.member_ID
