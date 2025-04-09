@@ -753,3 +753,39 @@ class IncomeView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class IncomeSpecificView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, id):
+        try:
+            queryset = Income.objects.select_related(
+                "sale").filter(is_active=True).order_by("id")
+            queryset = get_object_or_404(queryset, pk=id)
+            serializer = serializers.IncomeSpecificSerializer(
+                queryset)
+            return Response(
+                {
+                    "code": 200,
+                    "status": "success",
+                    "message": "Viewing the list of all income",
+                    "data": serializer.data
+                }, status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="View",
+                severity_level="info",
+                description="User tried to view a single invoice and faced error",
+            )
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
