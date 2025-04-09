@@ -279,6 +279,12 @@ class InvoicePaymentView(APIView):
                                 member=invoice.member,
                                 last_transaction_date=date.today()
                             )
+                        log_activity_task.delay_on_commit(
+                            request_data_activity_log(request),
+                            verb="Creation",
+                            severity_level="info",
+                            description="User paid an invoice",
+                        )
                         return Response(
                             {
                                 "code": 200,
@@ -378,6 +384,12 @@ class InvoicePaymentView(APIView):
                                 member=invoice.member,
                                 last_transaction_date=date.today()
                             )
+                        log_activity_task.delay_on_commit(
+                            request_data_activity_log(request),
+                            verb="Creation",
+                            severity_level="info",
+                            description="User paid an invoice",
+                        )
                         return Response(
                             {
                                 "code": 200,
@@ -389,8 +401,13 @@ class InvoicePaymentView(APIView):
                             }, status=status.HTTP_200_OK
                         )
 
-                return Response("ok")
             else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Creation",
+                    severity_level="info",
+                    description="User tried to pay an invoice but faced an error",
+                )
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -398,6 +415,13 @@ class InvoicePaymentView(APIView):
                     "errors": serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Creation",
+                severity_level="info",
+                description="User tried to pay an invoice but faced an error",
+            )
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -417,6 +441,12 @@ class IncomeParticularView(APIView):
                 data=request.data)
             if serializer.is_valid():
                 serializer.save()
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Creation",
+                    severity_level="info",
+                    description="User created an Income particular",
+                )
                 return Response({
                     "code": 201,
                     "status": "success",
@@ -424,6 +454,12 @@ class IncomeParticularView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_201_CREATED)
             else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Creation",
+                    severity_level="info",
+                    description="User tried to create an Income particular but faced error",
+                )
                 return Response({
                     "code": 400,
                     "status": "success",
@@ -431,6 +467,13 @@ class IncomeParticularView(APIView):
                     "errors": serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Creation",
+                severity_level="info",
+                description="User tried to create an Income particular but faced error",
+            )
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -445,6 +488,12 @@ class IncomeParticularView(APIView):
             data = IncomeParticular.objects.filter(is_active=True)
             serializer = serializers.IncomeParticularSerializer(
                 data, many=True)
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="View",
+                severity_level="info",
+                description="User tried to create an Income particular but faced error",
+            )
             return Response({
                 "code": 200,
                 "status": "success",
@@ -452,6 +501,13 @@ class IncomeParticularView(APIView):
                 "data": serializer.data
             }, status=status.HTTP_200_OK)
         except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="View",
+                severity_level="info",
+                description="User tried to create an Income particular but faced error",
+            )
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -471,6 +527,12 @@ class IncomeReceivedFromView(APIView):
                 data=request.data)
             if serializer.is_valid():
                 serializer.save()
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Creation",
+                    severity_level="info",
+                    description="User created and Income received from option",
+                )
                 return Response({
                     "code": 201,
                     "status": "success",
@@ -478,6 +540,12 @@ class IncomeReceivedFromView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_201_CREATED)
             else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Creation",
+                    severity_level="info",
+                    description="User requested to create Income received from option and faced and error",
+                )
                 return Response({
                     "code": 400,
                     "status": "success",
@@ -485,6 +553,13 @@ class IncomeReceivedFromView(APIView):
                     "errors": serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Creation",
+                severity_level="info",
+                description="User requested to create Income received from option and faced and error",
+            )
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -499,6 +574,12 @@ class IncomeReceivedFromView(APIView):
             data = IncomeReceivingOption.objects.filter(is_active=True)
             serializer = serializers.IncomeReceivingOptionSerializer(
                 data, many=True)
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="View",
+                severity_level="info",
+                description="User viewed all income received from view list",
+            )
             return Response({
                 "code": 200,
                 "status": "success",
@@ -506,6 +587,13 @@ class IncomeReceivedFromView(APIView):
                 "data": serializer.data
             }, status=status.HTTP_200_OK)
         except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="View",
+                severity_level="info",
+                description="User tried to view all income received from but faced error",
+            )
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -554,6 +642,12 @@ class InvoiceShowView(APIView):
                 queryset, request, view=self)
             serializer = serializers.InvoiceForViewSerializer(
                 paginated_queryset, many=True)
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="View",
+                severity_level="info",
+                description="User viewed all invoices",
+            )
             return paginator.get_paginated_response({
                 "code": 200,
                 "status": "success",
@@ -561,6 +655,13 @@ class InvoiceShowView(APIView):
                 "data": serializer.data
             }, status=200)
         except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="View",
+                severity_level="info",
+                description="User tried to view all invoices but faced an error",
+            )
             return Response({
                 "code": 500,
                 "status": "failed",
