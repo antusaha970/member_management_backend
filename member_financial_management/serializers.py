@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Invoice, PaymentMethod, IncomeParticular, IncomeReceivingOption, InvoiceItem
+from .models import Invoice, PaymentMethod, IncomeParticular, IncomeReceivingOption, InvoiceItem, Income, Sale
 from restaurant.models import Restaurant
 from event.models import Event, EventTicket
 from product.models import Product
@@ -112,3 +112,49 @@ class InvoiceForViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Invoice
         fields = "__all__"
+
+
+class IncomeSerializer(serializers.ModelSerializer):
+    particular = serializers.StringRelatedField()
+    received_from_type = serializers.StringRelatedField()
+    receiving_type = serializers.StringRelatedField()
+    member = serializers.SerializerMethodField()
+    received_by = serializers.StringRelatedField()
+    sale = serializers.StringRelatedField()
+
+    class Meta:
+        model = Income
+        fields = "__all__"
+
+    def get_member(self, obj):
+        return obj.member.member_ID
+
+
+class SaleSerializer(serializers.ModelSerializer):
+    sale_source_type = serializers.StringRelatedField()
+    customer = serializers.SerializerMethodField()
+    payment_method = serializers.StringRelatedField()
+    invoice = serializers.StringRelatedField()
+
+    class Meta:
+        model = Sale
+        fields = "__all__"
+
+    def get_customer(self, obj):
+        return obj.customer.member_ID
+
+
+class IncomeSpecificSerializer(serializers.ModelSerializer):
+    particular = serializers.StringRelatedField()
+    received_from_type = serializers.StringRelatedField()
+    receiving_type = serializers.StringRelatedField()
+    member = serializers.SerializerMethodField()
+    received_by = serializers.StringRelatedField()
+    sale = SaleSerializer()
+
+    class Meta:
+        model = Income
+        fields = "__all__"
+
+    def get_member(self, obj):
+        return obj.member.member_ID
