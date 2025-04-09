@@ -9,6 +9,7 @@ from django.db import transaction
 from datetime import date
 from django.db.models import Prefetch
 import pdb
+from core.utils.pagination import CustomPageNumberPagination
 from .models import PaymentMethod, Transaction, Payment, Sale, SaleType, IncomeParticular, IncomeReceivingOption, Income, IncomeReceivingType, MemberAccount, Due, MemberDue, Invoice
 from . import serializers
 from .utils.functions import generate_unique_sale_number
@@ -278,6 +279,12 @@ class InvoicePaymentView(APIView):
                                 member=invoice.member,
                                 last_transaction_date=date.today()
                             )
+                        log_activity_task.delay_on_commit(
+                            request_data_activity_log(request),
+                            verb="Creation",
+                            severity_level="info",
+                            description="User paid an invoice",
+                        )
                         return Response(
                             {
                                 "code": 200,
@@ -377,6 +384,12 @@ class InvoicePaymentView(APIView):
                                 member=invoice.member,
                                 last_transaction_date=date.today()
                             )
+                        log_activity_task.delay_on_commit(
+                            request_data_activity_log(request),
+                            verb="Creation",
+                            severity_level="info",
+                            description="User paid an invoice",
+                        )
                         return Response(
                             {
                                 "code": 200,
@@ -388,8 +401,13 @@ class InvoicePaymentView(APIView):
                             }, status=status.HTTP_200_OK
                         )
 
-                return Response("ok")
             else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Creation",
+                    severity_level="info",
+                    description="User tried to pay an invoice but faced an error",
+                )
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -397,6 +415,13 @@ class InvoicePaymentView(APIView):
                     "errors": serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Creation",
+                severity_level="info",
+                description="User tried to pay an invoice but faced an error",
+            )
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -416,6 +441,12 @@ class IncomeParticularView(APIView):
                 data=request.data)
             if serializer.is_valid():
                 serializer.save()
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Creation",
+                    severity_level="info",
+                    description="User created an Income particular",
+                )
                 return Response({
                     "code": 201,
                     "status": "success",
@@ -423,6 +454,12 @@ class IncomeParticularView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_201_CREATED)
             else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Creation",
+                    severity_level="info",
+                    description="User tried to create an Income particular but faced error",
+                )
                 return Response({
                     "code": 400,
                     "status": "success",
@@ -430,6 +467,13 @@ class IncomeParticularView(APIView):
                     "errors": serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Creation",
+                severity_level="info",
+                description="User tried to create an Income particular but faced error",
+            )
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -444,6 +488,12 @@ class IncomeParticularView(APIView):
             data = IncomeParticular.objects.filter(is_active=True)
             serializer = serializers.IncomeParticularSerializer(
                 data, many=True)
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="View",
+                severity_level="info",
+                description="User tried to create an Income particular but faced error",
+            )
             return Response({
                 "code": 200,
                 "status": "success",
@@ -451,6 +501,13 @@ class IncomeParticularView(APIView):
                 "data": serializer.data
             }, status=status.HTTP_200_OK)
         except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="View",
+                severity_level="info",
+                description="User tried to create an Income particular but faced error",
+            )
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -470,6 +527,12 @@ class IncomeReceivedFromView(APIView):
                 data=request.data)
             if serializer.is_valid():
                 serializer.save()
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Creation",
+                    severity_level="info",
+                    description="User created and Income received from option",
+                )
                 return Response({
                     "code": 201,
                     "status": "success",
@@ -477,6 +540,12 @@ class IncomeReceivedFromView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_201_CREATED)
             else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Creation",
+                    severity_level="info",
+                    description="User requested to create Income received from option and faced and error",
+                )
                 return Response({
                     "code": 400,
                     "status": "success",
@@ -484,6 +553,13 @@ class IncomeReceivedFromView(APIView):
                     "errors": serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Creation",
+                severity_level="info",
+                description="User requested to create Income received from option and faced and error",
+            )
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -498,6 +574,12 @@ class IncomeReceivedFromView(APIView):
             data = IncomeReceivingOption.objects.filter(is_active=True)
             serializer = serializers.IncomeReceivingOptionSerializer(
                 data, many=True)
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="View",
+                severity_level="info",
+                description="User viewed all income received from view list",
+            )
             return Response({
                 "code": 200,
                 "status": "success",
@@ -505,6 +587,13 @@ class IncomeReceivedFromView(APIView):
                 "data": serializer.data
             }, status=status.HTTP_200_OK)
         except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="View",
+                severity_level="info",
+                description="User tried to view all income received from but faced error",
+            )
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -520,7 +609,7 @@ class InvoiceShowView(APIView):
 
     def get(self, request):
         try:
-            invoices = Invoice.objects.select_related(
+            queryset = Invoice.objects.select_related(
                 "invoice_type", "generated_by", "member", "restaurant", "event"
             ).prefetch_related(
                 Prefetch("invoice_items__restaurant_items"),
@@ -528,15 +617,51 @@ class InvoiceShowView(APIView):
                 Prefetch("invoice_items__facility"),
                 Prefetch("invoice_items__event_tickets"),
             ).order_by("id")
+
+            # get query params
+            is_full_paid = self.request.query_params.get("is_full_paid")
+            invoice_type = self.request.query_params.get("invoice_type")
+            member_id = self.request.query_params.get("member")
+            status_name = self.request.query_params.get("status")
+
+            # apply filters if query params are present
+            if is_full_paid is not None:
+                queryset = queryset.filter(
+                    is_full_paid=is_full_paid.lower() == "true")
+
+            if invoice_type is not None:
+                queryset = queryset.filter(
+                    invoice_type__name__iexact=invoice_type.lower())
+            if member_id is not None:
+                queryset = queryset.filter(member__member_ID=member_id)
+            if status_name is not None:
+                queryset = queryset.filter(status__iexact=status_name)
+
+            paginator = CustomPageNumberPagination()
+            paginated_queryset = paginator.paginate_queryset(
+                queryset, request, view=self)
             serializer = serializers.InvoiceForViewSerializer(
-                invoices, many=True)
-            return Response({
+                paginated_queryset, many=True)
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="View",
+                severity_level="info",
+                description="User viewed all invoices",
+            )
+            return paginator.get_paginated_response({
                 "code": 200,
                 "status": "success",
                 "message": "List of all invoices",
                 "data": serializer.data
-            }, status=status.HTTP_200_OK)
+            }, status=200)
         except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="View",
+                severity_level="info",
+                description="User tried to view all invoices but faced an error",
+            )
             return Response({
                 "code": 500,
                 "status": "failed",
