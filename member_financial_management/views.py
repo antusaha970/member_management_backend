@@ -534,6 +534,7 @@ class InvoiceShowView(APIView):
             is_full_paid = self.request.query_params.get("is_full_paid")
             invoice_type = self.request.query_params.get("invoice_type")
             member_id = self.request.query_params.get("member")
+            status_name = self.request.query_params.get("status")
 
             # apply filters if query params are present
             if is_full_paid is not None:
@@ -543,9 +544,11 @@ class InvoiceShowView(APIView):
             if invoice_type is not None:
                 queryset = queryset.filter(
                     invoice_type__name__iexact=invoice_type.lower())
-
             if member_id is not None:
                 queryset = queryset.filter(member__member_ID=member_id)
+            if status_name is not None:
+                queryset = queryset.filter(status__iexact=status_name)
+
             paginator = CustomPageNumberPagination()
             paginated_queryset = paginator.paginate_queryset(
                 queryset, request, view=self)
