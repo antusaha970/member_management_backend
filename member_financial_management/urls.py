@@ -7,6 +7,8 @@ urlpatterns = [
          name="invoice_payment_view"),
     path("v1/income/particular/", views.IncomeParticularView.as_view(),
          name="income_particular_view"),
+    path("v1/income/", views.IncomeView.as_view(),
+         name="income_view"),
     path("v1/income/receiving_options/", views.IncomeReceivedFromView.as_view(),
          name="income_receiving_option_view"),
     path("v1/invoices/", views.InvoiceShowView.as_view(),
