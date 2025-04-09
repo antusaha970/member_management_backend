@@ -559,7 +559,57 @@ class EventFeeView(APIView):
                 }
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                
- 
+
+class EventTicketDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self, request,ticket_id):
+        try:
+            event_ticket = EventTicket.objects.get(pk=ticket_id)
+            serializer = serializers.EventTicketViewSerializer(event_ticket)
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="View event ticket details",
+                severity_level="info",
+                description="User viewed event ticket details",
+            )
+            return Response({
+                "code": 200,
+                "status": "success",
+                "message": "Event ticket details",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except EventTicket.DoesNotExist:
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Event ticket details retrieve failed",
+                severity_level="info",
+                description="User tried to view event ticket details but event ticket not found",
+            )
+            return Response({
+                "code": 404,
+                "status": "failed",
+                "message": "Event ticket not found",
+                "errors": {
+                    "event_ticket": ["Event ticket not found"]
+                }
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Event ticket details retrieve failed",
+                severity_level="info",
+                description="Error occurred while retrieving event ticket details",
+            )
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                
 
 class EventTicketBuyView(APIView):
     permission_classes = [IsAuthenticated]
