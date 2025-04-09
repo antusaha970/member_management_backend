@@ -17,4 +17,9 @@ urlpatterns = [
          name="invoice_show_view"),
     path("v1/invoices/<int:id>/", views.InvoiceSpecificView.as_view(),
          name="invoice_specific_view"),
+    path("v1/sales/", views.SalesView.as_view(),
+         name="sales_view"),
+    path("v1/sales/<int:id>/", views.SalesSpecificView.as_view(),
+         name="sales_specific_view"),
+
 ]

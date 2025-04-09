@@ -158,3 +158,17 @@ class IncomeSpecificSerializer(serializers.ModelSerializer):
 
     def get_member(self, obj):
         return obj.member.member_ID
+
+
+class SaleSpecificSerializer(serializers.ModelSerializer):
+    sale_source_type = serializers.StringRelatedField()
+    customer = serializers.SerializerMethodField()
+    payment_method = serializers.StringRelatedField()
+    invoice = InvoiceForViewSerializer()
+
+    class Meta:
+        model = Sale
+        fields = "__all__"
+
+    def get_customer(self, obj):
+        return obj.customer.member_ID

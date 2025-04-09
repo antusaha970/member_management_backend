@@ -789,3 +789,86 @@ class IncomeSpecificView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class SalesView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            data = Sale.objects.filter(is_active=True).order_by("id")
+            paginator = CustomPageNumberPagination()
+            paginated_queryset = paginator.paginate_queryset(
+                data, request=request, view=self)
+            serializer = serializers.SaleSerializer(
+                paginated_queryset, many=True)
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="View",
+                severity_level="info",
+                description="User viewed all sales",
+            )
+            return paginator.get_paginated_response(
+                {
+                    "code": 200,
+                    "status": "success",
+                    "message": "Viewing the list of all income",
+                    "data": serializer.data
+                }, status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="View",
+                severity_level="info",
+                description="User tried to view list of sales and faced error",
+            )
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class SalesSpecificView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, id):
+        try:
+            data = get_object_or_404(Sale, pk=id)
+            serializer = serializers.SaleSpecificSerializer(
+                data)
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="View",
+                severity_level="info",
+                description="User viewed a sale",
+            )
+            return Response(
+                {
+                    "code": 200,
+                    "status": "success",
+                    "message": "Viewing the list of all income",
+                    "data": serializer.data
+                }, status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="View",
+                severity_level="info",
+                description="User tried to view a sale and faced error",
+            )
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
