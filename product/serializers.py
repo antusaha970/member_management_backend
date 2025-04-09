@@ -149,3 +149,18 @@ class ProductPriceViewSerializer(serializers.ModelSerializer):
         model = ProductPrice
         fields = "__all__"
         depth = 2
+    
+    
+class ProductItemSerializer(serializers.Serializer):
+    product = serializers.PrimaryKeyRelatedField(queryset = Product.objects.filter(is_active = True))
+    quantity=serializers.IntegerField(min_value=1)
+    
+        
+class ProductBuySerializer(serializers.Serializer):
+    product_items = serializers.ListSerializer(child=ProductItemSerializer(),allow_empty=False)
+    member_ID = serializers.CharField()
+    
+    def validate_member_ID(self, value):
+        if not Member.objects.filter(member_ID=value).exists():
+            raise serializers.ValidationError(f"{value} is not a member")
+        return value
