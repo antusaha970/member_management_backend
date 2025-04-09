@@ -9,6 +9,7 @@ from django.db import transaction
 from datetime import date
 from django.db.models import Prefetch
 import pdb
+from core.utils.pagination import CustomPageNumberPagination
 from .models import PaymentMethod, Transaction, Payment, Sale, SaleType, IncomeParticular, IncomeReceivingOption, Income, IncomeReceivingType, MemberAccount, Due, MemberDue, Invoice
 from . import serializers
 from .utils.functions import generate_unique_sale_number
@@ -520,7 +521,7 @@ class InvoiceShowView(APIView):
 
     def get(self, request):
         try:
-            invoices = Invoice.objects.select_related(
+            queryset = Invoice.objects.select_related(
                 "invoice_type", "generated_by", "member", "restaurant", "event"
             ).prefetch_related(
                 Prefetch("invoice_items__restaurant_items"),
@@ -528,14 +529,34 @@ class InvoiceShowView(APIView):
                 Prefetch("invoice_items__facility"),
                 Prefetch("invoice_items__event_tickets"),
             ).order_by("id")
+
+            # get query params
+            is_full_paid = self.request.query_params.get("is_full_paid")
+            invoice_type = self.request.query_params.get("invoice_type")
+            member_id = self.request.query_params.get("member")
+
+            # apply filters if query params are present
+            if is_full_paid is not None:
+                queryset = queryset.filter(
+                    is_full_paid=is_full_paid.lower() == "true")
+
+            if invoice_type is not None:
+                queryset = queryset.filter(
+                    invoice_type__name__iexact=invoice_type.lower())
+
+            if member_id is not None:
+                queryset = queryset.filter(member__member_ID=member_id)
+            paginator = CustomPageNumberPagination()
+            paginated_queryset = paginator.paginate_queryset(
+                queryset, request, view=self)
             serializer = serializers.InvoiceForViewSerializer(
-                invoices, many=True)
-            return Response({
+                paginated_queryset, many=True)
+            return paginator.get_paginated_response({
                 "code": 200,
                 "status": "success",
                 "message": "List of all invoices",
                 "data": serializer.data
-            }, status=status.HTTP_200_OK)
+            }, status=200)
         except Exception as e:
             return Response({
                 "code": 500,
