@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Invoice, PaymentMethod, IncomeParticular, IncomeReceivingOption, InvoiceItem, Income, Sale, Transaction
+from .models import Invoice, PaymentMethod, IncomeParticular, IncomeReceivingOption, InvoiceItem, Income, Sale, Transaction, Payment
 from restaurant.models import Restaurant
 from event.models import Event, EventTicket
 from product.models import Product
@@ -198,3 +198,39 @@ class TransactionSpecificSerializer(serializers.ModelSerializer):
 
     def get_member(self, obj):
         return obj.member.member_ID
+
+
+class PaymentSerializer(serializers.ModelSerializer):
+    invoice = serializers.StringRelatedField()
+    member = serializers.SerializerMethodField()
+    payment_method = serializers.StringRelatedField()
+    processed_by = serializers.SerializerMethodField()
+    transaction = serializers.StringRelatedField()
+
+    class Meta:
+        model = Payment
+        fields = "__all__"
+
+    def get_member(self, obj):
+        return obj.member.member_ID
+
+    def get_processed_by(self, obj):
+        return obj.processed_by.username
+
+
+class PaymentSpecificSerializer(serializers.ModelSerializer):
+    invoice = InvoiceSerializer()
+    member = serializers.SerializerMethodField()
+    payment_method = serializers.StringRelatedField()
+    processed_by = serializers.SerializerMethodField()
+    transaction = TransactionSerializer()
+
+    class Meta:
+        model = Payment
+        fields = "__all__"
+
+    def get_member(self, obj):
+        return obj.member.member_ID
+
+    def get_processed_by(self, obj):
+        return obj.processed_by.username
