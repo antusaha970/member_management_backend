@@ -33,5 +33,9 @@ urlpatterns = [
          name="dues_view"),
     path("v1/dues/<int:id>/", views.DueSpecificView.as_view(),
          name="dues_specific_view"),
+    path("v1/member_dues/", views.MemberDueView.as_view(),
+         name="member_dues_view"),
+    path("v1/member_dues/<int:id>/", views.MemberDueSpecificView.as_view(),
+         name="member_due_specific_view"),
 
 ]
