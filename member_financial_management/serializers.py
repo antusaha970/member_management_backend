@@ -272,6 +272,17 @@ class DuesSpecificSerializer(serializers.ModelSerializer):
 
 class MemberDueSerializer(serializers.ModelSerializer):
     member = serializers.SerializerMethodField()
+
+    class Meta:
+        model = MemberDue
+        fields = "__all__"
+
+    def get_member(self, obj):
+        return obj.member.member_ID
+
+
+class MemberDueSpecificSerializer(serializers.ModelSerializer):
+    member = serializers.SerializerMethodField()
     due_reference = DuesSerializer()
 
     class Meta:
