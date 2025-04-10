@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Invoice, PaymentMethod, IncomeParticular, IncomeReceivingOption, InvoiceItem, Income, Sale
+from .models import Invoice, PaymentMethod, IncomeParticular, IncomeReceivingOption, InvoiceItem, Income, Sale, Transaction, Payment, Due, MemberDue, MemberAccount
 from restaurant.models import Restaurant
 from event.models import Event, EventTicket
 from product.models import Product
@@ -154,6 +154,150 @@ class IncomeSpecificSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Income
+        fields = "__all__"
+
+    def get_member(self, obj):
+        return obj.member.member_ID
+
+
+class SaleSpecificSerializer(serializers.ModelSerializer):
+    sale_source_type = serializers.StringRelatedField()
+    customer = serializers.SerializerMethodField()
+    payment_method = serializers.StringRelatedField()
+    invoice = InvoiceForViewSerializer()
+
+    class Meta:
+        model = Sale
+        fields = "__all__"
+
+    def get_customer(self, obj):
+        return obj.customer.member_ID
+
+
+class TransactionSerializer(serializers.ModelSerializer):
+    invoice = serializers.StringRelatedField()
+    payment_method = serializers.StringRelatedField()
+    member = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Transaction
+        fields = "__all__"
+
+    def get_member(self, obj):
+        return obj.member.member_ID
+
+
+class TransactionSpecificSerializer(serializers.ModelSerializer):
+    invoice = InvoiceForViewSerializer()
+    payment_method = serializers.StringRelatedField()
+    member = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Transaction
+        fields = "__all__"
+
+    def get_member(self, obj):
+        return obj.member.member_ID
+
+
+class PaymentSerializer(serializers.ModelSerializer):
+    invoice = serializers.StringRelatedField()
+    member = serializers.SerializerMethodField()
+    payment_method = serializers.StringRelatedField()
+    processed_by = serializers.SerializerMethodField()
+    transaction = serializers.StringRelatedField()
+
+    class Meta:
+        model = Payment
+        fields = "__all__"
+
+    def get_member(self, obj):
+        return obj.member.member_ID
+
+    def get_processed_by(self, obj):
+        return obj.processed_by.username
+
+
+class PaymentSpecificSerializer(serializers.ModelSerializer):
+    invoice = InvoiceSerializer()
+    member = serializers.SerializerMethodField()
+    payment_method = serializers.StringRelatedField()
+    processed_by = serializers.SerializerMethodField()
+    transaction = TransactionSerializer()
+
+    class Meta:
+        model = Payment
+        fields = "__all__"
+
+    def get_member(self, obj):
+        return obj.member.member_ID
+
+    def get_processed_by(self, obj):
+        return obj.processed_by.username
+
+
+class DuesSerializer(serializers.ModelSerializer):
+    member = serializers.SerializerMethodField()
+    invoice = serializers.StringRelatedField()
+    payment = serializers.SerializerMethodField()
+    transaction = serializers.StringRelatedField()
+
+    class Meta:
+        model = Due
+        fields = "__all__"
+
+    def get_member(self, obj):
+        return obj.member.member_ID
+
+    def get_payment(self, obj):
+        return obj.payment.id
+
+
+class DuesSpecificSerializer(serializers.ModelSerializer):
+    member = serializers.SerializerMethodField()
+    invoice = InvoiceSerializer()
+    payment = PaymentSerializer()
+    transaction = TransactionSerializer()
+
+    class Meta:
+        model = Due
+        fields = "__all__"
+
+    def get_member(self, obj):
+        return obj.member.member_ID
+
+    def get_payment(self, obj):
+        return obj.payment.id
+
+
+class MemberDueSerializer(serializers.ModelSerializer):
+    member = serializers.SerializerMethodField()
+
+    class Meta:
+        model = MemberDue
+        fields = "__all__"
+
+    def get_member(self, obj):
+        return obj.member.member_ID
+
+
+class MemberDueSpecificSerializer(serializers.ModelSerializer):
+    member = serializers.SerializerMethodField()
+    due_reference = DuesSerializer()
+
+    class Meta:
+        model = MemberDue
+        fields = "__all__"
+
+    def get_member(self, obj):
+        return obj.member.member_ID
+
+
+class MemberAccountSerializer(serializers.ModelSerializer):
+    member = serializers.SerializerMethodField()
+
+    class Meta:
+        model = MemberAccount
         fields = "__all__"
 
     def get_member(self, obj):
