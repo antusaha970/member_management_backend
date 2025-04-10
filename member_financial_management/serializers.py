@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Invoice, PaymentMethod, IncomeParticular, IncomeReceivingOption, InvoiceItem, Income, Sale, Transaction, Payment
+from .models import Invoice, PaymentMethod, IncomeParticular, IncomeReceivingOption, InvoiceItem, Income, Sale, Transaction, Payment, Due, MemberDue
 from restaurant.models import Restaurant
 from event.models import Event, EventTicket
 from product.models import Product
@@ -234,3 +234,49 @@ class PaymentSpecificSerializer(serializers.ModelSerializer):
 
     def get_processed_by(self, obj):
         return obj.processed_by.username
+
+
+class DuesSerializer(serializers.ModelSerializer):
+    member = serializers.SerializerMethodField()
+    invoice = serializers.StringRelatedField()
+    payment = serializers.SerializerMethodField()
+    transaction = serializers.StringRelatedField()
+
+    class Meta:
+        model = Due
+        fields = "__all__"
+
+    def get_member(self, obj):
+        return obj.member.member_ID
+
+    def get_payment(self, obj):
+        return obj.payment.id
+
+
+class DuesSpecificSerializer(serializers.ModelSerializer):
+    member = serializers.SerializerMethodField()
+    invoice = InvoiceSerializer()
+    payment = serializers.SerializerMethodField()
+    transaction = TransactionSerializer()
+
+    class Meta:
+        model = Due
+        fields = "__all__"
+
+    def get_member(self, obj):
+        return obj.member.member_ID
+
+    def get_payment(self, obj):
+        return obj.payment.id
+
+
+class MemberDueSerializer(serializers.ModelSerializer):
+    member = serializers.SerializerMethodField()
+    due_reference = DuesSerializer()
+
+    class Meta:
+        model = MemberDue
+        fields = "__all__"
+
+    def get_member(self, obj):
+        return obj.member.member_ID
