@@ -25,5 +25,9 @@ urlpatterns = [
          name="transaction_view"),
     path("v1/transactions/<int:id>/", views.TransactionSpecificView.as_view(),
          name="transaction_specific_view"),
+    path("v1/payments/", views.PaymentView.as_view(),
+         name="payment_view"),
+    path("v1/payments/<int:id>/", views.PaymentSpecificView.as_view(),
+         name="payment_specific_view"),
 
 ]
