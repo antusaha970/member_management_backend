@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Invoice, PaymentMethod, IncomeParticular, IncomeReceivingOption, InvoiceItem, Income, Sale, Transaction, Payment, Due, MemberDue
+from .models import Invoice, PaymentMethod, IncomeParticular, IncomeReceivingOption, InvoiceItem, Income, Sale, Transaction, Payment, Due, MemberDue, MemberAccount
 from restaurant.models import Restaurant
 from event.models import Event, EventTicket
 from product.models import Product
@@ -287,6 +287,17 @@ class MemberDueSpecificSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = MemberDue
+        fields = "__all__"
+
+    def get_member(self, obj):
+        return obj.member.member_ID
+
+
+class MemberAccountSerializer(serializers.ModelSerializer):
+    member = serializers.SerializerMethodField()
+
+    class Meta:
+        model = MemberAccount
         fields = "__all__"
 
     def get_member(self, obj):
