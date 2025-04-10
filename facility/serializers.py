@@ -39,7 +39,7 @@ class FacilityViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Facility
         fields = "__all__"
-              
+      
 class FacilityUseFeeSerializer(serializers.Serializer):
     fee = serializers.DecimalField(max_digits=10, decimal_places=2)
     facility = serializers.PrimaryKeyRelatedField(queryset=Facility.objects.all())

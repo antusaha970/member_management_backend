@@ -78,61 +78,72 @@ class FacilityView(APIView):
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     def get(self, request):
         """
-        Retrieves a list of all facilities and logs an activity.
+        Retrieves a list of all active facilities with optional filters and logs the activity.
         Returns:
-            Response: The response containing the list of facilities.
+            Response: The response containing the filtered and paginated list of facilities.
         """
         try:
+            # Base queryset
             facilities = Facility.objects.filter(is_active=True)
-            # get query params
-            name = self.request.query_params.get("name")
-            usages_roles = self.request.query_params.get("usages_roles")
-            status_name = self.request.query_params.get("status")
-            usages_fee_less_than = self.request.query_params.get("usages_fee_less_than")
-            usages_fee_greater_than = self.request.query_params.get("usages_fee_greater_than")
-            
-            
-            if name is not None:
-                facilities = facilities.filter(name__icontains=name)
-            if usages_roles is not None:
-                facilities = facilities.filter(usages_roles__icontains=usages_roles)
-            if status_name is not None:
-                facilities = facilities.filter(status__icontains=status_name)
-            if usages_fee_less_than is not None:
-                facilities = facilities.filter(usages_fee__lte=Decimal(usages_fee_less_than))
-            if usages_fee_greater_than is not None:
-                facilities = facilities.filter(usages_fee__gte=Decimal(usages_fee_greater_than))
-            # apply filters if query params are present
+
+            # Query parameters
+            query_params = request.query_params
+            name = query_params.get("name")
+            usages_roles = query_params.get("usages_roles")
+            status_name = query_params.get("status")
+            usages_fee_lt = query_params.get("usages_fee_less_than")
+            usages_fee_gt = query_params.get("usages_fee_greater_than")
+
+            # Dynamic filtering
+            filters = {}
+            if name:
+                filters["name__icontains"] = name
+            if usages_roles:
+                filters["usages_roles__icontains"] = usages_roles
+            if status_name:
+                filters["status__icontains"] = status_name
+            if usages_fee_lt:
+                filters["usages_fee__lte"] = Decimal(usages_fee_lt)
+            if usages_fee_gt:
+                filters["usages_fee__gte"] = Decimal(usages_fee_gt)
+
+            # Apply filters
+            facilities = facilities.filter(**filters).order_by("id")
+
+            # Pagination and serialization
             paginator = CustomPageNumberPagination()
-            paginated_queryset = paginator.paginate_queryset(
-                facilities, request, view=self) 
-            serializer = serializers.FacilityViewSerializer(paginated_queryset, many=True)  # Updated to use 'paginated_queryset'
+            paginated_queryset = paginator.paginate_queryset(facilities, request, view=self)
+            serializer = serializers.FacilityViewSerializer(paginated_queryset, many=True)
+
+            # Logging
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
                 verb="Retrieve all facilities",
                 severity_level="info",
-                description="User retrieved all facilities successfully",)
+                description="User retrieved all facilities successfully",
+            )
+
             return paginator.get_paginated_response({
                 "code": 200,
-                "status": "success",
                 "message": "Facilities retrieved successfully",
+                "status": "success",
                 "data": serializer.data
-            }, status=200)
+            })
+
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
-                verb="Facilities retrieve failed",
+                verb="Retrieve facilities failed",
                 severity_level="error",
-                description="Error occurred while retrieving all facilities",)
+                description="An error occurred while retrieving facilities",
+            )
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
-                "message": "Error occurred",
-                "status": "failed",
-                'errors': {
-                    'server_error': [str(e)]
-                }
+                "message": "An error occurred while retrieving facilities",
+                "status": "failed"
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
      
                 
 class FacilityUseFeeView(APIView):
@@ -231,54 +242,7 @@ class FacilityUseFeeView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
          
                 
-class FacilityDetailView(APIView):
-    permission_classes = [IsAuthenticated,IsAdminUser] 
-    
-    def get(self, request, facility_id):
-        try:
-            facility = Facility.objects.get(pk=facility_id)
-            serializer = serializers.FacilityViewSerializer(facility)
-            log_activity_task.delay_on_commit(
-                request_data_activity_log(request),
-                verb="Retrieve a facility",
-                severity_level="info",
-                description="User retrieved a facility successfully",)
-            return Response({
-                "code": 200,
-                "message": "Facility retrieved successfully",
-                "status": "success",
-                "data": serializer.data  
-            }, status=status.HTTP_200_OK)
-        except Facility.DoesNotExist:
-            log_activity_task.delay_on_commit(
-                request_data_activity_log(request),
-                verb="Facility details retrieval failed",
-                severity_level="error",
-                description="An error occurred while retrieving facility details",)
-            return Response({
-                "code": status.HTTP_404_NOT_FOUND,
-                "message": "Facility not found",
-                "status": "failed",
-                "errors": {
-                    "facility": ["Facility not found"]
-                }
-            }, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            logger.exception(str(e))
-            log_activity_task.delay_on_commit(
-                request_data_activity_log(request),
-                verb="Facility retrieve failed",
-                severity_level="error",
-                description="Error occurred while retrieving a facility",)
-            return Response({
-                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
-                "message": "Error occurred",
-                "status": "failed",
-                'errors': {
-                    'server_error': [str(e)]
-                }
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
- 
+
 class FacilityBuyView(APIView):
     permission_classes = [IsAuthenticated]
     
@@ -371,6 +335,70 @@ class FacilityBuyView(APIView):
                     'server_error': [str(e)]
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
+class FacilityDetailView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def get(self, request, facility_id):
+        try:
+            facility = Facility.objects.get(pk=facility_id)
+            facility_usages_fee = FacilityUseFee.objects.filter(facility=facility)
+
+            facility_data = serializers.FacilityViewSerializer(facility).data
+            
+            if facility_usages_fee.exists():
+                usage_fees_data = serializers.FacilityUseFeeViewSerializer(facility_usages_fee, many=True).data
+            else:
+                usage_fees_data = []
+
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Retrieve a facility",
+                severity_level="info",
+                description="User retrieved a facility successfully",
+            )
+
+            return Response({
+                "code": 200,
+                "message": "Facility retrieved successfully",
+                "status": "success",
+                "data": {
+                    "facility": facility_data,
+                    "usage_fees": usage_fees_data
+                }
+            }, status=status.HTTP_200_OK)
+
+        except Facility.DoesNotExist:
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Facility details retrieval failed",
+                severity_level="error",
+                description="An error occurred while retrieving facility details",
+            )
+            return Response({
+                "code": status.HTTP_404_NOT_FOUND,
+                "message": "Facility not found",
+                "status": "failed",
+                "errors": {
+                    "facility": ["Facility not found"]
+                }
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Facility retrieve failed",
+                severity_level="error",
+                description="Error occurred while retrieving a facility",
+            )
+            return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Something went wrong",
+                "status": "failed",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                                      
                 
             
