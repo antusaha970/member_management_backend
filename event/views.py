@@ -190,7 +190,7 @@ class EventView(APIView):
             Response: The response containing the list of events.
         """
         try:
-            events = Event.objects.all()
+            events = Event.objects.filter(is_active=True)            
             serializer = serializers.EventViewSerializer(events, many=True)
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
@@ -276,8 +276,7 @@ class EventDetailView(APIView):
                 }
             })
             
-            
-                        
+                           
 class EventTicketView(APIView):
     permission_classes = [IsAuthenticated,IsAdminUser]
     def post(self,request):

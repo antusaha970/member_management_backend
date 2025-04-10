@@ -13,11 +13,12 @@ from member.models import Member
 from django.db import transaction
 from member_financial_management.serializers import InvoiceSerializer
 from member_financial_management.models import Invoice, InvoiceItem, InvoiceType
+from core.utils.pagination import CustomPageNumberPagination
 from datetime import date
 import logging
+from decimal import Decimal
 logger = logging.getLogger("myapp")
 import pdb
-
 
 class FacilityView(APIView):
     permission_classes = [IsAuthenticated,IsAdminUser]
@@ -82,19 +83,41 @@ class FacilityView(APIView):
             Response: The response containing the list of facilities.
         """
         try:
-            facilities = Facility.objects.all()
-            serializer = serializers.FacilityViewSerializer(facilities, many=True)
+            facilities = Facility.objects.filter(is_active=True)
+            # get query params
+            name = self.request.query_params.get("name")
+            usages_roles = self.request.query_params.get("usages_roles")
+            status_name = self.request.query_params.get("status")
+            usages_fee_less_than = self.request.query_params.get("usages_fee_less_than")
+            usages_fee_greater_than = self.request.query_params.get("usages_fee_greater_than")
+            
+            
+            if name is not None:
+                facilities = facilities.filter(name__icontains=name)
+            if usages_roles is not None:
+                facilities = facilities.filter(usages_roles__icontains=usages_roles)
+            if status_name is not None:
+                facilities = facilities.filter(status__icontains=status_name)
+            if usages_fee_less_than is not None:
+                facilities = facilities.filter(usages_fee__lte=Decimal(usages_fee_less_than))
+            if usages_fee_greater_than is not None:
+                facilities = facilities.filter(usages_fee__gte=Decimal(usages_fee_greater_than))
+            # apply filters if query params are present
+            paginator = CustomPageNumberPagination()
+            paginated_queryset = paginator.paginate_queryset(
+                facilities, request, view=self) 
+            serializer = serializers.FacilityViewSerializer(paginated_queryset, many=True)  # Updated to use 'paginated_queryset'
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
                 verb="Retrieve all facilities",
                 severity_level="info",
                 description="User retrieved all facilities successfully",)
-            return Response({
+            return paginator.get_paginated_response({
                 "code": 200,
-                "message": "Facilities retrieved successfully",
                 "status": "success",
-                "data": serializer.data  
-            }, status=status.HTTP_200_OK)
+                "message": "Facilities retrieved successfully",
+                "data": serializer.data
+            }, status=200)
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -110,10 +133,245 @@ class FacilityView(APIView):
                     'server_error': [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+     
                 
+class FacilityUseFeeView(APIView):
+    permission_classes = [IsAuthenticated,IsAdminUser]
+    def post(self, request):
+        """
+        Creates a new facility use fee instance and logs an activity.
+        Args:
+            request (Request): The request containing the data for the new facility use fee instance.
+        Returns:
+            Response: The response containing the new facility use fee instance's id and fee
+        """
+        try:
+            data = request.data
+            serializer = serializers.FacilityUseFeeSerializer(data=data)
+            if serializer.is_valid():
+                with transaction.atomic():
+                    facility_use_fee_instance = serializer.save()
+                    facility_use_fee_id = facility_use_fee_instance.id
+                    facility_use_fee = facility_use_fee_instance.fee
+                    log_activity_task.delay_on_commit(
+                        request_data_activity_log(request),
+                        verb="Facility use fee created successfully",
+                        severity_level="info",
+                        description="Facility use fee created successfully",)
+                    return Response({
+                        "code": 201,
+                        "message": "Facility use fee created successfully",
+                        "status": "success",
+                        "data": {
+                            "facility_use_fee_id": facility_use_fee_id,
+                            "facility_use_fee": facility_use_fee,
+                        }
+                    })
+            else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Facility use fee creation failed",
+                    severity_level="error",
+                    description="user tried to create a new facility use fee but made an invalid request",)
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Invalid request",
+                    "errors": serializer.errors,
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Facility use fee creation failed",
+                severity_level="error",
+                description="user tried to create a new facility use fee but made an invalid request",)
+            return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
+                'errors': {
+                    'server_error': [str(e)]
+                }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def get(self, request):
+        """
+        Retrieves a list of all facility use fees and logs an activity.
+        Returns:
+            Response: The response containing the list of facility use fees.
+        """
+        try:
+            facility_use_fees = FacilityUseFee.objects.filter(is_active=True)
+            serializer = serializers.FacilityUseFeeViewSerializer(facility_use_fees, many=True)
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Retrieve all facility use fees",
+                severity_level="info",
+                description="User retrieved all facility use fees successfully",)
+            return Response({
+                "code": 200,
+                "message": "Facility use fees retrieved successfully",
+                "status": "success",
+                "data": serializer.data  
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Facility use fees retrieve failed",
+                severity_level="error",
+                description="Error occurred while retrieving all facility use fees",)
+            return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
+                'errors': {
+                    'server_error': [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+         
                 
+class FacilityDetailView(APIView):
+    permission_classes = [IsAuthenticated,IsAdminUser] 
+    
+    def get(self, request, facility_id):
+        try:
+            facility = Facility.objects.get(pk=facility_id)
+            serializer = serializers.FacilityViewSerializer(facility)
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Retrieve a facility",
+                severity_level="info",
+                description="User retrieved a facility successfully",)
+            return Response({
+                "code": 200,
+                "message": "Facility retrieved successfully",
+                "status": "success",
+                "data": serializer.data  
+            }, status=status.HTTP_200_OK)
+        except Facility.DoesNotExist:
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Facility details retrieval failed",
+                severity_level="error",
+                description="An error occurred while retrieving facility details",)
+            return Response({
+                "code": status.HTTP_404_NOT_FOUND,
+                "message": "Facility not found",
+                "status": "failed",
+                "errors": {
+                    "facility": ["Facility not found"]
+                }
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Facility retrieve failed",
+                severity_level="error",
+                description="Error occurred while retrieving a facility",)
+            return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
+                'errors': {
+                    'server_error': [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+ 
+class FacilityBuyView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    
+    def post(self, request):
+        """
+        Creates an invoice for a facility purchase.
+        Args:
+            request (Request): The request containing the data for the invoice instance.
+        Returns:
+            Response: The response containing the created invoice and a success message.
+        """
+        try:
+            data = request.data
+            serializer = serializers.FacilityBuySerializer(data=data)
+            if serializer.is_valid():
+                member = serializer.validated_data["member_ID"]
+                member = Member.objects.get(member_ID=member)
+                facility = serializer.validated_data["facility"]
+                facility_uses_fee = FacilityUseFee.objects.filter(facility=facility, membership_type=member.membership_type).first()
+                fee = 0
+               
+                if facility_uses_fee:
+                    fee = facility_uses_fee.fee
+                else:
+                    fee = facility.usages_fee
                 
-                
+            
+                # else:
+                #     fee = facility.usages_fee
+                # pdb.set_trace()
+                invoice_type, _ = InvoiceType.objects.get_or_create(
+                    name="Facility")
+
+                with transaction.atomic():
+                    invoice = Invoice.objects.create(
+                        currency="BDT",
+                        invoice_number=generate_unique_invoice_number(),
+                        balance_due=fee,
+                        paid_amount=0,
+                        issue_date=date.today(),
+                        total_amount=fee,
+                        is_full_paid=False,
+                        status="unpaid",
+                        invoice_type=invoice_type,
+                        generated_by=request.user,
+                        member=member
+                        
+                    )
+                    invoice_item = InvoiceItem.objects.create(
+                        invoice=invoice
+                    )
+                    invoice_item.facility.set([facility.id])    
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Invoice created successfully",
+                    severity_level="info",
+                    description="user generated an invoice successfully",)
+                return Response({
+                    "code": 200,
+                    "message": "Invoice created successfully",
+                    "status": "success",
+                    "data": InvoiceSerializer(invoice).data    
+                }, status=status.HTTP_200_OK)
+            else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Invoice creation failed",
+                    severity_level="error",
+                    description="user tried to generate an invoice but made an invalid request",)
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Invalid request",
+                    "errors": serializer.errors,
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:  
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Invoice creation failed",
+                severity_level="error",
+                description="user tried to generate an invoice but made an invalid request",)
+            return Response({
+
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
+                'errors': {
+                    'server_error': [str(e)]
+                }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+                                     
                 
             
             
