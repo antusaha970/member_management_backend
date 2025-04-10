@@ -123,7 +123,7 @@ class InvoicePaymentView(APIView):
                         full_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
                             name="full")
                         transaction_obj = Transaction.objects.create(
-                            amount=amount,
+                            amount=invoice.paid_amount,
                             transaction_date=date.today(),
                             status="paid",
                             member=invoice.member,
@@ -131,7 +131,7 @@ class InvoicePaymentView(APIView):
                             payment_method=payment_method
                         )
                         Payment.objects.create(
-                            payment_amount=amount,
+                            payment_amount=invoice.paid_amount,
                             payment_status="paid",
                             payment_date=date.today(),
                             invoice=invoice,
@@ -192,10 +192,15 @@ class InvoicePaymentView(APIView):
                             }, status=status.HTTP_200_OK
                         )
                     elif amount < invoice.total_amount and amount != 0:
-                        invoice.paid_amount = amount
-                        invoice.is_full_paid = False
+                        # TODO: Make right calculation
+                        invoice.paid_amount = amount + invoice.paid_amount
+                        if invoice.paid_amount == invoice.total_amount:
+                            invoice.is_full_paid = True
+                        else:
+                            invoice.is_full_paid = False
+
                         invoice.status = "partial_paid"
-                        invoice.balance_due = invoice.total_amount - amount
+                        invoice.balance_due = invoice.total_amount - invoice.paid_amount
                         invoice.save(update_fields=[
                             "paid_amount", "is_full_paid", "status", "balance_due"])
                         full_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
@@ -274,7 +279,7 @@ class InvoicePaymentView(APIView):
                                 update_fields=["balance", "total_credits", "total_debits"])
                         else:
                             MemberAccount.objects.create(
-                                balance=amount,
+                                balance=0,
                                 total_credits=due_obj.due_amount,
                                 total_debits=amount,
                                 member=invoice.member,
@@ -379,7 +384,7 @@ class InvoicePaymentView(APIView):
                                 update_fields=["balance", "total_credits", "total_debits"])
                         else:
                             MemberAccount.objects.create(
-                                balance=amount,
+                                balance=0,
                                 total_credits=due_obj.due_amount,
                                 total_debits=amount,
                                 member=invoice.member,
