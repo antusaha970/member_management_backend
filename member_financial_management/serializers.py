@@ -256,7 +256,7 @@ class DuesSerializer(serializers.ModelSerializer):
 class DuesSpecificSerializer(serializers.ModelSerializer):
     member = serializers.SerializerMethodField()
     invoice = InvoiceSerializer()
-    payment = serializers.SerializerMethodField()
+    payment = PaymentSerializer()
     transaction = TransactionSerializer()
 
     class Meta:

@@ -29,5 +29,9 @@ urlpatterns = [
          name="payment_view"),
     path("v1/payments/<int:id>/", views.PaymentSpecificView.as_view(),
          name="payment_specific_view"),
+    path("v1/dues/", views.DueView.as_view(),
+         name="dues_view"),
+    path("v1/dues/<int:id>/", views.DueSpecificView.as_view(),
+         name="dues_specific_view"),
 
 ]
