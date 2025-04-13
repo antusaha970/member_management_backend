@@ -16,6 +16,7 @@ urlpatterns = [
     path('api/event/', include('event.urls')),
     path('api/product/', include('product.urls')),
     path('api/facility/', include('facility.urls')),
+    path('api/promo_code/', include('promo_code.urls')),
     path('api-auth/', include('rest_framework.urls')),
 ]
 
