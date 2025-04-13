@@ -112,8 +112,9 @@ class InvoicePaymentView(APIView):
                 amount = serializer.validated_data["amount"]
                 income_particular = serializer.validated_data["income_particular"]
                 received_from = serializer.validated_data["received_from"]
+                adjust_from_balance = serializer.validated_data["adjust_from_balance"]
                 with transaction.atomic():
-                    if amount >= invoice.total_amount:
+                    if amount == invoice.total_amount:
                         invoice.paid_amount = invoice.total_amount
                         invoice.is_full_paid = True
                         invoice.status = "paid"
@@ -164,23 +165,6 @@ class InvoicePaymentView(APIView):
                             received_by=payment_method,
                             sale=sale_obj
                         )
-                        is_member_account_exist = MemberAccount.objects.filter(
-                            member=invoice.member).exists()
-                        if is_member_account_exist:
-                            member_account = MemberAccount.objects.get(
-                                member=invoice.member)
-                            member_account.balance = member_account.balance + \
-                                (amount-invoice.paid_amount)
-                            member_account.total_debits = member_account.total_debits + amount
-                            member_account.save(
-                                update_fields=["balance", "total_debits"])
-                        else:
-                            MemberAccount.objects.create(
-                                balance=amount-invoice.paid_amount,
-                                total_debits=amount,
-                                member=invoice.member,
-                                last_transaction_date=date.today()
-                            )
                         return Response(
                             {
                                 "code": 200,
@@ -192,30 +176,52 @@ class InvoicePaymentView(APIView):
                             }, status=status.HTTP_200_OK
                         )
                     elif amount < invoice.total_amount and amount != 0:
-                        # TODO: Make right calculation
-                        invoice.paid_amount = amount + invoice.paid_amount
+                        payment_amount = amount
+                        if adjust_from_balance:
+                            member_account = MemberAccount.objects.get(
+                                member=invoice.member)
+                            member_account_balance = member_account.balance
+                            remaining_payment = invoice.total_amount - payment_amount
+                            if member_account_balance >= remaining_payment:
+                                payment_amount = amount + remaining_payment
+                                member_account.balance = member_account.balance - remaining_payment
+                                member_account.save(update_fields=["balance"])
+                            else:
+                                payment_amount = amount + member_account_balance
+                                member_account.balance = 0
+                                member_account.save(update_fields=["balance"])
+
+                        invoice.paid_amount = payment_amount
                         if invoice.paid_amount == invoice.total_amount:
                             invoice.is_full_paid = True
+                            invoice.status = "paid"
+                            invoice.balance_due = 0
                         else:
                             invoice.is_full_paid = False
-
-                        invoice.status = "partial_paid"
-                        invoice.balance_due = invoice.total_amount - invoice.paid_amount
+                            invoice.status = "partial_paid"
+                            invoice.balance_due = invoice.total_amount - invoice.paid_amount
+                        invoice_full_paid = invoice.is_full_paid
+                        invoice_status = invoice.status
+                        invoice_due = invoice.balance_due
                         invoice.save(update_fields=[
                             "paid_amount", "is_full_paid", "status", "balance_due"])
-                        full_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
-                            name="partial")
+                        if invoice_full_paid:
+                            full_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
+                                name="full")
+                        else:
+                            full_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
+                                name="partial")
                         transaction_obj = Transaction.objects.create(
                             amount=amount,
                             transaction_date=date.today(),
-                            status="partial_paid",
+                            status=invoice_status,
                             member=invoice.member,
                             invoice=invoice,
                             payment_method=payment_method
                         )
                         payment_obj = Payment.objects.create(
                             payment_amount=amount,
-                            payment_status="partial_paid",
+                            payment_status=invoice_status,
                             payment_date=date.today(),
                             invoice=invoice,
                             member=invoice.member,
@@ -229,7 +235,7 @@ class InvoicePaymentView(APIView):
                             sale_number=generate_unique_sale_number(),
                             sub_total=invoice.total_amount,
                             total_amount=invoice.paid_amount,
-                            payment_status="paid",
+                            payment_status=invoice_status,
                             sale_source_type=sale_type,
                             customer=invoice.member,
                             payment_method=payment_method,
@@ -240,7 +246,7 @@ class InvoicePaymentView(APIView):
                             receivable_amount=invoice.total_amount,
                             final_receivable=sale_obj.total_amount,
                             actual_received=amount,
-                            reaming_due=invoice.total_amount-amount,
+                            reaming_due=invoice_due,
                             particular=income_particular,
                             received_from_type=received_from,
                             receiving_type=full_receiving_type,
@@ -250,8 +256,8 @@ class InvoicePaymentView(APIView):
                         )
                         due_obj = Due.objects.create(
                             original_amount=invoice.total_amount,
-                            due_amount=invoice.total_amount-amount,
-                            paid_amount=amount,
+                            due_amount=invoice_due,
+                            paid_amount=payment_amount,
                             due_date=date.today(),
                             member=invoice.member,
                             invoice=invoice,
@@ -266,25 +272,6 @@ class InvoicePaymentView(APIView):
                             member=invoice.member,
                             due_reference=due_obj
                         )
-                        is_member_account_exist = MemberAccount.objects.filter(
-                            member=invoice.member).exists()
-
-                        if is_member_account_exist:
-                            member_account = MemberAccount.objects.get(
-                                member=invoice.member)
-                            member_account.balance = member_account.balance + amount
-                            member_account.total_credits = member_account.total_credits + due_obj.due_amount
-                            member_account.total_debits = member_account.total_debits + amount
-                            member_account.save(
-                                update_fields=["balance", "total_credits", "total_debits"])
-                        else:
-                            MemberAccount.objects.create(
-                                balance=0,
-                                total_credits=due_obj.due_amount,
-                                total_debits=amount,
-                                member=invoice.member,
-                                last_transaction_date=date.today()
-                            )
                         log_activity_task.delay_on_commit(
                             request_data_activity_log(request),
                             verb="Creation",
@@ -302,25 +289,50 @@ class InvoicePaymentView(APIView):
                             }, status=status.HTTP_200_OK
                         )
                     else:
-                        invoice.paid_amount = amount
-                        invoice.is_full_paid = False
-                        invoice.status = "due"
-                        invoice.balance_due = invoice.total_amount - amount
+                        payment_amount = 0
+                        if adjust_from_balance:
+                            member_account = MemberAccount.objects.get(
+                                member=invoice.member)
+                            member_account_balance = member_account.balance
+                            if member_account_balance >= invoice.total_amount:
+                                payment_amount = invoice.total_amount
+                                member_account.balance = member_account_balance - invoice.total_amount
+                                invoice.is_full_paid = True
+                                invoice.status = "paid"
+                                invoice.balance_due = 0
+                            else:
+                                payment_amount = member_account_balance
+                                member_account.balance = 0
+                                invoice.is_full_paid = False
+                                invoice.balance_due = invoice.total_amount - payment_amount
+                                if payment_amount != 0:
+                                    invoice.status = "partial_paid"
+                                else:
+                                    invoice.status = "due"
+                        member_account.save(update_fields=["balance"])
+                        invoice.paid_amount = payment_amount
+                        invoice_status = invoice.status
+                        invoice_is_full_paid = invoice.is_full_paid
                         invoice.save(update_fields=[
                             "paid_amount", "is_full_paid", "status", "balance_due"])
-                        full_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
-                            name="partial")
+                        if invoice_is_full_paid:
+                            full_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
+                                name="full")
+                        else:
+                            full_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
+                                name="partial")
+
                         transaction_obj = Transaction.objects.create(
-                            amount=amount,
+                            amount=payment_amount,
                             transaction_date=date.today(),
-                            status="due",
+                            status=invoice_status,
                             member=invoice.member,
                             invoice=invoice,
                             payment_method=payment_method
                         )
                         payment_obj = Payment.objects.create(
-                            payment_amount=amount,
-                            payment_status="due",
+                            payment_amount=payment_amount,
+                            payment_status=invoice_status,
                             payment_date=date.today(),
                             invoice=invoice,
                             member=invoice.member,
@@ -334,7 +346,7 @@ class InvoicePaymentView(APIView):
                             sale_number=generate_unique_sale_number(),
                             sub_total=invoice.total_amount,
                             total_amount=invoice.paid_amount,
-                            payment_status="due",
+                            payment_status=invoice_status,
                             sale_source_type=sale_type,
                             customer=invoice.member,
                             payment_method=payment_method,
@@ -344,8 +356,8 @@ class InvoicePaymentView(APIView):
                         Income.objects.create(
                             receivable_amount=invoice.total_amount,
                             final_receivable=sale_obj.total_amount,
-                            actual_received=amount,
-                            reaming_due=invoice.total_amount-amount,
+                            actual_received=invoice.paid_amount,
+                            reaming_due=invoice.balance_due,
                             particular=income_particular,
                             received_from_type=received_from,
                             receiving_type=full_receiving_type,
@@ -355,8 +367,8 @@ class InvoicePaymentView(APIView):
                         )
                         due_obj = Due.objects.create(
                             original_amount=invoice.total_amount,
-                            due_amount=invoice.total_amount-amount,
-                            paid_amount=amount,
+                            due_amount=invoice.balance_due,
+                            paid_amount=invoice.paid_amount,
                             due_date=date.today(),
                             member=invoice.member,
                             invoice=invoice,
@@ -371,25 +383,6 @@ class InvoicePaymentView(APIView):
                             member=invoice.member,
                             due_reference=due_obj
                         )
-                        is_member_account_exist = MemberAccount.objects.filter(
-                            member=invoice.member).exists()
-
-                        if is_member_account_exist:
-                            member_account = MemberAccount.objects.get(
-                                member=invoice.member)
-                            member_account.balance = member_account.balance + amount
-                            member_account.total_credits = member_account.total_credits + due_obj.due_amount
-                            member_account.total_debits = member_account.total_debits + amount
-                            member_account.save(
-                                update_fields=["balance", "total_credits", "total_debits"])
-                        else:
-                            MemberAccount.objects.create(
-                                balance=0,
-                                total_credits=due_obj.due_amount,
-                                total_debits=amount,
-                                member=invoice.member,
-                                last_transaction_date=date.today()
-                            )
                         log_activity_task.delay_on_commit(
                             request_data_activity_log(request),
                             verb="Creation",

@@ -34,6 +34,7 @@ class InvoicePaymentSerializer(serializers.Serializer):
         queryset=IncomeParticular.objects.all())
     received_from = serializers.PrimaryKeyRelatedField(
         queryset=IncomeReceivingOption.objects.all())
+    adjust_from_balance = serializers.BooleanField()
 
     def validate_amount(self, value):
         if value < 0:
@@ -42,9 +43,21 @@ class InvoicePaymentSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         invoice = attrs["invoice_id"]
+        amount = attrs["amount"]
+        adjust_from_balance = attrs["adjust_from_balance"]
+        if invoice.total_amount < amount:
+            raise serializers.ValidationError(
+                {"amount": "Your provided amount is bigger then total amount."})
         if invoice.is_full_paid:
             raise serializers.ValidationError(
                 "This invoice is already fully paid")
+        if adjust_from_balance:
+            is_account_exist = MemberAccount.objects.filter(
+                member=invoice.member)
+            if not is_account_exist:
+                raise serializers.ValidationError(
+                    f"No member account exist. Please contact admin.")
+
         return attrs
 
 
