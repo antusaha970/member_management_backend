@@ -1,11 +1,11 @@
 from django.urls import path
 from promo_code.views import (
    PromoCodeCategoryView,
-   PromoCodeDetailView
+   PromoCodeView
 )
 
 urlpatterns = [
     path('v1/promo_codes/categories/', PromoCodeCategoryView.as_view(), name='promo_code_categories'),
-    path('v1/promo_codes/', PromoCodeDetailView.as_view(), name='promo_codes'),
+    path('v1/promo_codes/', PromoCodeView.as_view(), name='promo_codes'),
     
 ]

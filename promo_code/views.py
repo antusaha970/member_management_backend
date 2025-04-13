@@ -121,7 +121,7 @@ class PromoCodeCategoryView(APIView):
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
 
-class PromoCodeDetailView(APIView):
+class PromoCodeView(APIView):
     # permission_classes = [IsAuthenticated, IsAdminUser]
     
     def post(self, request):
