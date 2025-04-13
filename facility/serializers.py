@@ -70,7 +70,7 @@ class FacilityUseFeeViewSerializer(serializers.ModelSerializer):
         model = FacilityUseFee
         fields = "__all__"
         depth = 1
-        
+
 class FacilityBuySerializer(serializers.Serializer):
     member_ID = serializers.CharField(max_length=255)
     facility = serializers.PrimaryKeyRelatedField(queryset=Facility.objects.all())
@@ -79,3 +79,27 @@ class FacilityBuySerializer(serializers.Serializer):
         if not Member.objects.filter(member_ID=value).exists():
             raise serializers.ValidationError("Member ID does not exist.")
         return value
+    
+class FacilityDetailUseFeeSerializer(serializers.ModelSerializer):
+    membership_type = serializers.StringRelatedField()
+
+    class Meta:
+        model = FacilityUseFee
+        fields = ['id', 'fee', 'membership_type']
+
+class SpecificFacilityDetailSerializer(serializers.ModelSerializer):
+    facility_use_fees = FacilityDetailUseFeeSerializer(many=True)
+
+    class Meta:
+        model = Facility
+        fields = [
+            'id',
+            'name',
+            'description',
+            'usages_fee',
+            'usages_roles',
+            'operating_hours',
+            'status',
+            'capacity',
+            'facility_use_fees'
+        ]

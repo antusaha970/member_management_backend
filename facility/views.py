@@ -16,6 +16,7 @@ from member_financial_management.models import Invoice, InvoiceItem, InvoiceType
 from core.utils.pagination import CustomPageNumberPagination
 from datetime import date
 import logging
+from django.db.models import Prefetch
 from decimal import Decimal
 logger = logging.getLogger("myapp")
 import pdb
@@ -269,11 +270,7 @@ class FacilityBuyView(APIView):
                     fee = facility_uses_fee.fee
                 else:
                     fee = facility.usages_fee
-                
-            
-                # else:
-                #     fee = facility.usages_fee
-                # pdb.set_trace()
+               
                 invoice_type, _ = InvoiceType.objects.get_or_create(
                     name="Facility")
 
@@ -335,21 +332,23 @@ class FacilityBuyView(APIView):
                     'server_error': [str(e)]
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
+            
 class FacilityDetailView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
 
     def get(self, request, facility_id):
         try:
-            facility = Facility.objects.get(pk=facility_id)
-            facility_usages_fee = FacilityUseFee.objects.filter(facility=facility)
-
-            facility_data = serializers.FacilityViewSerializer(facility).data
+            facility = Facility.objects.prefetch_related(
+                Prefetch(
+                    'facility_use_fees',
+                    queryset=FacilityUseFee.objects.select_related('membership_type')
+                )
+            ).get(pk=facility_id)
             
-            if facility_usages_fee.exists():
-                usage_fees_data = serializers.FacilityUseFeeViewSerializer(facility_usages_fee, many=True).data
-            else:
-                usage_fees_data = []
+            # Serialize the Facility data
+            facility_serializer = serializers.SpecificFacilityDetailSerializer(facility)
 
+            # Log the activity
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
                 verb="Retrieve a facility",
@@ -361,10 +360,7 @@ class FacilityDetailView(APIView):
                 "code": 200,
                 "message": "Facility retrieved successfully",
                 "status": "success",
-                "data": {
-                    "facility": facility_data,
-                    "usage_fees": usage_fees_data
-                }
+                "data": facility_serializer.data
             }, status=status.HTTP_200_OK)
 
         except Facility.DoesNotExist:
@@ -398,21 +394,6 @@ class FacilityDetailView(APIView):
                 "errors": {
                     "server_error": [str(e)]
                 }
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-                                     
-                
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)            
             
             
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-        
