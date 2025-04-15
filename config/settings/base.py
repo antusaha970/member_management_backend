@@ -44,7 +44,7 @@ INSTALLED_APPS = [
     'restaurant',
     'member_financial_management',
     'facility',
-    'promo_code',
+    'promo_code_app',
 ]
 
 # Middleware
