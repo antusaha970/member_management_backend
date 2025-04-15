@@ -4,6 +4,7 @@ from .models import Venue
 from .models import COUNTRY_CHOICES,Event,EventTicket,EventFee,EventMedia,EVENT_STATUS_CHOICES,EVENT_TICKET_STATUS_CHOICES
 from core.models import MembershipType
 from member.models import Member
+from promo_code_app.models import PromoCode
 import pdb
 
 class EventVenueSerializer(serializers.Serializer):
@@ -190,9 +191,28 @@ class EventFeeViewSerializer(serializers.ModelSerializer):
 class EventTicketBuySerializer(serializers.Serializer):
     event_ticket = serializers.PrimaryKeyRelatedField(queryset=EventTicket.objects.filter(status='available'))
     member_ID = serializers.CharField()
+    promo_code = serializers.CharField(required=False, default=None)
+
     
     def validate_member_ID(self, value):
         if not Member.objects.filter(member_ID=value).exists():
             raise serializers.ValidationError(f"{value} is not a member")
         return value
-        
+    def validate_promo_code(self, value):
+        if not value:
+            return value
+
+        try:
+            promo_code = PromoCode.objects.get(promo_code=value)
+        except PromoCode.DoesNotExist:
+            raise serializers.ValidationError("This is not a valid promo code.")
+
+        if not promo_code.is_promo_code_valid():
+            raise serializers.ValidationError("This promo code is expired or not valid any more.")
+
+        if not promo_code.category.filter(name__iexact="event").exists():
+            raise serializers.ValidationError("This is not an event category promo code.")
+
+        return promo_code
+
+            

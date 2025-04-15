@@ -13,6 +13,7 @@ from member.models import Member
 from django.db import transaction
 from member_financial_management.serializers import InvoiceSerializer
 from member_financial_management.models import Invoice, InvoiceItem, InvoiceType
+from promo_code_app.models import PromoCode,AppliedPromoCode
 from datetime import date
 import logging
 logger = logging.getLogger("myapp")
@@ -628,7 +629,25 @@ class EventTicketBuyView(APIView):
                 member = serializer.validated_data["member_ID"]
                 member = Member.objects.get(member_ID=member)
                 event_ticket = serializer.validated_data["event_ticket"]
-                
+                promo_code = serializer.validated_data["promo_code"]
+                discount = 0
+                total_amount = event_ticket.price
+                if promo_code is not None:
+                    if promo_code.percentage is not None:
+                        percentage = promo_code.percentage
+                        discount = (percentage/100) * total_amount
+                        total_amount = total_amount - discount
+                    else:
+                        discount = promo_code.amount
+                        if discount <= total_amount:
+                            total_amount = total_amount - discount
+                        else:
+                            discount = total_amount
+                            total_amount = 0
+                    promo_code.remaining_limit -= 1
+                    promo_code.save(update_fields=["remaining_limit"])
+                else:
+                    promo_code = ""
                 invoice_type, _ = InvoiceType.objects.get_or_create(
                     name="Event")
 
@@ -636,17 +655,21 @@ class EventTicketBuyView(APIView):
                     invoice = Invoice.objects.create(
                         currency="BDT",
                         invoice_number=generate_unique_invoice_number(),
-                        balance_due=event_ticket.price,
+                        balance_due=total_amount,
                         paid_amount=0,
                         issue_date=date.today(),
-                        total_amount=event_ticket.price,
+                        total_amount=total_amount,
                         is_full_paid=False,
                         status="unpaid",
                         invoice_type=invoice_type,
                         generated_by=request.user,
                         member=member,
                         event=event_ticket.event,
+                        promo_code=promo_code,
                     )
+                    if promo_code != "":
+                        AppliedPromoCode.objects.create(
+                            discounted_amount=discount, promo_code=promo_code, used_by=member)
                     invoice_item = InvoiceItem.objects.create(
                         invoice=invoice
                     )

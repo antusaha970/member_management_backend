@@ -1,29 +1,20 @@
 
-from django.shortcuts import render
-
 # Create your views here.
 from .models import AppliedPromoCode,PromoCode,PromoCodeCategory
-from django.shortcuts import render
 from rest_framework.views import APIView
 from promo_code_app import serializers
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAdminUser,IsAuthenticated
-from activity_log.tasks import get_location, get_client_ip, log_activity_task
+from activity_log.tasks import  log_activity_task
 from activity_log.utils.functions import request_data_activity_log
 import logging
-from member.models import Member
-from member_financial_management.utils.functions import generate_unique_invoice_number
-from member_financial_management.models import Invoice, InvoiceItem, InvoiceType
-from django.db import transaction
-from datetime import date
-from member_financial_management.serializers import InvoiceSerializer
 logger = logging.getLogger("myapp")
 import pdb
 
             
 class PromoCodeCategoryView(APIView):
-    # permission_classes = [IsAuthenticated,IsAdminUser]
+    permission_classes = [IsAuthenticated,IsAdminUser]
     
     def post(self,request):
         """
@@ -120,7 +111,7 @@ class PromoCodeCategoryView(APIView):
             
 
 class PromoCodeView(APIView):
-    # permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsAdminUser]
     
     def post(self, request):
         """
