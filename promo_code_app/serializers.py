@@ -94,3 +94,19 @@ class PromoCodeDetailViewSerializer(serializers.ModelSerializer):
         model = PromoCode
         fields = "__all__"
         depth = 1
+
+
+class AppliedPromoCodeSerializer(serializers.ModelSerializer):
+
+    promo_code = serializers.SerializerMethodField()
+    used_by = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AppliedPromoCode
+        fields = "__all__"
+
+    def get_promo_code(self, obj):
+        return obj.promo_code.promo_code
+
+    def get_used_by(self, obj):
+        return obj.used_by.member_ID
