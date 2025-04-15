@@ -163,7 +163,9 @@ class InvoicePaymentView(APIView):
                             receiving_type=full_receiving_type,
                             member=invoice.member,
                             received_by=payment_method,
-                            sale=sale_obj
+                            sale=sale_obj,
+                            discounted_amount=invoice.discount,
+                            discount_name=invoice.promo_code
                         )
                         return Response(
                             {
@@ -252,7 +254,9 @@ class InvoicePaymentView(APIView):
                             receiving_type=full_receiving_type,
                             member=invoice.member,
                             received_by=payment_method,
-                            sale=sale_obj
+                            sale=sale_obj,
+                            discounted_amount=invoice.discount,
+                            discount_name=invoice.promo_code
                         )
                         due_obj = Due.objects.create(
                             original_amount=invoice.total_amount,
@@ -363,7 +367,9 @@ class InvoicePaymentView(APIView):
                             receiving_type=full_receiving_type,
                             member=invoice.member,
                             received_by=payment_method,
-                            sale=sale_obj
+                            sale=sale_obj,
+                            discounted_amount=invoice.discount,
+                            discount_name=invoice.promo_code
                         )
                         due_obj = Due.objects.create(
                             original_amount=invoice.total_amount,
