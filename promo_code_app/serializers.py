@@ -40,7 +40,7 @@ class PromoCodeSerializer(serializers.Serializer):
     description = serializers.CharField()
     # foreignkey relations
     category = serializers.PrimaryKeyRelatedField(
-        queryset=PromoCodeCategory.objects.all())
+        queryset=PromoCodeCategory.objects.all(), many=True)
 
     def validate_promo_code(self, value):
         # Check if the promo code already exists in the database
@@ -83,7 +83,9 @@ class PromoCodeSerializer(serializers.Serializer):
         return attrs
 
     def create(self, validated_data):
+        category = validated_data.pop("category")
         promo_code = PromoCode.objects.create(**validated_data)
+        promo_code.category.set(category)
         return promo_code
 
 

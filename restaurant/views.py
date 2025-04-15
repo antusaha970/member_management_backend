@@ -14,6 +14,7 @@ from django.db import transaction
 from functools import reduce
 from datetime import date
 from member_financial_management.serializers import InvoiceSerializer
+from promo_code_app.models import AppliedPromoCode
 import pdb
 logger = logging.getLogger("myapp")
 
@@ -534,7 +535,24 @@ class RestaurantItemBuyView(APIView):
                     lambda acc, item: acc + item["id"].selling_price*item["quantity"], restaurant_items, 0)
                 invoice_type, _ = InvoiceType.objects.get_or_create(
                     name="Restaurant")
-
+                promo_code = serializer.validated_data["promo_code"]
+                discount = 0
+                if promo_code != None:
+                    if promo_code.percentage is not None:
+                        percentage = promo_code.percentage
+                        discount = (percentage/100) * total_amount
+                        total_amount = total_amount - discount
+                    else:
+                        discount = promo_code.amount
+                        if discount <= total_amount:
+                            total_amount = total_amount - discount
+                        else:
+                            discount = total_amount
+                            total_amount = 0
+                    promo_code.remaining_limit -= 1
+                    promo_code.save(update_fields=["remaining_limit"])
+                else:
+                    promo_code = ""
                 with transaction.atomic():
                     invoice = Invoice.objects.create(
                         currency="BDT",
@@ -549,7 +567,12 @@ class RestaurantItemBuyView(APIView):
                         generated_by=request.user,
                         member=member,
                         restaurant=restaurant,
+                        discount=discount,
+                        promo_code=promo_code
                     )
+                    if promo_code != "":
+                        AppliedPromoCode.objects.create(
+                            discounted_amount=discount, promo_code=promo_code, used_by=member)
                     restaurant_items_objs = []
                     for item in restaurant_items:
                         restaurant_items_objs.append(item["id"].id)

@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import RestaurantCuisineCategory, RestaurantCategory, Restaurant, RestaurantItemCategory, RestaurantItem, RestaurantItemMedia
 from member.models import Member
 from promo_code_app.models import PromoCode
+import pdb
 
 
 class RestaurantCuisineCategorySerializer(serializers.ModelSerializer):
@@ -129,7 +130,7 @@ class RestaurantItemBuySerializer(serializers.Serializer):
     member_ID = serializers.CharField()
     restaurant = serializers.PrimaryKeyRelatedField(
         queryset=Restaurant.objects.filter(is_active=True))
-    promo_code = serializers.CharField()
+    promo_code = serializers.CharField(required=False, default=None)
 
     def validate_member_ID(self, value):
         if not Member.objects.filter(member_ID=value).exists():
@@ -137,13 +138,25 @@ class RestaurantItemBuySerializer(serializers.Serializer):
         return value
 
     def validate_promo_code(self, value):
+        if value == None:
+            return value
         try:
             promo_code = PromoCode.objects.get(promo_code=value)
+            promo_code_categories = promo_code.category.all().only("name")
             if not promo_code.is_promo_code_valid():
                 raise serializers.ValidationError(
                     "This promo code is expired or not valid any more.")
+            else:
+                is_in_restaurant_category = False
+                for instance in promo_code_categories:
+                    if instance.name == "restaurant":
+                        is_in_restaurant_category = True
+                        break
+                if is_in_restaurant_category:
+                    return promo_code
+                else:
+                    raise serializers.ValidationError(
+                        "This is not a restaurant category promo code.")
         except PromoCode.DoesNotExist as e:
             raise serializers.ValidationError(
                 "This is not a valid promo code.")
-
-        return value

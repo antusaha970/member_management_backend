@@ -32,8 +32,8 @@ class PromoCode(PromoCodeBaseModel):
     remaining_limit = models.IntegerField(blank=True, default=0)
     description = models.TextField()
     # foreignkey relations
-    category = models.ForeignKey(
-        PromoCodeCategory, on_delete=models.RESTRICT, related_name="promo_code_category")
+    category = models.ManyToManyField(
+        PromoCodeCategory)
 
     def __str__(self):
         return self.promo_code
