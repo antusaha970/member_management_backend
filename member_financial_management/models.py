@@ -6,6 +6,9 @@ from event.models import Event
 from product.models import Product
 from facility.models import Facility
 from event.models import EventTicket
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
 User = get_user_model()
 
 
@@ -290,3 +293,9 @@ class MemberDue(FinancialBaseModel):
 
     def __str__(self):
         return f"{self.member.member_ID}"
+
+
+@receiver(post_save, sender=Member)
+def member_account_creation_signal(sender, instance, created, **kwargs):
+    if created:
+        MemberAccount.objects.create(member=instance)
