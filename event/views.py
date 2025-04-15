@@ -665,6 +665,7 @@ class EventTicketBuyView(APIView):
                         generated_by=request.user,
                         member=member,
                         event=event_ticket.event,
+                        discount=discount,
                         promo_code=promo_code,
                     )
                     if promo_code != "":
