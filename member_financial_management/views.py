@@ -1179,6 +1179,7 @@ class MemberDueView(APIView):
                 amount = serializer.validated_data["amount"]
                 adjust_from_balance = serializer.validated_data["adjust_from_balance"]
                 due = member_due.due_reference
+                invoice = due.invoice
                 pdb.set_trace()
                 return Response("ok")
             else:
