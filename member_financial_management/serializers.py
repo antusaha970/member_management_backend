@@ -329,3 +329,24 @@ class MemberAccountSerializer(serializers.ModelSerializer):
 
     def get_member(self, obj):
         return obj.member.member_ID
+
+
+class MemberDuePaymentSerializer(serializers.Serializer):
+    member_due_id = serializers.PrimaryKeyRelatedField(
+        queryset=MemberDue.active_objects.all())
+    payment_method = serializers.PrimaryKeyRelatedField(
+        queryset=PaymentMethod.active_objects.all()
+    )
+    amount = serializers.DecimalField(max_digits=12, decimal_places=2)
+    adjust_from_balance = serializers.BooleanField()
+
+    def validate(self, attrs):
+        amount = attrs['amount']
+        member_due = attrs['member_due_id']
+
+        if amount > member_due.amount_due:
+            raise serializers.ValidationError({
+                "amount": ["Your provided amount is bigger then the due amount"]
+            })
+
+        return super().validate(attrs)

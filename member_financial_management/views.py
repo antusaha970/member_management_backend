@@ -1169,6 +1169,43 @@ class MemberDueView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    def post(self, request):
+        try:
+            serializer = serializers.MemberDuePaymentSerializer(
+                data=request.data)
+            if serializer.is_valid():
+                member_due = serializer.validated_data["member_due_id"]
+                payment_method = serializer.validated_data["payment_method"]
+                amount = serializer.validated_data["amount"]
+                adjust_from_balance = serializer.validated_data["adjust_from_balance"]
+                due = member_due.due_reference
+                invoice = due.invoice
+                pdb.set_trace()
+                return Response("ok")
+            else:
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Bad request",
+                    "errors": serializer.errors
+                })
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="View",
+                severity_level="info",
+                description="User tried to view a member due and faced error",
+            )
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class MemberDueSpecificView(APIView):
     permission_classes = [IsAuthenticated]
