@@ -142,16 +142,12 @@ class RestaurantItemBuySerializer(serializers.Serializer):
             return value
         try:
             promo_code = PromoCode.objects.get(promo_code=value)
-            promo_code_categories = promo_code.category.all().only("name")
+            is_in_restaurant_category = promo_code.category.filter(
+                name__iexact="restaurant").exists()
             if not promo_code.is_promo_code_valid():
                 raise serializers.ValidationError(
                     "This promo code is expired or not valid any more.")
             else:
-                is_in_restaurant_category = False
-                for instance in promo_code_categories:
-                    if instance.name == "restaurant":
-                        is_in_restaurant_category = True
-                        break
                 if is_in_restaurant_category:
                     return promo_code
                 else:
