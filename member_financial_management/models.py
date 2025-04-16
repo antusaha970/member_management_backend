@@ -8,6 +8,7 @@ from facility.models import Facility
 from event.models import EventTicket
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from .utils.managers import ActiveManager
 
 User = get_user_model()
 
@@ -87,6 +88,10 @@ class InvoiceItem(FinancialBaseModel):
 
 class PaymentMethod(FinancialBaseModel):
     name = models.CharField(max_length=150, unique=True)
+
+    # manager
+    active_objects = ActiveManager()
+    objects = models.Manager()
 
     def __str__(self):
         return self.name
@@ -288,6 +293,10 @@ class MemberDue(FinancialBaseModel):
         Member, on_delete=models.PROTECT, related_name="member_due_member")
     due_reference = models.ForeignKey(
         Due, on_delete=models.PROTECT, related_name="member_due_due_reference")
+
+    # managers
+    active_objects = ActiveManager()
+    objects = models.Manager()
 
     def __str__(self):
         return f"{self.member.member_ID}"
