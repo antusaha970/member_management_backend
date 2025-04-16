@@ -66,11 +66,25 @@ class IncomeParticularSerializer(serializers.ModelSerializer):
         model = IncomeParticular
         fields = "__all__"
 
+    def create(self, validated_data):
+        name = validated_data.get("name", "")
+        name = name.lower().replace(" ", "_")
+        validated_data["name"] = name
+
+        return super().create(validated_data)
+
 
 class IncomeReceivingOptionSerializer(serializers.ModelSerializer):
     class Meta:
         model = IncomeReceivingOption
         fields = "__all__"
+
+    def create(self, validated_data):
+        name = validated_data.get("name", "")
+        name = name.lower().replace(" ", "_")
+        validated_data["name"] = name
+
+        return super().create(validated_data)
 
 
 class RestaurantSerializer(serializers.ModelSerializer):
