@@ -15,6 +15,8 @@ from member_financial_management.serializers import InvoiceSerializer
 from member_financial_management.models import Invoice, InvoiceItem, InvoiceType
 from promo_code_app.models import PromoCode,AppliedPromoCode
 from datetime import date
+from silk.profiling.profiler import silk_profile
+from django.utils.decorators import method_decorator
 import logging
 logger = logging.getLogger("myapp")
 import pdb
@@ -610,9 +612,9 @@ class EventTicketDetailView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                 
-
 class EventTicketBuyView(APIView):
     permission_classes = [IsAuthenticated]
+    
     def post(self, request):
         """
         Creates an invoice for an event ticket purchase.

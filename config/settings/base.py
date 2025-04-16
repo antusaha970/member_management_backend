@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     'django_celery_results',
     'django_filters',
     'django_celery_beat',
+    'silk',
     # Custom apps
     'account',
     'club',
@@ -58,6 +59,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'silk.middleware.SilkyMiddleware',
     # Custom
     'account.middleware.JWTMiddleware'
 ]
@@ -226,3 +228,5 @@ DATABASES = {
     }
 }
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # Collected files
+SILKY_PYTHON_PROFILER = True
+SILKY_PYTHON_PROFILER_BINARY = True

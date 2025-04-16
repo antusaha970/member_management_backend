@@ -3,6 +3,8 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib.auth import views as auth_views
+import debug_toolbar
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -19,6 +21,7 @@ urlpatterns = [
     path('api/promo_code/', include('promo_code_app.urls')),
 
     path('api-auth/', include('rest_framework.urls')),
+    path('silk/', include('silk.urls', namespace='silk')),
 ]
 
 # Serve media files during development
