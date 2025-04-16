@@ -18,6 +18,7 @@ from datetime import date
 import logging
 from django.db.models import Prefetch
 from decimal import Decimal
+from promo_code_app.models import AppliedPromoCode
 logger = logging.getLogger("myapp")
 import pdb
 
@@ -263,6 +264,7 @@ class FacilityBuyView(APIView):
                 member = serializer.validated_data["member_ID"]
                 member = Member.objects.get(member_ID=member)
                 facility = serializer.validated_data["facility"]
+                promo_code = serializer.validated_data["promo_code"]
                 facility_uses_fee = FacilityUseFee.objects.filter(facility=facility, membership_type=member.membership_type).first()
                 fee = 0
                
@@ -270,7 +272,25 @@ class FacilityBuyView(APIView):
                     fee = facility_uses_fee.fee
                 else:
                     fee = facility.usages_fee
-               
+                    
+                discount = 0
+                total_amount = fee
+                if promo_code is not None:
+                    if promo_code.percentage is not None:
+                        percentage = promo_code.percentage
+                        discount = (percentage/100) * total_amount
+                        total_amount = total_amount - discount
+                    else:
+                        discount = promo_code.amount
+                        if discount <= total_amount:
+                            total_amount = total_amount - discount
+                        else:
+                            discount = total_amount
+                            total_amount = 0
+                    promo_code.remaining_limit -= 1
+                    promo_code.save(update_fields=["remaining_limit"])
+                else:
+                    promo_code = ""
                 invoice_type, _ = InvoiceType.objects.get_or_create(
                     name="Facility")
 
@@ -278,17 +298,21 @@ class FacilityBuyView(APIView):
                     invoice = Invoice.objects.create(
                         currency="BDT",
                         invoice_number=generate_unique_invoice_number(),
-                        balance_due=fee,
+                        balance_due=total_amount,
                         paid_amount=0,
                         issue_date=date.today(),
-                        total_amount=fee,
+                        total_amount=total_amount,
                         is_full_paid=False,
                         status="unpaid",
                         invoice_type=invoice_type,
                         generated_by=request.user,
-                        member=member
-                        
+                        member=member,
+                        promo_code=promo_code,
+                        discount=discount
                     )
+                    if promo_code != "":
+                        AppliedPromoCode.objects.create(
+                            discounted_amount=discount, promo_code=promo_code, used_by=member)
                     invoice_item = InvoiceItem.objects.create(
                         invoice=invoice
                     )

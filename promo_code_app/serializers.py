@@ -79,7 +79,9 @@ class PromoCodeSerializer(serializers.Serializer):
         if attrs.get('percentage') is not None and attrs.get('amount') is not None:
             raise serializers.ValidationError(
                 "Either percentage or amount should be provided, but not both")
-
+        if not attrs.get('percentage') and not attrs.get('amount'):
+            raise serializers.ValidationError(
+                "Either percentage or amount should be provided")
         return attrs
 
     def create(self, validated_data):

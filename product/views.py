@@ -14,6 +14,7 @@ from member_financial_management.models import Invoice, InvoiceItem, InvoiceType
 from django.db import transaction
 from datetime import date
 from member_financial_management.serializers import InvoiceSerializer
+from promo_code_app.models import AppliedPromoCode
 
 logger = logging.getLogger("myapp")
 import pdb
@@ -664,18 +665,36 @@ class ProductBuyView(APIView):
                 product_items = serializer.validated_data["product_items"]
 
                 member = Member.objects.get(member_ID=member_id)
-                invoice_type, _ = InvoiceType.objects.get_or_create(name="Product")
-
+                promo_code = serializer.validated_data["promo_code"]
+                discount = 0
                 total_price = 0
                 product_ids = []
+                for item in product_items:
+                    product = item["product"]
+                    quantity = item["quantity"]
+                    total_price += product.price * quantity
+                    product_ids.extend([product.id] * quantity)
+                if promo_code is not None:
+                    if promo_code.percentage is not None:
+                        percentage = promo_code.percentage
+                        discount = (percentage/100) * total_price
+                        total_price = total_price - discount
+                    else:
+                        discount = promo_code.amount
+                        if discount <= total_price:
+                            total_price = total_price - discount
+                        else:
+                            discount = total_price
+                            total_price = 0
+                    promo_code.remaining_limit -= 1
+                    promo_code.save(update_fields=["remaining_limit"])
+                else:
+                    promo_code = ""
+                invoice_type, _ = InvoiceType.objects.get_or_create(name="Product")
+
+                
 
                 with transaction.atomic():
-                    # Calculate total price
-                    for item in product_items:
-                        product = item["product"]
-                        quantity = item["quantity"]
-                        total_price += product.price * quantity
-                        product_ids.extend([product.id] * quantity)
 
                     invoice = Invoice.objects.create(
                         currency="BDT",
@@ -689,8 +708,13 @@ class ProductBuyView(APIView):
                         invoice_type=invoice_type,
                         generated_by=request.user,
                         member=member,
+                        promo_code=promo_code,
+                        discount=discount,
                     )
 
+                    if promo_code != "":
+                        AppliedPromoCode.objects.create(
+                            discounted_amount=discount, promo_code=promo_code, used_by=member)
                     invoice_item = InvoiceItem.objects.create(invoice=invoice)
                     invoice_item.products.set(product_ids)
 

@@ -3,6 +3,7 @@ from rest_framework import serializers
 from .models import Brand,ProductPrice,Product,ProductCategory,ProductMedia
 from core.models import MembershipType
 from member.models import Member
+from promo_code_app.models import PromoCode
 import pdb
 
 class BrandSerializer(serializers.Serializer):
@@ -159,8 +160,26 @@ class ProductItemSerializer(serializers.Serializer):
 class ProductBuySerializer(serializers.Serializer):
     product_items = serializers.ListSerializer(child=ProductItemSerializer(),allow_empty=False)
     member_ID = serializers.CharField()
+    promo_code = serializers.CharField(required=False, default=None)
+
     
     def validate_member_ID(self, value):
         if not Member.objects.filter(member_ID=value).exists():
             raise serializers.ValidationError(f"{value} is not a member")
         return value
+    def validate_promo_code(self, value):
+        if not value:
+            return value
+
+        try:
+            promo_code = PromoCode.objects.get(promo_code=value)
+        except PromoCode.DoesNotExist:
+            raise serializers.ValidationError("This is not a valid promo code.")
+
+        if not promo_code.is_promo_code_valid():
+            raise serializers.ValidationError("This promo code is expired or not valid any more.")
+
+        if not promo_code.category.filter(name__iexact="product").exists():
+            raise serializers.ValidationError("This is not an product category promo code.")
+
+        return promo_code
