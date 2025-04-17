@@ -1248,7 +1248,10 @@ class MemberDueView(APIView):
                             }
                         }, status=status.HTTP_200_OK)
                     else:
-                        pass
+                        if adjust_from_balance:
+                            pass
+                        else:
+                            pass
 
                 return Response("ok")
             else:
