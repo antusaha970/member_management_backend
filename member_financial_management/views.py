@@ -1,3 +1,4 @@
+from django.core.cache import cache
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -15,7 +16,6 @@ from .models import PaymentMethod, Transaction, Payment, Sale, SaleType, IncomeP
 from . import serializers
 from .utils.functions import generate_unique_sale_number
 logger = logging.getLogger("myapp")
-from django.core.cache import cache
 
 
 class PaymentMethodView(APIView):
@@ -27,9 +27,10 @@ class PaymentMethodView(APIView):
             data = cache.get("active_payment_methods")
             if not data:
                 payment_methods = PaymentMethod.objects.filter(is_active=True)
-                serializer = serializers.PaymentMethodSerializer(payment_methods, many=True)
+                serializer = serializers.PaymentMethodSerializer(
+                    payment_methods, many=True)
                 data = serializer.data
-                cache.set("active_payment_methods", data, 60 * 30) 
+                cache.set("active_payment_methods", data, 60 * 30)
 
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
@@ -65,7 +66,8 @@ class PaymentMethodView(APIView):
             serializer = serializers.PaymentMethodSerializer(data=request.data)
             if serializer.is_valid():
                 serializer.save()
-                cache.delete("active_payment_methods")  # Invalidate cache delete
+                # Invalidate cache delete
+                cache.delete("active_payment_methods")
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),
                     verb="Creation",
@@ -111,7 +113,8 @@ class PaymentMethodView(APIView):
                     "server_errors": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            
+
+
 class InvoicePaymentView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -507,12 +510,13 @@ class IncomeParticularView(APIView):
             # implement caching
             data = cache.get("active_income_particulars")
             if not data:
-                income_particular = IncomeParticular.objects.filter(is_active=True)
+                income_particular = IncomeParticular.objects.filter(
+                    is_active=True)
                 serializer = serializers.IncomeParticularSerializer(
                     income_particular, many=True)
                 data = serializer.data
                 cache.set("active_income_particulars", data, 60 * 30)
-                
+
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
                 verb="View",
@@ -551,7 +555,8 @@ class IncomeReceivedFromView(APIView):
             serializer = serializers.IncomeReceivingOptionSerializer(
                 data=request.data)
             if serializer.is_valid():
-                cache.delete("active_income_receiving_options")  # Invalidate cache
+                # Invalidate cache
+                cache.delete("active_income_receiving_options")
                 serializer.save()
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),
@@ -605,7 +610,7 @@ class IncomeReceivedFromView(APIView):
                     data, many=True)
                 data = serializer.data
                 cache.set("active_income_receiving_options", data, 60*30)
-            
+
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
                 verb="View",
@@ -1276,18 +1281,144 @@ class MemberDueView(APIView):
                         }, status=status.HTTP_200_OK)
                     else:
                         if adjust_from_balance:
-                            pass
-                        else:
-                            pass
+                            member_account = MemberAccount.objects.get(
+                                member=member_due.member)
+                            member_account_balance = member_account.balance
+                            if member_account_balance >= due_amount:
+                                amount = due_amount
+                                member_account.balance = member_account_balance - amount
+                            else:
+                                remaining_amount = due_amount-amount
+                                if remaining_amount >= member_account_balance:
+                                    amount += remaining_amount
+                                    member_account.balance -= remaining_amount
+                                else:
+                                    amount += member_account_balance
+                                    member_account.balance = 0
+                            member_account.save(update_fields=["balance"])
+                        if amount == due_amount:
+                            full_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
+                                name="full")
+                            invoice.balance_due = 0
+                            invoice.paid_amount += amount
+                            invoice.is_full_paid = True
+                            invoice.status = "paid"
+                            invoice.save(update_fields=[
+                                "balance_due", "paid_amount", "is_full_paid", "status"])
+                            transaction_obj = Transaction.objects.create(
+                                amount=amount,
+                                status="full_paid",
+                                member=invoice.member,
+                                invoice=invoice,
+                                payment_method=payment_method
+                            )
+                            Payment.objects.create(
+                                payment_amount=amount,
+                                payment_status="paid",
+                                invoice=invoice,
+                                member=invoice.member,
+                                payment_method=payment_method,
+                                processed_by=request.user,
+                                transaction=transaction_obj
+                            )
+                            # update Due table
+                            due.due_amount = 0
+                            due.paid_amount += amount
+                            due.last_payment_date = date.today()
+                            due.is_due_paid = True
+                            due.transaction = transaction_obj
+                            due.save(update_fields=[
+                                "due_amount", "paid_amount", "last_payment_date", "is_due_paid", "transaction"])
 
-                return Response("ok")
+                            # update member due table
+                            member_due.amount_due = 0
+                            member_due.amount_paid += amount
+                            member_due.payment_date = date.today()
+                            member_due.is_due_paid = True
+                            member_due.save(
+                                update_fields=["amount_due", "amount_paid", "payment_date", "is_due_paid"])
+                            # add data to income table
+                            Income.objects.create(
+                                receivable_amount=invoice.total_amount,
+                                final_receivable=invoice.total_amount,
+                                actual_received=amount,
+                                reaming_due=0,
+                                particular=income.particular,
+                                received_from_type=income.received_from_type,
+                                receiving_type=full_receiving_type,
+                                member=invoice.member,
+                                received_by=payment_method,
+                                sale=sale
+                            )
+                        else:
+                            partial_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
+                                name="partial")
+                            invoice.balance_due -= amount
+                            invoice.paid_amount += amount
+                            invoice.is_full_paid = False
+                            invoice.status = "due"
+                            invoice.save(update_fields=[
+                                "balance_due", "paid_amount", "is_full_paid", "status"])
+                            transaction_obj = Transaction.objects.create(
+                                amount=amount,
+                                status="partial_paid",
+                                member=invoice.member,
+                                invoice=invoice,
+                                payment_method=payment_method
+                            )
+                            Payment.objects.create(
+                                payment_amount=amount,
+                                payment_status="due",
+                                invoice=invoice,
+                                member=invoice.member,
+                                payment_method=payment_method,
+                                processed_by=request.user,
+                                transaction=transaction_obj
+                            )
+                            # update Due table
+                            due.due_amount -= amount
+                            due.paid_amount += amount
+                            due.last_payment_date = date.today()
+                            due.is_due_paid = False
+                            due.transaction = transaction_obj
+                            due.save(update_fields=[
+                                "due_amount", "paid_amount", "last_payment_date", "is_due_paid", "transaction"])
+
+                            # update member due table
+                            member_due.amount_due -= amount
+                            member_due.amount_paid += amount
+                            member_due.payment_date = date.today()
+                            member_due.is_due_paid = False
+                            member_due.save(
+                                update_fields=["amount_due", "amount_paid", "payment_date", "is_due_paid"])
+                            # add data to income table
+                            Income.objects.create(
+                                receivable_amount=invoice.total_amount,
+                                final_receivable=invoice.total_amount,
+                                actual_received=amount,
+                                reaming_due=member_due.amount_due,
+                                particular=income.particular,
+                                received_from_type=income.received_from_type,
+                                receiving_type=partial_receiving_type,
+                                member=invoice.member,
+                                received_by=payment_method,
+                                sale=sale
+                            )
+                    return Response({
+                        "code": 200,
+                        "status": "success",
+                        "message": "Due paid successfully",
+                        "data": {
+                            "member_due": member_due.id
+                        }
+                    }, status=status.HTTP_200_OK)
             else:
                 return Response({
                     "code": 400,
                     "status": "failed",
                     "message": "Bad request",
                     "errors": serializer.errors
-                })
+                }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
