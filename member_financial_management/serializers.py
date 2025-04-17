@@ -340,9 +340,18 @@ class MemberDuePaymentSerializer(serializers.Serializer):
     amount = serializers.DecimalField(max_digits=12, decimal_places=2)
     adjust_from_balance = serializers.BooleanField()
 
+    def validate_amount(self, value):
+        if value < 0:
+            raise serializers.ValidationError("Amount can't be negative.")
+        return value
+
     def validate(self, attrs):
         amount = attrs['amount']
         member_due = attrs['member_due_id']
+        adjust_from_balance = attrs['adjust_from_balance']
+
+        if not adjust_from_balance and amount <= 0:
+            raise serializers.ValidationError("Amount can't be zero")
 
         if amount > member_due.amount_due:
             raise serializers.ValidationError({

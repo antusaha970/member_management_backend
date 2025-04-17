@@ -1180,7 +1180,76 @@ class MemberDueView(APIView):
                 adjust_from_balance = serializer.validated_data["adjust_from_balance"]
                 due = member_due.due_reference
                 invoice = due.invoice
-                # pdb.set_trace()
+                sale = Sale.objects.prefetch_related("income_sale").get(
+                    invoice=invoice)
+                income = sale.income_sale.first()
+                due_amount = member_due.amount_due
+                with transaction.atomic():
+                    if amount == due_amount:
+                        full_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
+                            name="full")
+                        invoice.balance_due = 0
+                        invoice.paid_amount += amount
+                        invoice.is_full_paid = True
+                        invoice.status = "paid"
+                        invoice.save(update_fields=[
+                                     "balance_due", "paid_amount", "is_full_paid", "status"])
+                        transaction_obj = Transaction.objects.create(
+                            amount=amount,
+                            status="full_paid",
+                            member=invoice.member,
+                            invoice=invoice,
+                            payment_method=payment_method
+                        )
+                        Payment.objects.create(
+                            payment_amount=amount,
+                            payment_status="paid",
+                            invoice=invoice,
+                            member=invoice.member,
+                            payment_method=payment_method,
+                            processed_by=request.user,
+                            transaction=transaction_obj
+                        )
+                        # update Due table
+                        due.due_amount = 0
+                        due.paid_amount += amount
+                        due.last_payment_date = date.today()
+                        due.is_due_paid = True
+                        due.transaction = transaction_obj
+                        due.save(update_fields=[
+                                 "due_amount", "paid_amount", "last_payment_date", "is_due_paid", "transaction"])
+
+                        # update member due table
+                        member_due.amount_due = 0
+                        member_due.amount_paid += amount
+                        member_due.payment_date = date.today()
+                        member_due.is_due_paid = True
+                        member_due.save(
+                            update_fields=["amount_due", "amount_paid", "payment_date", "is_due_paid"])
+                        # add data to income table
+                        Income.objects.create(
+                            receivable_amount=invoice.total_amount,
+                            final_receivable=invoice.total_amount,
+                            actual_received=amount,
+                            reaming_due=0,
+                            particular=income.particular,
+                            received_from_type=income.received_from_type,
+                            receiving_type=full_receiving_type,
+                            member=invoice.member,
+                            received_by=payment_method,
+                            sale=sale
+                        )
+                        return Response({
+                            "code": 200,
+                            "status": "success",
+                            "message": "Due paid successfully",
+                            "data": {
+                                "member_due": member_due.id
+                            }
+                        }, status=status.HTTP_200_OK)
+                    else:
+                        pass
+
                 return Response("ok")
             else:
                 return Response({
