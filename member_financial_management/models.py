@@ -262,6 +262,7 @@ class Due(FinancialBaseModel):
     due_date = models.DateField(null=True, blank=True, default=None)
     payment_status = models.CharField(max_length=255, default="")
     last_payment_date = models.DateField(null=True, blank=True, default=None)
+    is_due_paid = models.BooleanField(default=False)
 
     # relations
     member = models.ForeignKey(
@@ -287,6 +288,7 @@ class MemberDue(FinancialBaseModel):
     overdue_amount = models.DecimalField(
         max_digits=10, decimal_places=2, default=0)
     notes = models.TextField(default="")
+    is_due_paid = models.BooleanField(default=False)
 
     # relations
     member = models.ForeignKey(
