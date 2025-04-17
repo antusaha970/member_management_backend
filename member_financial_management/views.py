@@ -848,7 +848,7 @@ class SalesView(APIView):
                 {
                     "code": 200,
                     "status": "success",
-                    "message": "Viewing the list of all income",
+                    "message": "Viewing the list of all sales",
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
@@ -888,7 +888,7 @@ class SalesSpecificView(APIView):
                 {
                     "code": 200,
                     "status": "success",
-                    "message": "Viewing the list of all income",
+                    "message": "Viewing the specific sale",
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
