@@ -15,6 +15,7 @@ from .models import PaymentMethod, Transaction, Payment, Sale, SaleType, IncomeP
 from . import serializers
 from .utils.functions import generate_unique_sale_number
 logger = logging.getLogger("myapp")
+from django.core.cache import cache
 
 
 class PaymentMethodView(APIView):
@@ -22,27 +23,35 @@ class PaymentMethodView(APIView):
 
     def get(self, request):
         try:
-            data = PaymentMethod.objects.filter(is_active=True)
-            serializer = serializers.PaymentMethodSerializer(data, many=True)
+            # Cache check
+            data = cache.get("active_payment_methods")
+            if not data:
+                payment_methods = PaymentMethod.objects.filter(is_active=True)
+                serializer = serializers.PaymentMethodSerializer(payment_methods, many=True)
+                data = serializer.data
+                cache.set("active_payment_methods", data, 60 * 30) 
+
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
                 verb="View",
                 severity_level="info",
                 description="User viewed all payment methods.",
             )
+
             return Response({
                 "code": 200,
                 "status": "success",
                 "message": "Viewing all payment methods",
-                "data": serializer.data
+                "data": data
             }, status=status.HTTP_200_OK)
+
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
-                verb="Creation",
-                severity_level="info",
-                description="User tried to view payment method but faced error.",
+                verb="View",
+                severity_level="error",
+                description="User tried to view payment methods but faced error.",
             )
             return Response({
                 "code": 500,
@@ -56,12 +65,14 @@ class PaymentMethodView(APIView):
             serializer = serializers.PaymentMethodSerializer(data=request.data)
             if serializer.is_valid():
                 serializer.save()
+                cache.delete("active_payment_methods")  # Invalidate cache delete
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),
                     verb="Creation",
                     severity_level="info",
                     description="User created a new payment method",
                 )
+
                 return Response({
                     "code": 201,
                     "status": "success",
@@ -72,33 +83,35 @@ class PaymentMethodView(APIView):
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),
                     verb="Creation",
-                    severity_level="info",
-                    description="User tried to create a new payment method but faced error.",
+                    severity_level="warning",
+                    description="User tried to create a new payment method but faced validation error.",
                 )
+
                 return Response({
                     "code": 400,
-                    "status": "success",
+                    "status": "failed",
                     "message": "Bad request",
                     "errors": serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
+
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
                 verb="Creation",
-                severity_level="info",
+                severity_level="error",
                 description="User tried to create a new payment method but faced error.",
             )
+
             return Response({
                 "code": 500,
-                "status": "success",
-                "message": "Added a new payment options",
+                "status": "failed",
+                "message": "Error while creating payment method.",
                 "errors": {
                     "server_errors": [str(e)]
                 }
-            }, status=status.HTTP_501_NOT_IMPLEMENTED)
-
-
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
 class InvoicePaymentView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -445,6 +458,7 @@ class IncomeParticularView(APIView):
             serializer = serializers.IncomeParticularSerializer(
                 data=request.data)
             if serializer.is_valid():
+                cache.delete("active_income_particulars")  # Invalidate cache
                 serializer.save()
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),
@@ -490,20 +504,26 @@ class IncomeParticularView(APIView):
 
     def get(self, request):
         try:
-            data = IncomeParticular.objects.filter(is_active=True)
-            serializer = serializers.IncomeParticularSerializer(
-                data, many=True)
+            # implement caching
+            data = cache.get("active_income_particulars")
+            if not data:
+                income_particular = IncomeParticular.objects.filter(is_active=True)
+                serializer = serializers.IncomeParticularSerializer(
+                    income_particular, many=True)
+                data = serializer.data
+                cache.set("active_income_particulars", data, 60 * 30)
+                
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
                 verb="View",
                 severity_level="info",
-                description="User tried to create an Income particular but faced error",
+                description="User viewed all income particulars",
             )
             return Response({
                 "code": 200,
                 "status": "success",
                 "message": "list of all income particulars",
-                "data": serializer.data
+                "data": data
             }, status=status.HTTP_200_OK)
         except Exception as e:
             logger.exception(str(e))
@@ -531,6 +551,7 @@ class IncomeReceivedFromView(APIView):
             serializer = serializers.IncomeReceivingOptionSerializer(
                 data=request.data)
             if serializer.is_valid():
+                cache.delete("active_income_receiving_options")  # Invalidate cache
                 serializer.save()
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),
@@ -576,9 +597,15 @@ class IncomeReceivedFromView(APIView):
 
     def get(self, request):
         try:
-            data = IncomeReceivingOption.objects.filter(is_active=True)
-            serializer = serializers.IncomeReceivingOptionSerializer(
-                data, many=True)
+            # implement caching
+            data = cache.get("active_income_receiving_options")
+            if not data:
+                data = IncomeReceivingOption.objects.filter(is_active=True)
+                serializer = serializers.IncomeReceivingOptionSerializer(
+                    data, many=True)
+                data = serializer.data
+                cache.set("active_income_receiving_options", data, 60*30)
+            
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
                 verb="View",
@@ -589,7 +616,7 @@ class IncomeReceivedFromView(APIView):
                 "code": 200,
                 "status": "success",
                 "message": "list of all income receiving option",
-                "data": serializer.data
+                "data": data
             }, status=status.HTTP_200_OK)
         except Exception as e:
             logger.exception(str(e))
