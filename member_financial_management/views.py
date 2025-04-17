@@ -1262,7 +1262,7 @@ class MemberDueView(APIView):
                         # add data to income table
                         Income.objects.create(
                             receivable_amount=invoice.total_amount,
-                            final_receivable=invoice.total_amount,
+                            final_receivable=amount,
                             actual_received=amount,
                             reaming_due=0,
                             particular=income.particular,
@@ -1343,7 +1343,7 @@ class MemberDueView(APIView):
                             # add data to income table
                             Income.objects.create(
                                 receivable_amount=invoice.total_amount,
-                                final_receivable=invoice.total_amount,
+                                final_receivable=amount,
                                 actual_received=amount,
                                 reaming_due=0,
                                 particular=income.particular,
@@ -1397,7 +1397,7 @@ class MemberDueView(APIView):
                             # add data to income table
                             Income.objects.create(
                                 receivable_amount=invoice.total_amount,
-                                final_receivable=invoice.total_amount,
+                                final_receivable=amount,
                                 actual_received=amount,
                                 reaming_due=member_due.amount_due,
                                 particular=income.particular,
