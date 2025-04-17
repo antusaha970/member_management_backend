@@ -1217,6 +1217,7 @@ class MemberDueView(APIView):
                 income = sale.income_sale.first()
                 due_amount = member_due.amount_due
                 with transaction.atomic():
+
                     if amount == due_amount:
                         full_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
                             name="full")
@@ -1280,6 +1281,7 @@ class MemberDueView(APIView):
                             }
                         }, status=status.HTTP_200_OK)
                     else:
+
                         if adjust_from_balance:
                             member_account = MemberAccount.objects.get(
                                 member=member_due.member)
@@ -1296,6 +1298,7 @@ class MemberDueView(APIView):
                                     amount += member_account_balance
                                     member_account.balance = 0
                             member_account.save(update_fields=["balance"])
+
                         if amount == due_amount:
                             full_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
                                 name="full")

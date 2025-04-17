@@ -44,6 +44,9 @@ class InvoicePaymentSerializer(serializers.Serializer):
     def validate(self, attrs):
         invoice = attrs["invoice_id"]
         amount = attrs["amount"]
+        if invoice.status != "unpaid":
+            raise serializers.ValidationError(
+                "You can't make payment of due invoices here. Make request on Pay due invoice Endpoint. ")
         adjust_from_balance = attrs["adjust_from_balance"]
         if invoice.total_amount < amount:
             raise serializers.ValidationError(
@@ -349,7 +352,9 @@ class MemberDuePaymentSerializer(serializers.Serializer):
         amount = attrs['amount']
         member_due = attrs['member_due_id']
         adjust_from_balance = attrs['adjust_from_balance']
-
+        if member_due.is_due_paid:
+            raise serializers.ValidationError(
+                "This due has been paid already.")
         if not adjust_from_balance and amount <= 0:
             raise serializers.ValidationError("Amount can't be zero")
 
