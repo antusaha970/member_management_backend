@@ -69,20 +69,28 @@ class PromoCodeSerializer(serializers.Serializer):
         return value
 
     def validate(self, attrs):
+        start_date = attrs.get('start_date')
+        end_date = attrs.get('end_date')
+        percentage = attrs.get('percentage')
+        amount = attrs.get('amount')
+        remaining_limit = attrs.get('remaining_limit')
+        
+        if start_date and end_date and start_date > end_date:
+            raise serializers.ValidationError("Start date cannot be greater than end date.")
 
-        # check start date and end date
-        if attrs.get('start_date') > attrs.get('end_date'):
-            raise serializers.ValidationError(
-                "Start date cannot be greater than end date.")
+        if percentage is not None and 'amount' in self.initial_data:
+            raise serializers.ValidationError("Cannot provide both percentage and amount.")
+        if amount is not None and 'percentage' in self.initial_data:
+            raise serializers.ValidationError("Cannot provide both amount and percentage.")
 
-        # check if both percentage and amount are provided
-        if attrs.get('percentage') is not None and attrs.get('amount') is not None:
-            raise serializers.ValidationError(
-                "Either percentage or amount should be provided, but not both")
-        if not attrs.get('percentage') and not attrs.get('amount'):
-            raise serializers.ValidationError(
-                "Either percentage or amount should be provided")
+        if percentage is None and amount is None:
+            raise serializers.ValidationError("Either percentage or amount must be provided.")
+        
+        if 'remaining_limit' in self.initial_data:
+            raise serializers.ValidationError("Remaining limit cannot be set manually.")
+
         return attrs
+
 
     def create(self, validated_data):
         category = validated_data.pop("category")
