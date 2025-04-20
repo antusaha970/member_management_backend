@@ -19,6 +19,8 @@ import logging
 from django.db.models import Prefetch
 from decimal import Decimal
 from promo_code_app.models import AppliedPromoCode
+from core.utils.pagination import CustomPageNumberPagination
+
 logger = logging.getLogger("myapp")
 import pdb
 
@@ -214,19 +216,21 @@ class FacilityUseFeeView(APIView):
             Response: The response containing the list of facility use fees.
         """
         try:
-            facility_use_fees = FacilityUseFee.objects.filter(is_active=True)
-            serializer = serializers.FacilityUseFeeViewSerializer(facility_use_fees, many=True)
+            facility_use_fees = FacilityUseFee.objects.filter(is_active=True).order_by('id')
+            paginator = CustomPageNumberPagination()
+            paginated_queryset = paginator.paginate_queryset(facility_use_fees, request, view=self)
+            serializer = serializers.FacilityUseFeeViewSerializer(paginated_queryset, many=True)
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
                 verb="Retrieve all facility use fees",
                 severity_level="info",
                 description="User retrieved all facility use fees successfully",)
-            return Response({
+            return paginator.get_paginated_response({
                 "code": 200,
                 "message": "Facility use fees retrieved successfully",
                 "status": "success",
                 "data": serializer.data  
-            }, status=status.HTTP_200_OK)
+            })
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -267,12 +271,12 @@ class FacilityBuyView(APIView):
                 promo_code = serializer.validated_data["promo_code"]
                 facility_uses_fee = FacilityUseFee.objects.filter(facility=facility, membership_type=member.membership_type).first()
                 fee = 0
-               
                 if facility_uses_fee:
                     fee = facility_uses_fee.fee
                 else:
                     fee = facility.usages_fee
-                    
+                # pdb.set_trace()
+    
                 discount = 0
                 total_amount = fee
                 if promo_code is not None:
