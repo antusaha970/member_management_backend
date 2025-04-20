@@ -57,6 +57,13 @@ services:
 
   redis:
     image: redis:6
+    command:
+      - redis-server
+      - --maxmemory
+      - 512mb
+      - --maxmemory-policy
+      - allkeys-lru
+    
 
 volumes:
   postgres_data:
