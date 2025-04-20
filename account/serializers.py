@@ -208,7 +208,7 @@ class GroupModelSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=250, required=True)
     permission = serializers.PrimaryKeyRelatedField(
         queryset=PermissonModel.objects.all(), many=True, required=True)
-    
+
     def validate_name(self, value):
         if self.instance:
             # if we are updating existing instance then make sure new name doesn't conflict with existing groups
@@ -228,7 +228,7 @@ class GroupModelSerializer(serializers.Serializer):
         return name
 
     def create(self, validated_data):
-       
+
         permissions_data = validated_data.pop('permission')
         group = GroupModel.objects.create(**validated_data)
         group.permission.set(permissions_data)
@@ -248,8 +248,6 @@ class AssignGroupPermissionSerializer(serializers.Serializer):
         queryset=get_user_model().objects.all(), required=True)
     group = serializers.PrimaryKeyRelatedField(
         queryset=GroupModel.objects.all(), many=True, required=True)
-
-    
 
     def create(self, validated_data):
         groups = validated_data.pop('group')
@@ -403,3 +401,7 @@ class AdminUserRegistrationSerializer(serializers.ModelSerializer):
         user = get_user_model().objects.create_user(
             username=username, password=password, email=email, first_name=name)
         return user
+
+
+class GroupDetailsSerializer(serializers.Serializer):
+    name = serializers.CharField()

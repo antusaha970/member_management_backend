@@ -1531,3 +1531,46 @@ class GetUserPermissionsView(APIView):
                 "errors": {
                     'server_error': [str(e)]
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class GroupDetailsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, id):
+        try:
+            group = GroupModel.objects.prefetch_related(
+                "permission").get(id=id)
+            permissions = group.permission.all()
+            assign_group_permission_obj = AssignGroupPermission.objects.filter(
+                group=group).select_related("user")
+            users = [
+                assign.user for assign in assign_group_permission_obj if assign.user]
+            group_serializer = GroupDetailsSerializer(group)
+            permission_serializer = CustomPermissionSerializerForView(
+                permissions, many=True)
+            user_serializer = UserSerializer(users, many=True)
+            return Response({
+                "code": 200,
+                "status": "success",
+                "data": {
+                    "group": group_serializer.data,
+                    "permissions": permission_serializer.data,
+                    "users": user_serializer.data
+                }
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Error Occurred",
+                severity_level="error",
+                description="Error while getting all the groups",
+            )
+            return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Invalid request",
+                "status": "failed",
+                "errors": {
+                    'server_error': [str(e)]
+                }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
