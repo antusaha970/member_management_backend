@@ -15,7 +15,7 @@ from django.db import transaction
 from datetime import date
 from member_financial_management.serializers import InvoiceSerializer
 from promo_code_app.models import AppliedPromoCode
-
+from core.utils.pagination import CustomPageNumberPagination
 logger = logging.getLogger("myapp")
 import pdb
 
@@ -280,14 +280,18 @@ class ProductView(APIView):
             Response: The response containing the list of all products.
         """
         try:
-            products = Product.objects.all()
-            serializer = serializers.ProductViewSerializer(products, many=True)
+            products = Product.objects.filter(is_active=True).order_by('id')
+            # Apply pagination
+            paginator = CustomPageNumberPagination()
+            paginated_products = paginator.paginate_queryset(products, request, view=self)
+            serializer = serializers.ProductViewSerializer(paginated_products, many=True)
+            # activity log
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
                 verb="Products retrieval successful",
                 severity_level="info",
                 description="User successfully retrieved all products",)
-            return Response({
+            return paginator.get_paginated_response({
                 "code": 200,
                 "message": "Product list retrieved successfully",
                 "status": "success",
@@ -367,41 +371,7 @@ class ProductMediaView(APIView):
                 }
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-    def get(self,request):
-        """
-        Retrieves a list of all product media and logs an activity.
-        Returns:
-            Response: The response containing the list of all product media.
-        """
-        try :
-            media = ProductMedia.objects.filter(is_active=True)
-            serializer = serializers.ProductMediaViewSerializer(media, many=True)
-            log_activity_task.delay_on_commit(
-                request_data_activity_log(request),
-                verb="Product media retrieval successful",
-                severity_level="info",
-                description="User successfully retrieved product media for product",)
-            return Response({
-                "code": 200,
-                "message": "Product media list retrieved successfully",
-                "status": "success",
-                "data": serializer.data,
-            })
-        except Exception as e:
-            logger.exception(str(e))
-            log_activity_task.delay_on_commit(
-                request_data_activity_log(request),
-                verb="Product media retrieval failed",
-                severity_level="error",
-                description="An error occurred while retrieving product media for product",)
-            return Response({
-                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
-                "message": "Error occurred",
-                "status": "failed",
-                'errors': {
-                    'server_error': [str(e)]
-                }
-                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
 
 class ProductPriceView(APIView):
     permission_classes = [IsAuthenticated,IsAdminUser]
@@ -470,8 +440,12 @@ class ProductPriceView(APIView):
             Response: The response containing the list of product prices.
         """
         try:
-            price = ProductPrice.objects.filter(is_active=True)
-            serializer = serializers.ProductPriceViewSerializer(price, many=True)
+            price = ProductPrice.objects.filter(is_active=True).order_by('id')
+            # Apply pagination
+            paginator = CustomPageNumberPagination()
+            paginated_price = paginator.paginate_queryset(price, request, view=self)
+            serializer = serializers.ProductPriceViewSerializer(paginated_price, many=True)
+            # activity log
             log_activity_task.delay_on_commit(
                 
                 request_data_activity_log(request),
@@ -479,7 +453,7 @@ class ProductPriceView(APIView):
                 severity_level="info",
                 description="User successfully retrieved all product prices"
                 )
-            return Response({
+            return paginator.get_paginated_response({
                 "code": 200,
                 "message": "Product price list retrieved successfully",
                 "status": "success",
@@ -516,7 +490,7 @@ class ProductDetailView(APIView):
         """          
         try:
             product = Product.objects.get(id=product_id)
-            serializer = serializers.ProductViewSerializer(product)
+            serializer = serializers.SpecificProductViewSerializer(product)
             log_activity_task.delay_on_commit(
                 
                 request_data_activity_log(request),
@@ -563,89 +537,7 @@ class ProductDetailView(APIView):
                 }                
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
-class EventTicketBuyView(APIView):
-    permission_classes = [IsAuthenticated]
-    def post(self, request):
-        """
-        Creates an invoice for an event ticket purchase.
-        Args:
-            request (Request): The request containing the data for the invoice instance.
-        Returns:
-            Response: The response containing the created invoice and a success message.
-        """
-        try:
-            data = request.data
-            serializer = serializers.EventTicketBuySerializer(data=data)
-            if serializer.is_valid():
-                
-                member = serializer.validated_data["member_ID"]
-                member = Member.objects.get(member_ID=member)
-                event_ticket = serializer.validated_data["event_ticket"]
-                
-                invoice_type, _ = InvoiceType.objects.get_or_create(
-                    name="Event")
 
-                with transaction.atomic():
-                    invoice = Invoice.objects.create(
-                        currency="BDT",
-                        invoice_number=generate_unique_invoice_number(),
-                        balance_due=event_ticket.price,
-                        paid_amount=0,
-                        issue_date=date.today(),
-                        total_amount=event_ticket.price,
-                        is_full_paid=False,
-                        status="unpaid",
-                        invoice_type=invoice_type,
-                        generated_by=request.user,
-                        member=member,
-                        event=event_ticket.event,
-                    )
-                    invoice_item = InvoiceItem.objects.create(
-                        invoice=invoice
-                    )
-                    invoice_item.event_tickets.set([event_ticket.id])    
-                    
-                
-                
-                log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),
-                    verb="Invoice created successfully",
-                    severity_level="info",
-                    description="user generated an invoice successfully",)
-                return Response({
-                    "code": 200,
-                    "message": "Invoice created successfully",
-                    "status": "success",
-                    "data": InvoiceSerializer(invoice).data    
-                }, status=status.HTTP_200_OK)
-            else:
-                log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),
-                    verb="Invoice creation failed",
-                    severity_level="error",
-                    description="user tried to generate an invoice but made an invalid request",)
-                return Response({
-                    "code": 400,
-                    "status": "failed",
-                    "message": "Invalid request",
-                    "errors": serializer.errors,
-                }, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:  
-            logger.exception(str(e))
-            log_activity_task.delay_on_commit(
-                request_data_activity_log(request),
-                verb="Invoice creation failed",
-                severity_level="error",
-                description="user tried to generate an invoice but made an invalid request",)
-            return Response({
-
-                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
-                "message": "Error occurred",
-                "status": "failed",
-                'errors': {
-                    'server_error': [str(e)]
-                }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-  
 class ProductBuyView(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, request):
@@ -663,7 +555,6 @@ class ProductBuyView(APIView):
             if serializer.is_valid():
                 member_id = serializer.validated_data["member_ID"]
                 product_items = serializer.validated_data["product_items"]
-
                 member = Member.objects.get(member_ID=member_id)
                 promo_code = serializer.validated_data["promo_code"]
                 discount = 0
@@ -672,7 +563,12 @@ class ProductBuyView(APIView):
                 for item in product_items:
                     product = item["product"]
                     quantity = item["quantity"]
-                    total_price += product.price * quantity
+                    product_price = ProductPrice.objects.filter(
+                        product=product, membership_type=member.membership_type).first()
+                    if product_price:
+                        total_price += product_price.price * quantity
+                    else:
+                        total_price += product.price * quantity
                     product_ids.extend([product.id] * quantity)
                 if promo_code is not None:
                     if promo_code.percentage is not None:
@@ -691,9 +587,6 @@ class ProductBuyView(APIView):
                 else:
                     promo_code = ""
                 invoice_type, _ = InvoiceType.objects.get_or_create(name="Product")
-
-                
-
                 with transaction.atomic():
 
                     invoice = Invoice.objects.create(

@@ -88,10 +88,29 @@ class ProductSerializer(serializers.Serializer):
         return product
 
 class ProductViewSerializer(serializers.ModelSerializer):
+    media = serializers.SerializerMethodField()
+    class Meta:
+        model = Product
+        fields = "__all__"
+    def get_media(self, obj):
+        media = obj.product_media.all() 
+        media_serializer = ProductMediaViewSerializer(media, many=True)
+        return media_serializer.data
+        
+class SpecificProductViewSerializer(serializers.ModelSerializer):
+    media = serializers.SerializerMethodField()
+    
     class Meta:
         model = Product
         fields = "__all__"
         depth = 1
+        
+    def get_media(self, obj):
+        media = obj.product_media.all()
+        media_serializer = ProductMediaViewSerializer(media, many=True)
+        return media_serializer.data
+        
+    
 
 class ProductMediaSerializer(serializers.Serializer):
     image = serializers.ImageField()
@@ -113,7 +132,6 @@ class ProductMediaViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductMedia
         fields = "__all__"
-        depth = 2
         
 class ProductPriceSerializer(serializers.Serializer):
     price = serializers.DecimalField(max_digits=10, decimal_places=2)
@@ -146,10 +164,16 @@ class ProductPriceSerializer(serializers.Serializer):
         
     
 class ProductPriceViewSerializer(serializers.ModelSerializer):
+    membership_type = serializers.SerializerMethodField()
     class Meta:
         model = ProductPrice
         fields = "__all__"
-        depth = 2
+        
+    def get_membership_type(self, obj):
+        return {
+            'id': obj.membership_type.id,
+            'name': obj.membership_type.name
+            } if obj.membership_type else None
     
     
 class ProductItemSerializer(serializers.Serializer):
