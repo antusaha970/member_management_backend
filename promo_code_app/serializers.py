@@ -88,7 +88,6 @@ class PromoCodeSerializer(serializers.Serializer):
         
         if 'remaining_limit' in self.initial_data:
             raise serializers.ValidationError("Remaining limit cannot be set manually.")
-
         return attrs
 
 

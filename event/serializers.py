@@ -60,52 +60,8 @@ class EventVenueViewSerializer(serializers.ModelSerializer):
         model = Venue
         fields = "__all__"
 
-class EventSerializer(serializers.Serializer):
-    title = serializers.CharField(max_length=255)
-    description = serializers.CharField()
-    start_date = serializers.DateTimeField()
-    end_date = serializers.DateTimeField()
-    status = serializers.ChoiceField(choices=EVENT_STATUS_CHOICES)
-    registration_deadline = serializers.DateTimeField()
-    event_type = serializers.CharField(max_length=255)
-    reminder_time = serializers.DateTimeField()
-    venue = serializers.IntegerField(required=False, allow_null=True)
-    organizer = serializers.IntegerField(required=False, allow_null=True)
 
-    def validate_title(self, value):
-        
-        if Event.objects.filter(title=value).exists():
-            raise serializers.ValidationError("An event with this title already exists.")
-        return value
     
-    def validate_venue(self, value):
-        try:
-            venue_instance = Venue.objects.get(pk=value)
-        except Venue.DoesNotExist:
-            raise serializers.ValidationError("Venue does not exist.")
-        return venue_instance 
-    
-    def validate_organizer(self, value):
-        try:
-            organizer_instance = Member.objects.get(pk=value)
-        except Member.DoesNotExist:
-            raise serializers.ValidationError("Organizer does not exist.")
-        return organizer_instance    
-
-    def create(self, validated_data):
-        """
-        Create a new Event instance.
-        """
-        event = Event.objects.create(**validated_data)
-        return event
-       
-class EventViewSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Event
-        fields = "__all__"
-        depth = 1
-        
-
 class EventTicketSerializer(serializers.Serializer):
     ticket_name = serializers.CharField(max_length=255)
     ticket_description = serializers.CharField()
@@ -132,11 +88,22 @@ class EventTicketSerializer(serializers.Serializer):
         ticket = EventTicket.objects.create(**validated_data)
         return ticket
 
+class EventShowForEventTicketSerializer(serializers.ModelSerializer):
+    organizer = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Event
+        fields = ['id', 'organizer','venue']  
+        
+    def get_organizer(self, obj):
+        return obj.organizer.member_ID if obj.organizer else None
+
 class EventTicketViewSerializer(serializers.ModelSerializer):
+    event = EventShowForEventTicketSerializer(read_only=True)
+
     class Meta:
         model = EventTicket
         fields = "__all__"
-        depth = 2
 
 class EventMediaSerializer(serializers.Serializer):
     image = serializers.FileField()
@@ -157,7 +124,7 @@ class EventMediaViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = EventMedia
         fields = "__all__"
-        depth = 2
+        
         
 class EventFeeSerializer(serializers.Serializer):
     fee = serializers.DecimalField(max_digits=10, decimal_places=2)
@@ -183,11 +150,74 @@ class EventFeeSerializer(serializers.Serializer):
         return fee
 
 class EventFeeViewSerializer(serializers.ModelSerializer):
+    membership_type = serializers.SerializerMethodField()
     class Meta:
         model = EventFee
         fields = "__all__"
-        depth = 2
         
+    def get_membership_type(self, obj):
+        return {
+            "name": obj.membership_type.name,
+            "id": obj.membership_type.id
+        } if obj.membership_type else None
+
+class EventSerializer(serializers.Serializer):
+    title = serializers.CharField(max_length=255)
+    description = serializers.CharField()
+    start_date = serializers.DateTimeField()
+    end_date = serializers.DateTimeField()
+    status = serializers.ChoiceField(choices=EVENT_STATUS_CHOICES)
+    registration_deadline = serializers.DateTimeField()
+    event_type = serializers.CharField(max_length=255)
+    reminder_time = serializers.DateTimeField()
+    venue = serializers.IntegerField(required=False, allow_null=True)
+    organizer = serializers.CharField(required=False, allow_null=True)
+
+    def validate_title(self, value):
+        
+        if Event.objects.filter(title=value).exists():
+            raise serializers.ValidationError("An event with this title already exists.")
+        return value
+    
+    def validate_venue(self, value):
+        try:
+            venue_instance = Venue.objects.get(pk=value)
+        except Venue.DoesNotExist:
+            raise serializers.ValidationError("Venue does not exist.")
+        return venue_instance 
+    
+    def validate_organizer(self, value):
+        try:
+            organizer_instance = Member.objects.get(member_ID=value)
+        except Member.DoesNotExist:
+            raise serializers.ValidationError(f"Organizer {value} does not exist.")
+        return organizer_instance    
+
+    def create(self, validated_data):
+        """
+        Create a new Event instance.
+        """
+        event = Event.objects.create(**validated_data)
+        return event
+       
+class EventViewSerializer(serializers.ModelSerializer):
+    organizer = serializers.SerializerMethodField()
+    venue = EventVenueViewSerializer(read_only=True)
+    media = serializers.SerializerMethodField()
+    class Meta:
+        model = Event
+        fields = "__all__"
+
+    def get_organizer(self, obj):
+        return obj.organizer.member_ID if obj.organizer else None
+    def get_media(self, obj):
+        media_qs = obj.event_media.all()
+        serialize_media = EventMediaViewSerializer(media_qs, many=True).data
+        return serialize_media
+
+        
+
+
 class EventTicketBuySerializer(serializers.Serializer):
     event_ticket = serializers.PrimaryKeyRelatedField(queryset=EventTicket.objects.filter(status='available'))
     member_ID = serializers.CharField()

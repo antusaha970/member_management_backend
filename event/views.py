@@ -20,6 +20,7 @@ from django.utils.decorators import method_decorator
 import logging
 logger = logging.getLogger("myapp")
 import pdb
+from core.utils.pagination import CustomPageNumberPagination
 
 
 
@@ -95,19 +96,23 @@ class EventVenueView(APIView):
             Response: The response containing the list of event venues.
         """
         try:
-            venues = Venue.objects.all()
-            serializer = serializers.EventVenueViewSerializer(venues, many=True)
+            venues = Venue.objects.filter(is_active=True).order_by('id')
+            # Implement pagination
+            paginator = CustomPageNumberPagination()
+            all_venues = paginator.paginate_queryset(venues, request, view=self)
+            serializer = serializers.EventVenueViewSerializer(all_venues, many=True)
+            # Log the activity
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
                 verb="Retrieve all venues",
                 severity_level="info",
                 description="User retrieved all venues successfully",)
-            return Response({
+            return paginator.get_paginated_response({
                 "code": 200,
                 "message": "Venues retrieved successfully",
                 "status": "success",
-                "data": serializer.data  # no need for extra list wrapping
-            }, status=status.HTTP_200_OK)
+                "data": serializer.data
+            })
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -193,19 +198,23 @@ class EventView(APIView):
             Response: The response containing the list of events.
         """
         try:
-            events = Event.objects.filter(is_active=True)            
-            serializer = serializers.EventViewSerializer(events, many=True)
+            events = Event.objects.filter(is_active=True).order_by('id')
+            # Implement pagination
+            paginator = CustomPageNumberPagination()
+            all_events = paginator.paginate_queryset(events, request, view=self)            
+            serializer = serializers.EventViewSerializer(all_events, many=True)
+            # Log the activity
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
                 verb="Retrieve all events",
                 severity_level="info",
                 description="User retrieved all events successfully",)
-            return Response({
+            return paginator.get_paginated_response({
                 "code": 200,
                 "message": "Events retrieved successfully",
                 "status": "success",
                 "data": serializer.data  
-            }, status=status.HTTP_200_OK)
+            })
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -343,19 +352,23 @@ class EventTicketView(APIView):
             Response: The response containing the list of event tickets.
         """
         try:
-            event_ticket = EventTicket.objects.all()
-            serializer = serializers.EventTicketViewSerializer(event_ticket, many=True)
+            event_ticket = EventTicket.objects.filter(is_active=True).order_by('id')
+            # Implement pagination
+            paginator = CustomPageNumberPagination()
+            all_event_ticket = paginator.paginate_queryset(event_ticket, request, view=self)
+            serializer = serializers.EventTicketViewSerializer(all_event_ticket, many=True)
+            # Log the activity
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
                 verb="Retrieve all event tickets",
                 severity_level="info",
                 description="User retrieved all event tickets successfully",)
-            return Response({
+            return paginator.get_paginated_response({
                 "code": 200,
                 "message": "Event tickets retrieved successfully",
                 "status": "success",
                 "data": serializer.data  
-            }, status=status.HTTP_200_OK)
+            })
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -431,41 +444,7 @@ class EventMediaView(APIView):
                     'server_error': [str(e)]
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)       
      
-    def get(self, request):
-        """
-        Retrieves a list of all event medias and logs an activity.
-        Returns:
-            Response: The response containing the list of event medias.
-        """
-        try:
-            event_media = EventMedia.objects.all()
-            serializer = serializers.EventMediaViewSerializer(event_media, many=True)
-            log_activity_task.delay_on_commit(
-                request_data_activity_log(request),
-                verb="Retrieve all event medias",
-                severity_level="info",
-                description="User retrieved all event medias successfully",)
-            return Response({
-                "code": 200,
-                "message": "Event medias retrieved successfully",
-                "status": "success",
-                "data": serializer.data  
-            }, status=status.HTTP_200_OK)   
-        except Exception as e:
-            logger.exception(str(e))
-            log_activity_task.delay_on_commit(
-                request_data_activity_log(request),
-                verb="Event medias retrieve failed",
-                severity_level="error",
-                description="Error occurred while retrieving all event medias",)
-            return Response({
-                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
-                "message": "Error occurred",
-                "status": "failed",
-                'errors': {
-                    'server_error': [str(e)]
-                }
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
         
 class EventFeeView(APIView):
     permission_classes = [IsAuthenticated,IsAdminUser]   
@@ -532,19 +511,23 @@ class EventFeeView(APIView):
              Response: The response containing the list of event fees.
          """
          try:
-            event_fees = EventFee.objects.all()
-            serializer = serializers.EventFeeViewSerializer(event_fees, many=True)
+            event_fees = EventFee.objects.filter(is_active=True).order_by('id')
+            # Implement pagination
+            paginator = CustomPageNumberPagination()
+            all_event_fees = paginator.paginate_queryset(event_fees, request, view=self)
+            serializer = serializers.EventFeeViewSerializer(all_event_fees, many=True)
+            # Log the activity
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
                 verb="Retrieve all event fees",
                 severity_level="info",
                 description="User retrieved all event fees successfully",)
-            return Response({
+            return paginator.get_paginated_response({
                 "code": 200,
                 "message": "Event fees retrieved successfully",
                 "status": "success",
                 "data": serializer.data  
-            }, status=status.HTTP_200_OK)   
+            })   
          except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
