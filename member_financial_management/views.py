@@ -1011,6 +1011,12 @@ class TransactionSpecificView(APIView):
 
     def get(self, request, id):
         try:
+            cache_key = f"specific_transactions::{id}"
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                return Response(cached_data, status=200)
+
+            # hit db if miss
             data = get_object_or_404(Transaction.active_objects.select_related(
                 "member", "invoice", "payment_method", "invoice__invoice_type", "invoice__generated_by", "invoice__member", "invoice__restaurant", "invoice__event"), pk=id)
             serializer = serializers.TransactionSpecificSerializer(
@@ -1021,7 +1027,7 @@ class TransactionSpecificView(APIView):
                 severity_level="info",
                 description="User viewed a transaction",
             )
-            return Response(
+            final_response = Response(
                 {
                     "code": 200,
                     "status": "success",
@@ -1029,6 +1035,8 @@ class TransactionSpecificView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
+            cache.set(cache_key, final_response.data, timeout=60*30)
+            return final_response
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
