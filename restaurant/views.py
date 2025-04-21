@@ -143,13 +143,14 @@ class RestaurantCategoryView(APIView):
             serializer = serializers.RestaurantCategorySerializer(
                 data=request.data)
             if serializer.is_valid():
-                instance = serializer.save()
+                serializer.save()
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),
                     verb="Creation",
                     severity_level="info",
                     description="User created a new restaurant category",
                 )
+                cache.delete_pattern("restaurant_categories::*")
                 return Response({
                     "code": 201,
                     "status": "success",
@@ -240,20 +241,36 @@ class RestaurantView(APIView):
 
     def get(self, request):
         try:
-            data = Restaurant.objects.filter(is_active=True)
-            serializer = serializers.RestaurantViewSerializer(data, many=True)
+            query_items = sorted(request.query_params.items())
+            query_string = urlencode(query_items) if query_items else "default"
+            cache_key = f"restaurants::{query_string}"
+            cached_response = cache.get(cache_key)
+            if cached_response:
+                return Response(cached_response, status=200)
+
+            # Only hit DB if cache miss
+            paginator = CustomPageNumberPagination()
+            data = Restaurant.objects.select_related(
+                "cuisine_type", "restaurant_type").filter(is_active=True)
+            paginated_queryset = paginator.paginate_queryset(
+                data, request=request, view=self)
+            serializer = serializers.RestaurantViewSerializer(
+                paginated_queryset, many=True)
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
                 verb="View",
                 severity_level="info",
                 description="User viewed all restaurants",
             )
-            return Response({
+            final_response = paginator.get_paginated_response({
                 "code": 200,
                 "status": "success",
                 "message": "Viewing all available restaurant",
                 "data": serializer.data
-            })
+            }, status=200)
+            cache.set(cache_key, final_response.data, timeout=60 * 30)
+            return final_response
+
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -275,13 +292,14 @@ class RestaurantView(APIView):
         try:
             serializer = serializers.RestaurantSerializer(data=request.data)
             if serializer.is_valid():
-                instance = serializer.save()
+                serializer.save()
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),
                     verb="Creation",
                     severity_level="info",
                     description="User created a new restaurant",
                 )
+                cache.delete_pattern("restaurants::*")
                 return Response({
                     "code": 201,
                     "status": "success",
