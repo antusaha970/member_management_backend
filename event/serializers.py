@@ -60,8 +60,6 @@ class EventVenueViewSerializer(serializers.ModelSerializer):
         model = Venue
         fields = "__all__"
 
-
-    
 class EventTicketSerializer(serializers.Serializer):
     ticket_name = serializers.CharField(max_length=255)
     ticket_description = serializers.CharField()
@@ -88,23 +86,6 @@ class EventTicketSerializer(serializers.Serializer):
         ticket = EventTicket.objects.create(**validated_data)
         return ticket
 
-class EventShowForEventTicketSerializer(serializers.ModelSerializer):
-    organizer = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = Event
-        fields = ['id', 'organizer','venue']  
-        
-    def get_organizer(self, obj):
-        return obj.organizer.member_ID if obj.organizer else None
-
-class EventTicketViewSerializer(serializers.ModelSerializer):
-    event = EventShowForEventTicketSerializer(read_only=True)
-
-    class Meta:
-        model = EventTicket
-        fields = "__all__"
-
 class EventMediaSerializer(serializers.Serializer):
     image = serializers.FileField()
     event = serializers.IntegerField()
@@ -124,8 +105,7 @@ class EventMediaViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = EventMedia
         fields = "__all__"
-        
-        
+   
 class EventFeeSerializer(serializers.Serializer):
     fee = serializers.DecimalField(max_digits=10, decimal_places=2)
     event = serializers.IntegerField()
@@ -199,23 +179,27 @@ class EventSerializer(serializers.Serializer):
         """
         event = Event.objects.create(**validated_data)
         return event
-       
+
+class EventOrganizerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Member
+        fields = ['member_ID']  # Only return the needed field
+        
+
 class EventViewSerializer(serializers.ModelSerializer):
-    organizer = serializers.SerializerMethodField()
     venue = EventVenueViewSerializer(read_only=True)
-    media = serializers.SerializerMethodField()
+    organizer = EventOrganizerSerializer(read_only=True)
+    media = EventMediaViewSerializer(many=True, source='event_media', read_only=True)
+
     class Meta:
         model = Event
         fields = "__all__"
 
-    def get_organizer(self, obj):
-        return obj.organizer.member_ID if obj.organizer else None
-    def get_media(self, obj):
-        media_qs = obj.event_media.all()
-        serialize_media = EventMediaViewSerializer(media_qs, many=True).data
-        return serialize_media
-
-        
+class EventTicketViewSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = EventTicket
+        fields = "__all__"
 
 
 class EventTicketBuySerializer(serializers.Serializer):

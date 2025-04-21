@@ -22,7 +22,7 @@ logger = logging.getLogger("myapp")
 import pdb
 from core.utils.pagination import CustomPageNumberPagination
 from django.core.cache import cache
-from event.utils.cacheing_event import caching_event_key, delete_item_related_keys
+from django.utils.http import urlencode
 
 
 # Create your views here.
@@ -42,7 +42,7 @@ class EventVenueView(APIView):
             if serializer.is_valid():
                 
                 venue_instance = serializer.save()
-                delete_item_related_keys("venues")
+                cache.delete_pattern("event_venues::*")
                 street_address = serializer.validated_data["street_address"]
                 city = serializer.validated_data["city"]
                 log_activity_task.delay_on_commit(
@@ -51,6 +51,8 @@ class EventVenueView(APIView):
                     severity_level="info",
                     description="Venue created successfully for register a event",
                 )
+                # delete the cache for venues
+                
                 return Response({
                         "code": 201,
                         "message": "Venue created successfully",
@@ -99,21 +101,18 @@ class EventVenueView(APIView):
             Response: The response containing the list of event venues.
         """
         try:
-            venues = Venue.objects.filter(is_active=True).order_by('id')
-            page = request.query_params.get('page') or 1
-            page_size = request.query_params.get('page_size') or 100
-
+            # query_items = sorted(request.query_params.items())
+            # query_string = urlencode(query_items) if query_items else "default"
+            # cache_key = f"event_venues::{query_string}"
+            # cached_response = cache.get(cache_key)
+            # if cached_response:
+            #     return Response(cached_response, status=200)
             paginator = CustomPageNumberPagination()
-
-            cache_key = caching_event_key("venues", page=int(page), page_size=int(page_size))
-            data = cache.get(cache_key)
-            if not data:
-                # Implement pagination
-                all_venues = paginator.paginate_queryset(venues, request, view=self)
-                serializer = serializers.EventVenueViewSerializer(all_venues, many=True)
-                data = serializer.data
-                # Cache the data
-                cache.set(cache_key, data, timeout=60*30)
+            venues = Venue.objects.filter(is_active=True).order_by('id')
+            all_venues = paginator.paginate_queryset(venues, request, view=self)
+            serializer = serializers.EventVenueViewSerializer(all_venues, many=True)
+            data = serializer.data
+            
 
             # Log the activity
             log_activity_task.delay_on_commit(
@@ -123,12 +122,15 @@ class EventVenueView(APIView):
                 description="User retrieved all venues successfully",
             )
 
-            return paginator.get_paginated_response({
+            final_response = paginator.get_paginated_response({
                 "code": 200,
                 "message": "Venues retrieved successfully",
                 "status": "success",
                 "data": data
             })
+            # Cache the response
+            # cache.set(cache_key, final_response.data, timeout=60*30)
+            return final_response
 
         except Exception as e:
             logger.exception(str(e))
@@ -149,7 +151,6 @@ class EventVenueView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
             
-
 class EventView(APIView):
     permission_classes = [IsAuthenticated,IsAdminUser]
     def post(self,request):
@@ -166,7 +167,7 @@ class EventView(APIView):
             if serializer.is_valid():
                 event_instance=serializer.save()
                 # delete the cache for events
-                delete_item_related_keys("events")
+                cache.delete_pattern("events::*")
                 event_title=serializer.validated_data["title"]
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),
@@ -219,32 +220,37 @@ class EventView(APIView):
             Response: The response containing the list of events.
         """
         try:
-            events = Event.objects.filter(is_active=True).order_by('id')
-            page = request.query_params.get('page') or 1
-            page_size = request.query_params.get('page_size') or 100
-            cache_key = caching_event_key("events", page=int(page), page_size=int(page_size))
-            data = cache.get(cache_key)
+            query_items = sorted(request.query_params.items())
+            query_string = urlencode(query_items) if query_items else "default"
+            cache_key = f"events::{query_string}"
+            cached_response = cache.get(cache_key)
+            if cached_response:
+                return Response(cached_response, status=200)
             paginator = CustomPageNumberPagination()
-            if not data:
-                # Implement pagination
-                all_events = paginator.paginate_queryset(events, request, view=self)
-                serializer = serializers.EventViewSerializer(all_events, many=True)
-                data = serializer.data
-                # Cache the data
-                cache.set(cache_key, data, timeout=60*30)
-            
+            events = (
+                        Event.objects.filter(is_active=True)
+                        .select_related('venue', 'organizer')
+                        .prefetch_related('event_media')
+                        .order_by('id')
+                    )
+            all_events = paginator.paginate_queryset(events, request, view=self)
+            serializer = serializers.EventViewSerializer(all_events, many=True)
+            data = serializer.data
+    
             # Log the activity
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
                 verb="Retrieve all events",
                 severity_level="info",
                 description="User retrieved all events successfully",)
-            return paginator.get_paginated_response({
+            final_response = paginator.get_paginated_response({
                 "code": 200,
                 "message": "Events retrieved successfully",
                 "status": "success",
                 "data": data  
             })
+            cache.set(cache_key, final_response.data, timeout=60*30)
+            return final_response
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -274,7 +280,13 @@ class EventDetailView(APIView):
             Response: The response containing the event details.
         """
         try:
-            event = Event.objects.get(pk=event_id)
+            cache_key = f"event_details::{event_id}"
+            cached_response = cache.get(cache_key)
+            if cached_response:
+                return Response(cached_response, status=200)
+            event = Event.objects.select_related("organizer", "venue")\
+                                 .prefetch_related("event_media")\
+                                 .get(pk=event_id)
             serializer = serializers.EventViewSerializer(event)
             log_activity_task.delay_on_commit(
                 
@@ -282,12 +294,15 @@ class EventDetailView(APIView):
                 verb="Retrieve event details",
                 severity_level="info",
                 description="User retrieved event details successfully",)
-            return Response({
+            final_response = Response({
                 "code": 200,
                 "message": "Event details retrieved successfully",
                 "status": "success",
                 "data": serializer.data
             }, status=status.HTTP_200_OK)
+            # Cache the response
+            cache.set(cache_key, final_response.data, timeout=60 * 30)
+            return final_response
         except Event.DoesNotExist:
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
@@ -335,7 +350,7 @@ class EventTicketView(APIView):
             if serializer.is_valid():
                 ticket_instance=serializer.save()
                 # delete the cache for event tickets
-                delete_item_related_keys("event_tickets")
+                cache.delete_pattern("event_tickets::*")
                 ticket_name=serializer.validated_data["ticket_name"]
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),
@@ -384,20 +399,19 @@ class EventTicketView(APIView):
             Response: The response containing the list of event tickets.
         """
         try:
-            event_ticket = EventTicket.objects.filter(is_active=True).order_by('id')
-            page = request.query_params.get('page') or 1
-            page_size = request.query_params.get('page_size') or 100
-            cache_key = caching_event_key("event_tickets", page=int(page), page_size=int(page_size))
-            data = cache.get(cache_key)
+            
+            query_items = sorted(request.query_params.items())
+            query_string = urlencode(query_items) if query_items else "default"
+            cache_key = f"event_tickets::{query_string}"
+            cached_response = cache.get(cache_key)
+            if cached_response:
+                return Response(cached_response, status=200)
+            event_ticket = EventTicket.objects.filter(is_active=True).select_related("event").order_by('id')
             paginator = CustomPageNumberPagination()
-
-            if not data:
-                # Implement pagination
-                all_event_ticket = paginator.paginate_queryset(event_ticket, request, view=self)
-                serializer = serializers.EventTicketViewSerializer(all_event_ticket, many=True)
-                data = serializer.data
-                # Cache the data
-                cache.set(cache_key, data, timeout=60*3)
+            # Implement pagination
+            all_event_ticket = paginator.paginate_queryset(event_ticket, request, view=self)
+            serializer = serializers.EventTicketViewSerializer(all_event_ticket, many=True)
+            data = serializer.data
             
             # Log the activity
             log_activity_task.delay_on_commit(
@@ -405,12 +419,14 @@ class EventTicketView(APIView):
                 verb="Retrieve all event tickets",
                 severity_level="info",
                 description="User retrieved all event tickets successfully",)
-            return paginator.get_paginated_response({
+            final_response = paginator.get_paginated_response({
                 "code": 200,
                 "message": "Event tickets retrieved successfully",
                 "status": "success",
                 "data": data  
             })
+            cache.set(cache_key, final_response.data, timeout=60 * 30)
+            return final_response
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -486,8 +502,6 @@ class EventMediaView(APIView):
                     'server_error': [str(e)]
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)       
      
-    
-        
 class EventFeeView(APIView):
     permission_classes = [IsAuthenticated,IsAdminUser]   
     def post(self,request):
@@ -503,6 +517,8 @@ class EventFeeView(APIView):
             serializer = serializers.EventFeeSerializer(data=data)
             if serializer.is_valid():
                 fee_instance=serializer.save()
+                # delete the cache for event fees
+                cache.delete_pattern("event_fees::*")
                 event_fee = serializer.validated_data["fee"]
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),
@@ -553,23 +569,33 @@ class EventFeeView(APIView):
              Response: The response containing the list of event fees.
          """
          try:
+            query_items = sorted(request.query_params.items())
+            query_string = urlencode(query_items) if query_items else "default"
+            cache_key = f"event_fees::{query_string}"
+            cached_response = cache.get(cache_key)
+            if cached_response:
+                return Response(cached_response, status=200)
             event_fees = EventFee.objects.filter(is_active=True).order_by('id')
             # Implement pagination
             paginator = CustomPageNumberPagination()
             all_event_fees = paginator.paginate_queryset(event_fees, request, view=self)
             serializer = serializers.EventFeeViewSerializer(all_event_fees, many=True)
+            data = serializer.data
             # Log the activity
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
                 verb="Retrieve all event fees",
                 severity_level="info",
                 description="User retrieved all event fees successfully",)
-            return paginator.get_paginated_response({
+            final_response = paginator.get_paginated_response({
                 "code": 200,
                 "message": "Event fees retrieved successfully",
                 "status": "success",
-                "data": serializer.data  
-            })   
+                "data": data  
+            })  
+            # Cache the data
+            cache.set(cache_key, final_response.data, timeout=60 * 30)
+            return final_response 
          except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -586,12 +612,15 @@ class EventFeeView(APIView):
                 }
                 }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                
-
 class EventTicketDetailView(APIView):
     permission_classes = [IsAuthenticated]
     def get(self, request,ticket_id):
         try:
-            event_ticket = EventTicket.objects.get(pk=ticket_id)
+            cache_key = f"event_ticket_details::{ticket_id}"
+            cached_response = cache.get(cache_key)
+            if cached_response:
+                return Response(cached_response, status=200)
+            event_ticket = EventTicket.objects.select_related('event').get(pk=ticket_id)
             serializer = serializers.EventTicketViewSerializer(event_ticket)
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
@@ -599,12 +628,15 @@ class EventTicketDetailView(APIView):
                 severity_level="info",
                 description="User viewed event ticket details",
             )
-            return Response({
+            final_response = Response({
                 "code": 200,
                 "status": "success",
                 "message": "Event ticket details",
                 "data": serializer.data
             }, status=status.HTTP_200_OK)
+            # Cache the response
+            cache.set(cache_key, final_response.data, timeout=60 * 30)
+            return final_response
         except EventTicket.DoesNotExist:
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
