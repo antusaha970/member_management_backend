@@ -146,6 +146,9 @@ class Payment(FinancialBaseModel):
         User, on_delete=models.PROTECT, related_name="payment_processed_by", blank=True, null=True)
     transaction = models.ForeignKey(
         Transaction, on_delete=models.PROTECT, related_name="payment_transaction")
+    # managers
+    objects = models.Manager()
+    active_objects = ActiveManager()
 
     def __str__(self):
         return f"{self.invoice.invoice_number}"
