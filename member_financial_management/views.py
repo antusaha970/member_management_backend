@@ -13,6 +13,7 @@ import pdb
 from core.utils.pagination import CustomPageNumberPagination
 from django.shortcuts import get_object_or_404
 from .models import PaymentMethod, Transaction, Payment, Sale, SaleType, IncomeParticular, IncomeReceivingOption, Income, IncomeReceivingType, MemberAccount, Due, MemberDue, Invoice
+from django.utils.http import urlencode
 from . import serializers
 from .utils.functions import generate_unique_sale_number
 logger = logging.getLogger("myapp")
@@ -759,13 +760,22 @@ class IncomeView(APIView):
 
     def get(self, request):
         try:
-            data = Income.objects.filter(is_active=True).order_by("id")
+            query_items = sorted(request.query_params.items())
+            query_string = urlencode(query_items) if query_items else "default"
+            cache_key = f"income::{query_string}"
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                return Response(cached_data, status=200)
+
+            # hit db if miss
+            data = Income.objects.filter(is_active=True).select_related(
+                "particular", "received_from_type", "receiving_type", "member", "received_by", "sale").order_by("id")
             paginator = CustomPageNumberPagination()
             paginated_queryset = paginator.paginate_queryset(
                 data, request=request, view=self)
             serializer = serializers.IncomeSerializer(
                 paginated_queryset, many=True)
-            return paginator.get_paginated_response(
+            final_response = paginator.get_paginated_response(
                 {
                     "code": 200,
                     "status": "success",
@@ -773,6 +783,8 @@ class IncomeView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
+            cache.set(cache_key, final_response.data, timeout=60*30)
+            return final_response
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -796,12 +808,17 @@ class IncomeSpecificView(APIView):
 
     def get(self, request, id):
         try:
+            cache_key = f"specific_income::{id}"
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                return Response(cached_data, status=200)
+            # hit db if miss
             queryset = Income.objects.select_related(
-                "sale").filter(is_active=True).order_by("id")
+                "sale", "particular", "received_from_type", "receiving_type", "member", "received_by").filter(is_active=True).order_by("id")
             queryset = get_object_or_404(queryset, pk=id)
             serializer = serializers.IncomeSpecificSerializer(
                 queryset)
-            return Response(
+            final_response = Response(
                 {
                     "code": 200,
                     "status": "success",
@@ -809,6 +826,8 @@ class IncomeSpecificView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
+            cache.set(cache_key, final_response.data, timeout=60*30)
+            return final_response
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -832,7 +851,16 @@ class SalesView(APIView):
 
     def get(self, request):
         try:
-            data = Sale.objects.filter(is_active=True).order_by("id")
+            query_items = sorted(request.query_params.items())
+            query_string = urlencode(query_items) if query_items else "default"
+            cache_key = f"sales::{query_string}"
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                return Response(cached_data, status=200)
+
+            # hit db if miss
+            data = Sale.objects.filter(is_active=True).select_related(
+                "sale_source_type", "customer", "payment_method", "invoice").order_by("id")
             paginator = CustomPageNumberPagination()
             paginated_queryset = paginator.paginate_queryset(
                 data, request=request, view=self)
@@ -844,7 +872,7 @@ class SalesView(APIView):
                 severity_level="info",
                 description="User viewed all sales",
             )
-            return paginator.get_paginated_response(
+            final_response = paginator.get_paginated_response(
                 {
                     "code": 200,
                     "status": "success",
@@ -852,6 +880,8 @@ class SalesView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
+            cache.set(cache_key, final_response.data, timeout=60*30)
+            return final_response
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -875,7 +905,17 @@ class SalesSpecificView(APIView):
 
     def get(self, request, id):
         try:
-            data = get_object_or_404(Sale, pk=id)
+            cache_key = f"specific_income::{id}"
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                return Response(cached_data, status=200)
+            # hit db if miss
+            data = get_object_or_404(Sale.active_objects.select_related(
+                "sale_source_type", "customer", "payment_method", "invoice", "invoice__member",
+                "invoice__invoice_type",
+                "invoice__restaurant",
+                "invoice__event",
+                "invoice__generated_by"), pk=id)
             serializer = serializers.SaleSpecificSerializer(
                 data)
             log_activity_task.delay_on_commit(
@@ -884,7 +924,7 @@ class SalesSpecificView(APIView):
                 severity_level="info",
                 description="User viewed a sale",
             )
-            return Response(
+            final_response = Response(
                 {
                     "code": 200,
                     "status": "success",
@@ -892,6 +932,8 @@ class SalesSpecificView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
+            cache.set(cache_key, final_response.data, timeout=60*30)
+            return final_response
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -915,7 +957,16 @@ class TransactionView(APIView):
 
     def get(self, request):
         try:
-            data = Transaction.objects.filter(is_active=True).order_by("id")
+            query_items = sorted(request.query_params.items())
+            query_string = urlencode(query_items) if query_items else "default"
+            cache_key = f"transactions::{query_string}"
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                return Response(cached_data, status=200)
+
+            # hit db if miss
+            data = Transaction.active_objects.select_related(
+                "member", "invoice", "payment_method").order_by("id")
             paginator = CustomPageNumberPagination()
             paginated_queryset = paginator.paginate_queryset(
                 data, request=request, view=self)
@@ -927,7 +978,7 @@ class TransactionView(APIView):
                 severity_level="info",
                 description="User viewed all transaction",
             )
-            return paginator.get_paginated_response(
+            final_response = paginator.get_paginated_response(
                 {
                     "code": 200,
                     "status": "success",
@@ -935,6 +986,8 @@ class TransactionView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
+            cache.set(cache_key, final_response.data, timeout=60*30)
+            return final_response
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -958,7 +1011,14 @@ class TransactionSpecificView(APIView):
 
     def get(self, request, id):
         try:
-            data = get_object_or_404(Transaction, pk=id)
+            cache_key = f"specific_transactions::{id}"
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                return Response(cached_data, status=200)
+
+            # hit db if miss
+            data = get_object_or_404(Transaction.active_objects.select_related(
+                "member", "invoice", "payment_method", "invoice__invoice_type", "invoice__generated_by", "invoice__member", "invoice__restaurant", "invoice__event"), pk=id)
             serializer = serializers.TransactionSpecificSerializer(
                 data)
             log_activity_task.delay_on_commit(
@@ -967,7 +1027,7 @@ class TransactionSpecificView(APIView):
                 severity_level="info",
                 description="User viewed a transaction",
             )
-            return Response(
+            final_response = Response(
                 {
                     "code": 200,
                     "status": "success",
@@ -975,6 +1035,8 @@ class TransactionSpecificView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
+            cache.set(cache_key, final_response.data, timeout=60*30)
+            return final_response
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -998,7 +1060,16 @@ class PaymentView(APIView):
 
     def get(self, request):
         try:
-            data = Payment.objects.filter(is_active=True).order_by("id")
+            query_items = sorted(request.query_params.items())
+            query_string = urlencode(query_items) if query_items else "default"
+            cache_key = f"payments::{query_string}"
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                return Response(cached_data, status=200)
+
+            # hit db if miss
+            data = Payment.active_objects.select_related(
+                "invoice", "member", "payment_method", "processed_by", "transaction").order_by("id")
             paginator = CustomPageNumberPagination()
             paginated_queryset = paginator.paginate_queryset(
                 data, request=request, view=self)
@@ -1010,7 +1081,7 @@ class PaymentView(APIView):
                 severity_level="info",
                 description="User viewed all payments",
             )
-            return paginator.get_paginated_response(
+            final_response = paginator.get_paginated_response(
                 {
                     "code": 200,
                     "status": "success",
@@ -1018,6 +1089,8 @@ class PaymentView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
+            cache.set(cache_key, final_response.data, timeout=60*30)
+            return final_response
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -1041,7 +1114,22 @@ class PaymentSpecificView(APIView):
 
     def get(self, request, id):
         try:
-            data = get_object_or_404(Payment, pk=id)
+            cache_key = f"specific_payments::{id}"
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                return Response(cached_data, status=200
+                                )
+            # hti dib is miss
+            data = get_object_or_404(Payment.active_objects.select_related(
+                "invoice", "member", "payment_method", "processed_by", "transaction", "invoice__invoice_type",
+                "invoice__generated_by",
+                "invoice__member",
+                "invoice__restaurant",
+                "invoice__event",
+                "transaction__member",
+                "transaction__invoice",
+                "transaction__payment_method"
+            ), pk=id)
             serializer = serializers.PaymentSpecificSerializer(
                 data)
             log_activity_task.delay_on_commit(
@@ -1050,7 +1138,7 @@ class PaymentSpecificView(APIView):
                 severity_level="info",
                 description="User viewed a payment",
             )
-            return Response(
+            final_response = Response(
                 {
                     "code": 200,
                     "status": "success",
@@ -1058,6 +1146,8 @@ class PaymentSpecificView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
+            cache.set(cache_key, final_response.data, timeout=60*30)
+            return final_response
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -1081,7 +1171,15 @@ class DueView(APIView):
 
     def get(self, request):
         try:
-            data = Due.objects.filter(is_active=True).order_by("id")
+            query_items = sorted(request.query_params.items())
+            query_string = urlencode(query_items) if query_items else "default"
+            cache_key = f"dues::{query_string}"
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                return Response(cached_data, status=200)
+            # hit db if miss
+            data = Due.active_objects.select_related(
+                "member", "invoice", "payment", "transaction").order_by("id")
             paginator = CustomPageNumberPagination()
             paginated_queryset = paginator.paginate_queryset(
                 data, request=request, view=self)
@@ -1093,7 +1191,7 @@ class DueView(APIView):
                 severity_level="info",
                 description="User viewed all Dues",
             )
-            return paginator.get_paginated_response(
+            final_response = paginator.get_paginated_response(
                 {
                     "code": 200,
                     "status": "success",
@@ -1101,6 +1199,8 @@ class DueView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
+            cache.set(cache_key, final_response.data, timeout=60*30)
+            return final_response
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -1124,7 +1224,26 @@ class DueSpecificView(APIView):
 
     def get(self, request, id):
         try:
-            data = get_object_or_404(Due, pk=id)
+            cache_key = f"specific_dues::{id}"
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                return Response(cached_data, status=200)
+            # hit db if miss
+            data = get_object_or_404(Due.active_objects.select_related(
+                "member", "invoice", "payment", "transaction", "invoice__invoice_type",
+                "invoice__generated_by",
+                "invoice__member",
+                "invoice__restaurant",
+                "invoice__event",
+                "transaction__member",
+                "transaction__invoice",
+                "transaction__payment_method",
+                "payment__invoice",
+                "payment__member",
+                "payment__payment_method",
+                "payment__transaction",
+                "payment__processed_by",
+            ), pk=id)
             serializer = serializers.DuesSpecificSerializer(
                 data)
             log_activity_task.delay_on_commit(
@@ -1133,7 +1252,7 @@ class DueSpecificView(APIView):
                 severity_level="info",
                 description="User viewed a due",
             )
-            return Response(
+            final_response = Response(
                 {
                     "code": 200,
                     "status": "success",
@@ -1141,6 +1260,8 @@ class DueSpecificView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
+            cache.set(cache_key, final_response.data, timeout=60*30)
+            return final_response
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -1164,7 +1285,15 @@ class MemberDueView(APIView):
 
     def get(self, request):
         try:
-            data = MemberDue.objects.filter(is_active=True).order_by("id")
+            query_items = sorted(request.query_params.items())
+            query_string = urlencode(query_items) if query_items else "default"
+            cache_key = f"member_dues::{query_string}"
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                return Response(cached_data, status=200)
+            # hit db if miss
+            data = MemberDue.active_objects.select_related(
+                "member", "due_reference").order_by("id")
             paginator = CustomPageNumberPagination()
             paginated_queryset = paginator.paginate_queryset(
                 data, request=request, view=self)
@@ -1176,7 +1305,7 @@ class MemberDueView(APIView):
                 severity_level="info",
                 description="User viewed all member dues",
             )
-            return paginator.get_paginated_response(
+            final_response = paginator.get_paginated_response(
                 {
                     "code": 200,
                     "status": "success",
@@ -1184,6 +1313,8 @@ class MemberDueView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
+            cache.set(cache_key, final_response.data, timeout=60*30)
+            return final_response
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -1445,7 +1576,14 @@ class MemberDueSpecificView(APIView):
 
     def get(self, request, id):
         try:
-            data = get_object_or_404(MemberDue, pk=id)
+            cache_key = f"specific_member_due::{id}"
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                return Response(cached_data, status=200)
+            # hit db if miss
+            data = get_object_or_404(MemberDue.active_objects.select_related(
+                "member", "due_reference", "due_reference__invoice",
+                "due_reference__member", "due_reference__payment", "due_reference__transaction", "due_reference__transaction"), pk=id)
             serializer = serializers.MemberDueSpecificSerializer(
                 data)
             log_activity_task.delay_on_commit(
@@ -1454,7 +1592,7 @@ class MemberDueSpecificView(APIView):
                 severity_level="info",
                 description="User viewed a member due",
             )
-            return Response(
+            final_response = Response(
                 {
                     "code": 200,
                     "status": "success",
@@ -1462,6 +1600,8 @@ class MemberDueSpecificView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
+            cache.set(cache_key, final_response.data, timeout=60*30)
+            return final_response
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(

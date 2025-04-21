@@ -113,6 +113,10 @@ class Transaction(FinancialBaseModel):
     payment_method = models.ForeignKey(
         PaymentMethod, on_delete=models.PROTECT, related_name="transaction_payment_method")
 
+    # managers
+    objects = models.Manager()
+    active_objects = ActiveManager()
+
     def __str__(self):
         return f"{self.amount}"
 
@@ -142,6 +146,9 @@ class Payment(FinancialBaseModel):
         User, on_delete=models.PROTECT, related_name="payment_processed_by", blank=True, null=True)
     transaction = models.ForeignKey(
         Transaction, on_delete=models.PROTECT, related_name="payment_transaction")
+    # managers
+    objects = models.Manager()
+    active_objects = ActiveManager()
 
     def __str__(self):
         return f"{self.invoice.invoice_number}"
@@ -173,6 +180,10 @@ class Sale(FinancialBaseModel):
         PaymentMethod, on_delete=models.PROTECT, related_name="payment_method")
     invoice = models.ForeignKey(
         Invoice, on_delete=models.PROTECT, related_name="sale_invoice")
+
+    # managers
+    objects = models.Manager()
+    active_objects = ActiveManager()
 
     def __str__(self):
         return f"{self.sale_number}"
@@ -273,6 +284,9 @@ class Due(FinancialBaseModel):
         Payment, on_delete=models.PROTECT, related_name="due_payment")
     transaction = models.ForeignKey(
         Transaction, on_delete=models.PROTECT, related_name="due_transaction")
+    # managers
+    objects = models.Manager()
+    active_objects = ActiveManager()
 
     def __str__(self):
         return f"{self.member.member_ID}"
