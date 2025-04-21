@@ -190,21 +190,33 @@ class RestaurantCategoryView(APIView):
 
     def get(self, request):
         try:
+            query_items = sorted(request.query_params.items())
+            query_string = urlencode(query_items) if query_items else "default"
+            cache_key = f"restaurant_categories::{query_string}"
+            cached_response = cache.get(cache_key)
+            if cached_response:
+                return Response(cached_response, status=200)
+
+            paginator = CustomPageNumberPagination()
             categories = RestaurantCategory.objects.filter(is_active=True)
+            paginated_queryset = paginator.paginate_queryset(
+                categories, request=request, view=self)
             serializer = serializers.RestaurantCategorySerializer(
-                categories, many=True)
+                paginated_queryset, many=True)
+            final_response = paginator.get_paginated_response({
+                "code": 200,
+                "status": "success",
+                "message": "viewing all available categories",
+                "data": serializer.data
+            }, status=200)
+            cache.set(cache_key, final_response.data, timeout=60 * 30)
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
                 verb="View",
                 severity_level="info",
                 description="User viewed all restaurant categories",
             )
-            return Response({
-                "code": 200,
-                "status": "success",
-                "message": "viewing all available categories",
-                "data": serializer.data
-            })
+            return final_response
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
