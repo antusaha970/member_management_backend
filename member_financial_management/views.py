@@ -1285,7 +1285,15 @@ class MemberDueView(APIView):
 
     def get(self, request):
         try:
-            data = MemberDue.objects.filter(is_active=True).order_by("id")
+            query_items = sorted(request.query_params.items())
+            query_string = urlencode(query_items) if query_items else "default"
+            cache_key = f"member_dues::{query_string}"
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                return Response(cached_data, status=200)
+            # hit db if miss
+            data = MemberDue.active_objects.select_related(
+                "member", "due_reference").order_by("id")
             paginator = CustomPageNumberPagination()
             paginated_queryset = paginator.paginate_queryset(
                 data, request=request, view=self)
@@ -1297,7 +1305,7 @@ class MemberDueView(APIView):
                 severity_level="info",
                 description="User viewed all member dues",
             )
-            return paginator.get_paginated_response(
+            final_response = paginator.get_paginated_response(
                 {
                     "code": 200,
                     "status": "success",
@@ -1305,6 +1313,8 @@ class MemberDueView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
+            cache.set(cache_key, final_response.data, timeout=60*30)
+            return final_response
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -1566,7 +1576,14 @@ class MemberDueSpecificView(APIView):
 
     def get(self, request, id):
         try:
-            data = get_object_or_404(MemberDue, pk=id)
+            cache_key = f"specific_member_due::{id}"
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                return Response(cached_data, status=200)
+            # hit db if miss
+            data = get_object_or_404(MemberDue.active_objects.select_related(
+                "member", "due_reference", "due_reference__invoice",
+                "due_reference__member", "due_reference__payment", "due_reference__transaction", "due_reference__transaction"), pk=id)
             serializer = serializers.MemberDueSpecificSerializer(
                 data)
             log_activity_task.delay_on_commit(
@@ -1575,7 +1592,7 @@ class MemberDueSpecificView(APIView):
                 severity_level="info",
                 description="User viewed a member due",
             )
-            return Response(
+            final_response = Response(
                 {
                     "code": 200,
                     "status": "success",
@@ -1583,6 +1600,8 @@ class MemberDueSpecificView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
+            cache.set(cache_key, final_response.data, timeout=60*30)
+            return final_response
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
