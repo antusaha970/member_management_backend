@@ -905,7 +905,17 @@ class SalesSpecificView(APIView):
 
     def get(self, request, id):
         try:
-            data = get_object_or_404(Sale, pk=id)
+            cache_key = f"specific_income::{id}"
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                return Response(cached_data, status=200)
+            # hit db if miss
+            data = get_object_or_404(Sale.active_objects.select_related(
+                "sale_source_type", "customer", "payment_method", "invoice", "invoice__member",
+                "invoice__invoice_type",
+                "invoice__restaurant",
+                "invoice__event",
+                "invoice__generated_by"), pk=id)
             serializer = serializers.SaleSpecificSerializer(
                 data)
             log_activity_task.delay_on_commit(
@@ -914,7 +924,7 @@ class SalesSpecificView(APIView):
                 severity_level="info",
                 description="User viewed a sale",
             )
-            return Response(
+            final_response = Response(
                 {
                     "code": 200,
                     "status": "success",
@@ -922,6 +932,8 @@ class SalesSpecificView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
+            cache.set(cache_key, final_response.data, timeout=60*30)
+            return final_response
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(

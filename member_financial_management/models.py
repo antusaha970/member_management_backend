@@ -174,6 +174,10 @@ class Sale(FinancialBaseModel):
     invoice = models.ForeignKey(
         Invoice, on_delete=models.PROTECT, related_name="sale_invoice")
 
+    # managers
+    objects = models.Manager()
+    active_objects = ActiveManager()
+
     def __str__(self):
         return f"{self.sale_number}"
 
