@@ -808,8 +808,9 @@ class IncomeSpecificView(APIView):
 
     def get(self, request, id):
         try:
+            # cache
             queryset = Income.objects.select_related(
-                "sale").filter(is_active=True).order_by("id")
+                "sale", "particular", "received_from_type", "receiving_type", "member", "received_by").filter(is_active=True).order_by("id")
             queryset = get_object_or_404(queryset, pk=id)
             serializer = serializers.IncomeSpecificSerializer(
                 queryset)
