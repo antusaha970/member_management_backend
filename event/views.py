@@ -101,12 +101,12 @@ class EventVenueView(APIView):
             Response: The response containing the list of event venues.
         """
         try:
-            # query_items = sorted(request.query_params.items())
-            # query_string = urlencode(query_items) if query_items else "default"
-            # cache_key = f"event_venues::{query_string}"
-            # cached_response = cache.get(cache_key)
-            # if cached_response:
-            #     return Response(cached_response, status=200)
+            query_items = sorted(request.query_params.items())
+            query_string = urlencode(query_items) if query_items else "default"
+            cache_key = f"event_venues::{query_string}"
+            cached_response = cache.get(cache_key)
+            if cached_response:
+                return Response(cached_response, status=200)
             paginator = CustomPageNumberPagination()
             venues = Venue.objects.filter(is_active=True).order_by('id')
             all_venues = paginator.paginate_queryset(venues, request, view=self)
@@ -129,7 +129,7 @@ class EventVenueView(APIView):
                 "data": data
             })
             # Cache the response
-            # cache.set(cache_key, final_response.data, timeout=60*30)
+            cache.set(cache_key, final_response.data, timeout=60*30)
             return final_response
 
         except Exception as e:

@@ -18,6 +18,8 @@ from promo_code_app.models import AppliedPromoCode
 from core.utils.pagination import CustomPageNumberPagination
 logger = logging.getLogger("myapp")
 import pdb
+from django.core.cache import cache
+from django.utils.http import urlencode
 
           
 class BrandView(APIView):
@@ -86,6 +88,7 @@ class BrandView(APIView):
             Response: The response containing the list of all product brands.
         """
         try:
+            
             brands = Brand.objects.all()
             serializer = serializers.BrandViewSerializer(brands, many=True)
             log_activity_task.delay_on_commit(
@@ -228,6 +231,9 @@ class ProductView(APIView):
             serializer = serializers.ProductSerializer(data=data)
             if serializer.is_valid():
                 product_instance=serializer.save()
+                # cache_delete
+                cache.delete_pattern("products::*")
+
                 product_name = serializer.validated_data["name"]
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),
@@ -280,7 +286,13 @@ class ProductView(APIView):
             Response: The response containing the list of all products.
         """
         try:
-            products = Product.objects.filter(is_active=True).order_by('id')
+            query_items = sorted(request.query_params.items())
+            query_string = urlencode(query_items) if query_items else "default"
+            cache_key = f"products::{query_string}"
+            cached_response = cache.get(cache_key)
+            if cached_response:
+                return Response(cached_response, status=200)
+            products = Product.objects.filter(is_active=True).select_related('category', 'brand').prefetch_related('product_media').order_by('id')
             # Apply pagination
             paginator = CustomPageNumberPagination()
             paginated_products = paginator.paginate_queryset(products, request, view=self)
@@ -291,12 +303,15 @@ class ProductView(APIView):
                 verb="Products retrieval successful",
                 severity_level="info",
                 description="User successfully retrieved all products",)
-            return paginator.get_paginated_response({
+            final_response = paginator.get_paginated_response({
                 "code": 200,
                 "message": "Product list retrieved successfully",
                 "status": "success",
                 "data": serializer.data,
             })
+            # Cache the response
+            cache.set(cache_key, final_response.data, timeout=60 * 30)  # Cache for 30 minutes
+            return final_response
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -388,6 +403,8 @@ class ProductPriceView(APIView):
             serializer = serializers.ProductPriceSerializer(data=data)
             if serializer.is_valid():
                 product_price_instance=serializer.save()
+                # cache_delete
+                cache.delete_pattern("product_prices::*")
                 product_price = serializer.validated_data["price"]
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),
@@ -440,7 +457,13 @@ class ProductPriceView(APIView):
             Response: The response containing the list of product prices.
         """
         try:
-            price = ProductPrice.objects.filter(is_active=True).order_by('id')
+            query_items = sorted(request.query_params.items())
+            query_string = urlencode(query_items) if query_items else "default"
+            cache_key = f"product_prices::{query_string}"
+            cached_response = cache.get(cache_key)
+            if cached_response:
+                return Response(cached_response, status=200)
+            price = ProductPrice.objects.filter(is_active=True).select_related('product', 'membership_type').order_by('id')
             # Apply pagination
             paginator = CustomPageNumberPagination()
             paginated_price = paginator.paginate_queryset(price, request, view=self)
@@ -453,13 +476,15 @@ class ProductPriceView(APIView):
                 severity_level="info",
                 description="User successfully retrieved all product prices"
                 )
-            return paginator.get_paginated_response({
+            final_response = paginator.get_paginated_response({
                 "code": 200,
                 "message": "Product price list retrieved successfully",
                 "status": "success",
                 "data": serializer.data,
                 
             })
+            cache.set(cache_key, final_response.data, timeout=60 * 30)  # Cache for 30 minutes
+            return final_response
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -489,7 +514,11 @@ class ProductDetailView(APIView):
             Response: The response containing the product details.
         """          
         try:
-            product = Product.objects.get(id=product_id)
+            cache_key = f"product_details::{product_id}"
+            cached_response = cache.get(cache_key)
+            if cached_response:
+                return Response(cached_response, status=200)
+            product = Product.objects.select_related('category', 'brand').prefetch_related('product_media').get(id=product_id)
             serializer = serializers.SpecificProductViewSerializer(product)
             log_activity_task.delay_on_commit(
                 
@@ -498,7 +527,7 @@ class ProductDetailView(APIView):
                 severity_level="info",
                 description="User successfully retrieved specific product details"
                 )
-            return Response({
+            final_response = Response({
                 
                 "code": 200,
                 "message": "Product details retrieved successfully",
@@ -506,6 +535,9 @@ class ProductDetailView(APIView):
                 "data": serializer.data,
                 
             }, status=status.HTTP_200_OK)
+            # Cache the response
+            cache.set(cache_key, final_response.data, timeout=60 * 30)  # Cache for 30 minutes
+            return final_response
         except Product.DoesNotExist:
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),

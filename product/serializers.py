@@ -39,8 +39,7 @@ class ProductCategoryViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductCategory
         fields = "__all__"
-        
-
+    
 
 class ProductSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255)
@@ -87,30 +86,7 @@ class ProductSerializer(serializers.Serializer):
         product = Product.objects.create(**validated_data)
         return product
 
-class ProductViewSerializer(serializers.ModelSerializer):
-    media = serializers.SerializerMethodField()
-    class Meta:
-        model = Product
-        fields = "__all__"
-    def get_media(self, obj):
-        media = obj.product_media.all() 
-        media_serializer = ProductMediaViewSerializer(media, many=True)
-        return media_serializer.data
-        
-class SpecificProductViewSerializer(serializers.ModelSerializer):
-    media = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = Product
-        fields = "__all__"
-        depth = 1
-        
-    def get_media(self, obj):
-        media = obj.product_media.all()
-        media_serializer = ProductMediaViewSerializer(media, many=True)
-        return media_serializer.data
-        
-    
+
 
 class ProductMediaSerializer(serializers.Serializer):
     image = serializers.ImageField()
@@ -133,6 +109,17 @@ class ProductMediaViewSerializer(serializers.ModelSerializer):
         model = ProductMedia
         fields = "__all__"
         
+class SpecificProductViewSerializer(serializers.ModelSerializer):
+    media = ProductMediaViewSerializer(many=True, source='product_media', read_only=True)
+    category = ProductCategoryViewSerializer(read_only=True)
+    brand = BrandViewSerializer(read_only=True)
+    class Meta:
+        model = Product
+        fields = "__all__"
+        depth = 1
+        
+    
+           
 class ProductPriceSerializer(serializers.Serializer):
     price = serializers.DecimalField(max_digits=10, decimal_places=2)
     membership_type = serializers.CharField()
@@ -146,7 +133,7 @@ class ProductPriceSerializer(serializers.Serializer):
 
     def validate_membership_type(self, value):
         try:
-            membership_type_instance = MembershipType.objects.get(pk=value)
+            membership_type_instance = MembershipType.objects.get(name=value)
         except MembershipType.DoesNotExist:
             raise serializers.ValidationError("Membership type does not exist.")
         return membership_type_instance
@@ -162,19 +149,26 @@ class ProductPriceSerializer(serializers.Serializer):
         product_price = ProductPrice.objects.create(**validated_data)
         return product_price
         
+class MembershipTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MembershipType
+        fields = "__all__"
     
 class ProductPriceViewSerializer(serializers.ModelSerializer):
-    membership_type = serializers.SerializerMethodField()
+    membership_type = MembershipTypeSerializer(read_only=True)
     class Meta:
         model = ProductPrice
         fields = "__all__"
         
-    def get_membership_type(self, obj):
-        return {
-            'id': obj.membership_type.id,
-            'name': obj.membership_type.name
-            } if obj.membership_type else None
+   
     
+class ProductViewSerializer(serializers.ModelSerializer):
+    media = ProductMediaViewSerializer(many=True, source='product_media', read_only=True)
+    class Meta:
+        model = Product
+        fields = "__all__"
+    
+        
     
 class ProductItemSerializer(serializers.Serializer):
     product = serializers.PrimaryKeyRelatedField(queryset = Product.objects.filter(is_active = True))
