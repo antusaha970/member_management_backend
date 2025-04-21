@@ -14,7 +14,10 @@ from django.db import transaction
 from functools import reduce
 from datetime import date
 from member_financial_management.serializers import InvoiceSerializer
+from core.utils.pagination import CustomPageNumberPagination
 from promo_code_app.models import AppliedPromoCode
+from django.core.cache import cache
+from django.utils.http import urlencode
 import pdb
 logger = logging.getLogger("myapp")
 
@@ -27,13 +30,14 @@ class RestaurantCuisineCategoryView(APIView):
             serializer = serializers.RestaurantCuisineCategorySerializer(
                 data=request.data)
             if serializer.is_valid():
-                instance = serializer.save()
+                serializer.save()
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),
                     verb="Creation",
                     severity_level="info",
                     description="User created a new Restaurant cuisine category",
                 )
+                cache.delete_pattern("restaurant_cuisines::*")
                 return Response({
                     "code": 201,
                     "status": "success",
@@ -74,21 +78,45 @@ class RestaurantCuisineCategoryView(APIView):
 
     def get(self, request):
         try:
-            cuisines = RestaurantCuisineCategory.objects.filter(is_active=True)
+            query_items = sorted(request.query_params.items())
+            query_string = urlencode(query_items) if query_items else "default"
+            cache_key = f"restaurant_cuisines::{query_string}"
+            cached_response = cache.get(cache_key)
+            if cached_response:
+                return Response(cached_response, status=200)
+
+            # Only hit DB if cache miss
+            cuisines = RestaurantCuisineCategory.objects.filter(
+                is_active=True).order_by("id")
+
+            paginator = CustomPageNumberPagination()
+            paginated_queryset = paginator.paginate_queryset(
+                cuisines, request=request, view=self)
             serializer = serializers.RestaurantCuisineCategorySerializer(
-                cuisines, many=True)
+                paginated_queryset, many=True)
+
+            response_data = {
+                "code": 200,
+                "status": "success",
+                "message": "viewing all available cuisines",
+                "data": serializer.data
+            }
+
+            # Use paginator to build full response (with count, next, previous)
+            final_response = paginator.get_paginated_response(response_data)
+
+            # Cache the actual response content (final_response.data)
+            cache.set(cache_key, final_response.data, timeout=60 * 30)
+
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
                 verb="View",
                 severity_level="info",
                 description="User viewed all restaurant cuisines",
             )
-            return Response({
-                "code": 200,
-                "status": "success",
-                "message": "viewing all available cuisines",
-                "data": serializer.data
-            })
+
+            return final_response
+
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
