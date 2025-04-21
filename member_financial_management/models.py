@@ -113,6 +113,10 @@ class Transaction(FinancialBaseModel):
     payment_method = models.ForeignKey(
         PaymentMethod, on_delete=models.PROTECT, related_name="transaction_payment_method")
 
+    # managers
+    objects = models.Manager()
+    active_objects = ActiveManager()
+
     def __str__(self):
         return f"{self.amount}"
 
