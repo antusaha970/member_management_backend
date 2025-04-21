@@ -13,6 +13,7 @@ import pdb
 from core.utils.pagination import CustomPageNumberPagination
 from django.shortcuts import get_object_or_404
 from .models import PaymentMethod, Transaction, Payment, Sale, SaleType, IncomeParticular, IncomeReceivingOption, Income, IncomeReceivingType, MemberAccount, Due, MemberDue, Invoice
+from django.utils.http import urlencode
 from . import serializers
 from .utils.functions import generate_unique_sale_number
 logger = logging.getLogger("myapp")
@@ -759,13 +760,22 @@ class IncomeView(APIView):
 
     def get(self, request):
         try:
-            data = Income.objects.filter(is_active=True).order_by("id")
+            query_items = sorted(request.query_params.items())
+            query_string = urlencode(query_items) if query_items else "default"
+            cache_key = f"income::{query_string}"
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                return Response(cached_data, status=200)
+
+            # hit db if miss
+            data = Income.objects.filter(is_active=True).select_related(
+                "particular", "received_from_type", "receiving_type", "member", "received_by", "sale").order_by("id")
             paginator = CustomPageNumberPagination()
             paginated_queryset = paginator.paginate_queryset(
                 data, request=request, view=self)
             serializer = serializers.IncomeSerializer(
                 paginated_queryset, many=True)
-            return paginator.get_paginated_response(
+            final_response = paginator.get_paginated_response(
                 {
                     "code": 200,
                     "status": "success",
@@ -773,6 +783,8 @@ class IncomeView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
+            cache.set(cache_key, final_response.data, timeout=60*30)
+            return final_response
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
