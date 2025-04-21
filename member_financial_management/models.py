@@ -284,6 +284,9 @@ class Due(FinancialBaseModel):
         Payment, on_delete=models.PROTECT, related_name="due_payment")
     transaction = models.ForeignKey(
         Transaction, on_delete=models.PROTECT, related_name="due_transaction")
+    # managers
+    objects = models.Manager()
+    active_objects = ActiveManager()
 
     def __str__(self):
         return f"{self.member.member_ID}"
