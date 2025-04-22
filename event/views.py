@@ -23,7 +23,7 @@ import pdb
 from core.utils.pagination import CustomPageNumberPagination
 from django.core.cache import cache
 from django.utils.http import urlencode
-
+from member_financial_management.tasks import delete_invoice_cache
 
 # Create your views here.
 class EventVenueView(APIView):
@@ -742,6 +742,8 @@ class EventTicketBuyView(APIView):
                     verb="Invoice created successfully",
                     severity_level="info",
                     description="user generated an invoice successfully",)
+                # delete the cache for invoices
+                delete_invoice_cache.delay()
                 return Response({
                     "code": 200,
                     "message": "Invoice created successfully",

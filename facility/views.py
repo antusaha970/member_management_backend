@@ -24,6 +24,8 @@ from django.core.cache import cache
 from django.utils.http import urlencode
 from django.db.models import Q
 from .filters import FacilityFilter
+from member_financial_management.tasks import delete_invoice_cache
+
 
 logger = logging.getLogger("myapp")
 import pdb
@@ -117,7 +119,7 @@ class FacilityView(APIView):
             }
             final_response = paginator.get_paginated_response(response_data)
             # Cache the response
-            cache.set(cache_key, final_response.data, timeout=60 * 2)  # 2 minutes
+            cache.set(cache_key, final_response.data, timeout=60 * 30)  # 30 minutes
 
             # Log the activity
             log_activity_task.delay_on_commit(
@@ -159,6 +161,8 @@ class FacilityUseFeeView(APIView):
             if serializer.is_valid():
                 with transaction.atomic():
                     facility_use_fee_instance = serializer.save()
+                    # delete the cache for the facility use fees
+                    cache.delete_pattern("facility_use_fees::*")
                     facility_use_fee_id = facility_use_fee_instance.id
                     facility_use_fee = facility_use_fee_instance.fee
                     log_activity_task.delay_on_commit(
@@ -209,7 +213,16 @@ class FacilityUseFeeView(APIView):
             Response: The response containing the list of facility use fees.
         """
         try:
-            facility_use_fees = FacilityUseFee.objects.filter(is_active=True).order_by('id')
+            query_params = request.query_params
+            query_items = sorted(query_params.items())
+            query_string = urlencode(query_items) if query_items else "default"
+            cache_key = f"facility_use_fees::{query_string}"
+            # Check cache
+            cached_response = cache.get(cache_key)
+            if cached_response:
+                return Response(cached_response, status=status.HTTP_200_OK)
+            
+            facility_use_fees = FacilityUseFee.objects.filter(is_active=True).select_related('membership_type', 'facility').order_by('id')
             paginator = CustomPageNumberPagination()
             paginated_queryset = paginator.paginate_queryset(facility_use_fees, request, view=self)
             serializer = serializers.FacilityUseFeeViewSerializer(paginated_queryset, many=True)
@@ -218,12 +231,16 @@ class FacilityUseFeeView(APIView):
                 verb="Retrieve all facility use fees",
                 severity_level="info",
                 description="User retrieved all facility use fees successfully",)
-            return paginator.get_paginated_response({
+            final_response = paginator.get_paginated_response({
                 "code": 200,
                 "message": "Facility use fees retrieved successfully",
                 "status": "success",
                 "data": serializer.data  
             })
+
+            cache.set(cache_key, final_response.data, timeout=60 * 30)  # 30 minutes
+            return final_response
+        
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -319,6 +336,8 @@ class FacilityBuyView(APIView):
                     verb="Invoice created successfully",
                     severity_level="info",
                     description="user generated an invoice successfully",)
+                # delete the cache for the invoice list
+                delete_invoice_cache.delay()
                 return Response({
                     "code": 200,
                     "message": "Invoice created successfully",
@@ -359,6 +378,10 @@ class FacilityDetailView(APIView):
 
     def get(self, request, facility_id):
         try:
+            cache_key = f"facility_details::{facility_id}"
+            cached_response = cache.get(cache_key)
+            if cached_response:
+                return Response(cached_response, status=200)
             facility = Facility.objects.prefetch_related(
                 Prefetch(
                     'facility_use_fees',
@@ -377,12 +400,15 @@ class FacilityDetailView(APIView):
                 description="User retrieved a facility successfully",
             )
 
-            return Response({
+            final_response =  Response({
                 "code": 200,
                 "message": "Facility retrieved successfully",
                 "status": "success",
                 "data": facility_serializer.data
             }, status=status.HTTP_200_OK)
+            # Cache the response
+            cache.set(cache_key, final_response.data, timeout=60 * 30)  # 30 minutes
+            return final_response
 
         except Facility.DoesNotExist:
             log_activity_task.delay_on_commit(

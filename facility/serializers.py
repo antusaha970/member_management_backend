@@ -67,17 +67,13 @@ class FacilityUseFeeSerializer(serializers.Serializer):
         return facility_use_fee
     
 class FacilityUseFeeViewSerializer(serializers.ModelSerializer):
-    membership_type = serializers.SerializerMethodField() 
+    membership_type = serializers.StringRelatedField()
     class Meta:
         model = FacilityUseFee
         fields = "__all__"
         # depth = 1
     
-    def get_membership_type(self, obj):
-        return {
-            'id': obj.membership_type.id,
-            'name': obj.membership_type.name
-            } if obj.membership_type else None
+    
     
 
 class FacilityBuySerializer(serializers.Serializer):

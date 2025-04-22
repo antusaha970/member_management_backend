@@ -20,7 +20,7 @@ logger = logging.getLogger("myapp")
 import pdb
 from django.core.cache import cache
 from django.utils.http import urlencode
-
+from member_financial_management.tasks import delete_invoice_cache
           
 class BrandView(APIView):
     permission_classes = [IsAuthenticated,IsAdminUser]
@@ -649,6 +649,8 @@ class ProductBuyView(APIView):
                     severity_level="info",
                     description="User generated an invoice successfully",
                 )
+                # Delete cache for invoice
+                delete_invoice_cache.delay()
 
                 return Response({
                     "code": 200,
