@@ -20,6 +20,10 @@ from django.db.models import Prefetch
 from decimal import Decimal
 from promo_code_app.models import AppliedPromoCode
 from core.utils.pagination import CustomPageNumberPagination
+from django.core.cache import cache
+from django.utils.http import urlencode
+from django.db.models import Q
+from .filters import FacilityFilter
 
 logger = logging.getLogger("myapp")
 import pdb
@@ -39,6 +43,8 @@ class FacilityView(APIView):
             serializer = serializers.FacilitySerializer(data = data)
             if serializer.is_valid():
                 facility_instance = serializer.save()
+                #delete the cache for the facility list
+                cache.delete_pattern("facilities::*")
                 facility_name = serializer.validated_data["name"]
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),
@@ -81,45 +87,39 @@ class FacilityView(APIView):
                     'server_error': [str(e)]
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     def get(self, request):
-        """
-        Retrieves a list of all active facilities with optional filters and logs the activity.
-        Returns:
-            Response: The response containing the filtered and paginated list of facilities.
-        """
         try:
-            # Base queryset
-            facilities = Facility.objects.filter(is_active=True)
-
-            # Query parameters
+            # Build cache key
             query_params = request.query_params
-            name = query_params.get("name")
-            usages_roles = query_params.get("usages_roles")
-            status_name = query_params.get("status")
-            usages_fee_lt = query_params.get("usages_fee_less_than")
-            usages_fee_gt = query_params.get("usages_fee_greater_than")
+            query_items = sorted(query_params.items())
+            query_string = urlencode(query_items) if query_items else "default"
+            cache_key = f"facilities::{query_string}"
 
-            # Dynamic filtering
-            filters = {}
-            if name:
-                filters["name__icontains"] = name
-            if usages_roles:
-                filters["usages_roles__icontains"] = usages_roles
-            if status_name:
-                filters["status__icontains"] = status_name
-            if usages_fee_lt:
-                filters["usages_fee__lte"] = Decimal(usages_fee_lt)
-            if usages_fee_gt:
-                filters["usages_fee__gte"] = Decimal(usages_fee_gt)
+            # Check cache
+            cached_response = cache.get(cache_key)
+            if cached_response:
+                return Response(cached_response, status=200)
 
-            # Apply filters
-            facilities = facilities.filter(**filters).order_by("id")
+            # Filtering using FacilityFilter
+            base_queryset = Facility.objects.filter(is_active=True).order_by("id")
+            filtered_qs = FacilityFilter(query_params, queryset=base_queryset).qs
 
-            # Pagination and serialization
+            # Pagination
             paginator = CustomPageNumberPagination()
-            paginated_queryset = paginator.paginate_queryset(facilities, request, view=self)
-            serializer = serializers.FacilityViewSerializer(paginated_queryset, many=True)
+            paginated_qs = paginator.paginate_queryset(filtered_qs, request, view=self)
+            serializer = serializers.FacilityViewSerializer(paginated_qs, many=True)
 
-            # Logging
+            # Final response
+            response_data = {
+                "code": 200,
+                "message": "Facilities retrieved successfully",
+                "status": "success",
+                "data": serializer.data
+            }
+            final_response = paginator.get_paginated_response(response_data)
+            # Cache the response
+            cache.set(cache_key, final_response.data, timeout=60 * 2)  # 2 minutes
+
+            # Log the activity
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
                 verb="Retrieve all facilities",
@@ -127,15 +127,9 @@ class FacilityView(APIView):
                 description="User retrieved all facilities successfully",
             )
 
-            return paginator.get_paginated_response({
-                "code": 200,
-                "message": "Facilities retrieved successfully",
-                "status": "success",
-                "data": serializer.data
-            })
+            return final_response
 
         except Exception as e:
-            logger.exception(str(e))
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
                 verb="Retrieve facilities failed",
@@ -147,7 +141,6 @@ class FacilityView(APIView):
                 "message": "An error occurred while retrieving facilities",
                 "status": "failed"
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
      
                 
 class FacilityUseFeeView(APIView):
