@@ -16,7 +16,7 @@ from .models import PaymentMethod, Transaction, Payment, Sale, SaleType, IncomeP
 from django.utils.http import urlencode
 from . import serializers
 from .utils.functions import generate_unique_sale_number
-from .tasks import delete_all_financial_cache
+from .tasks import delete_all_financial_cache,delete_member_accounts_cache
 logger = logging.getLogger("myapp")
 
 
@@ -1726,6 +1726,63 @@ class MemberAccountSpecificSpecificView(APIView):
                 verb="View",
                 severity_level="info",
                 description="User tried to view a member account and faced error",
+            )
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class MemberAccountRechargeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            data = request.data
+            serializer = serializers.MemberAccountRechargeSerializer(data=data)
+            if serializer.is_valid():
+                member_ID = serializer.validated_data["member_ID"]
+                amount = serializer.validated_data["amount"]
+                with transaction.atomic():
+                    member_account = MemberAccount.objects.get(member__member_ID=member_ID)
+                    member_account.balance += amount
+                    member_account.save(update_fields=["balance"])
+                    
+                    delete_member_accounts_cache.delay()
+                    return Response({
+                        "code": 200,
+                        "status": "success",
+                        "message": "Member account balance recharged successfully",
+                        "data": {
+                            
+                            "member_ID": member_ID,
+                            "amount": amount,
+                        }
+                    }, status=status.HTTP_200_OK)
+            else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="View",
+                    severity_level="info",
+                    description="User tried to recharge a member account and faced error",
+                )
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Bad request",
+                    "errors": serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="View",
+                severity_level="info",
+                description="User tried to recharge a member account and faced error",
             )
             return Response({
                 "code": 500,

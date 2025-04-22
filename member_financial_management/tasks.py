@@ -32,3 +32,10 @@ def delete_invoice_cache():
         return "success"
     except Exception as e:
         return str(e)
+@shared_task
+def delete_member_accounts_cache():
+    try:
+        cache.delete_pattern("member_accounts::*")
+        return "success"
+    except Exception as e:
+        return str(e)
