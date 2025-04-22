@@ -19,6 +19,7 @@ from promo_code_app.models import AppliedPromoCode
 from django.core.cache import cache
 from django.utils.http import urlencode
 import pdb
+from member_financial_management.tasks import delete_invoice_cache
 logger = logging.getLogger("myapp")
 
 
@@ -655,6 +656,7 @@ class RestaurantItemBuyView(APIView):
                         invoice=invoice
                     )
                     invoice_item.restaurant_items.set(restaurant_items_objs)
+                delete_invoice_cache.delay()
                 return Response({
                     "code": 201,
                     "status": "success",
