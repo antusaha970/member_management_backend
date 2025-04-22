@@ -16,6 +16,7 @@ from .models import PaymentMethod, Transaction, Payment, Sale, SaleType, IncomeP
 from django.utils.http import urlencode
 from . import serializers
 from .utils.functions import generate_unique_sale_number
+from .tasks import delete_all_financial_cache
 logger = logging.getLogger("myapp")
 
 
@@ -184,6 +185,7 @@ class InvoicePaymentView(APIView):
                             discounted_amount=invoice.discount,
                             discount_name=invoice.promo_code
                         )
+                        delete_all_financial_cache.delay()
                         return Response(
                             {
                                 "code": 200,
@@ -299,6 +301,7 @@ class InvoicePaymentView(APIView):
                             severity_level="info",
                             description="User paid an invoice",
                         )
+                        delete_all_financial_cache.delay()
                         return Response(
                             {
                                 "code": 200,
@@ -412,6 +415,7 @@ class InvoicePaymentView(APIView):
                             severity_level="info",
                             description="User paid an invoice",
                         )
+                        delete_all_financial_cache.delay()
                         return Response(
                             {
                                 "code": 200,
@@ -647,6 +651,13 @@ class InvoiceShowView(APIView):
 
     def get(self, request):
         try:
+            query_items = sorted(request.query_params.items())
+            query_string = urlencode(query_items) if query_items else "default"
+            cache_key = f"invoices::{query_string}"
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                return Response(cached_data, status=200)
+            # hit db if miss
             queryset = Invoice.objects.select_related(
                 "invoice_type", "generated_by", "member", "restaurant", "event"
             ).prefetch_related(
@@ -686,12 +697,14 @@ class InvoiceShowView(APIView):
                 severity_level="info",
                 description="User viewed all invoices",
             )
-            return paginator.get_paginated_response({
+            final_response = paginator.get_paginated_response({
                 "code": 200,
                 "status": "success",
                 "message": "List of all invoices",
                 "data": serializer.data
             }, status=200)
+            cache.set(cache_key, final_response.data, timeout=60*30)
+            return final_response
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -905,7 +918,7 @@ class SalesSpecificView(APIView):
 
     def get(self, request, id):
         try:
-            cache_key = f"specific_income::{id}"
+            cache_key = f"specific_sale::{id}"
             cached_data = cache.get(cache_key)
             if cached_data:
                 return Response(cached_data, status=200)
@@ -1403,6 +1416,7 @@ class MemberDueView(APIView):
                             received_by=payment_method,
                             sale=sale
                         )
+                        delete_all_financial_cache.delay()
                         return Response({
                             "code": 200,
                             "status": "success",
@@ -1538,6 +1552,7 @@ class MemberDueView(APIView):
                                 received_by=payment_method,
                                 sale=sale
                             )
+                    delete_all_financial_cache.delay()
                     return Response({
                         "code": 200,
                         "status": "success",
@@ -1625,7 +1640,16 @@ class MemberAccountView(APIView):
 
     def get(self, request):
         try:
-            data = MemberAccount.objects.filter(is_active=True).order_by("id")
+            query_items = sorted(request.query_params.items())
+            query_string = urlencode(query_items) if query_items else "default"
+            cache_key = f"member_accounts::{query_string}"
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                return Response(cached_data, status=200)
+
+            # hit db if miss
+            data = MemberAccount.active_objects.select_related(
+                "member").order_by("id")
             paginator = CustomPageNumberPagination()
             paginated_queryset = paginator.paginate_queryset(
                 data, request=request, view=self)
@@ -1637,7 +1661,7 @@ class MemberAccountView(APIView):
                 severity_level="info",
                 description="User viewed all member accounts",
             )
-            return paginator.get_paginated_response(
+            final_response = paginator.get_paginated_response(
                 {
                     "code": 200,
                     "status": "success",
@@ -1645,6 +1669,8 @@ class MemberAccountView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
+            cache.set(cache_key, final_response.data, timeout=60*30)
+            return final_response
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -1668,7 +1694,13 @@ class MemberAccountSpecificSpecificView(APIView):
 
     def get(self, request, id):
         try:
-            data = get_object_or_404(MemberAccount, member__member_ID=id)
+            cache_key = f"specific_member_account::{id}"
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                return Response(cached_data, status=200)
+            # hit db if miss
+            data = get_object_or_404(MemberAccount.active_objects.select_related(
+                "member"), member__member_ID=id)
             serializer = serializers.MemberAccountSerializer(
                 data)
             log_activity_task.delay_on_commit(
@@ -1677,7 +1709,7 @@ class MemberAccountSpecificSpecificView(APIView):
                 severity_level="info",
                 description="User viewed a member account",
             )
-            return Response(
+            final_response = Response(
                 {
                     "code": 200,
                     "status": "success",
@@ -1685,6 +1717,8 @@ class MemberAccountSpecificSpecificView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
+            cache.set(cache_key, final_response.data, timeout=60*30)
+            return final_response
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
