@@ -259,6 +259,9 @@ class MemberAccount(FinancialBaseModel):
     # relation
     member = models.ForeignKey(
         Member, on_delete=models.PROTECT, related_name="member_account_member")
+    # managers
+    objects = models.Manager()
+    active_objects = ActiveManager()
 
     def __str__(self):
         return f"{self.member.member_ID}"
