@@ -191,6 +191,9 @@ class Sale(FinancialBaseModel):
 
 class IncomeParticular(FinancialBaseModel):
     name = models.CharField(max_length=500, unique=True)
+    # managers
+    objects = models.Manager()
+    active_objects = ActiveManager()
 
     def __str__(self):
         return self.name
@@ -198,6 +201,9 @@ class IncomeParticular(FinancialBaseModel):
 
 class IncomeReceivingOption(FinancialBaseModel):
     name = models.CharField(max_length=500, unique=True)
+    # managers
+    objects = models.Manager()
+    active_objects = ActiveManager()
 
     def __str__(self):
         return self.name

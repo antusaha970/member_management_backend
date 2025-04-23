@@ -4,6 +4,7 @@ from member.models import Member
 from promo_code_app.models import PromoCode
 import pdb
 import os
+from member_financial_management.models import IncomeParticular, IncomeReceivingOption
 
 
 class RestaurantCuisineCategorySerializer(serializers.ModelSerializer):
@@ -161,6 +162,12 @@ class RestaurantItemBuySerializer(serializers.Serializer):
 
 class RestaurantExcelUpload(serializers.Serializer):
     excel_file = serializers.FileField()
+    restaurant = serializers.PrimaryKeyRelatedField(
+        queryset=Restaurant.active_objects.all())
+    income_particular = serializers.PrimaryKeyRelatedField(
+        queryset=IncomeParticular.active_objects.all())
+    received_from = serializers.PrimaryKeyRelatedField(
+        queryset=IncomeReceivingOption.active_objects.all())
 
     def validate_excel_file(self, value):
         # Check file extension

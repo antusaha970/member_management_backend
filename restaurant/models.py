@@ -1,4 +1,5 @@
 from django.db import models
+from member_financial_management.utils.managers import ActiveManager
 
 
 class RestaurantBaseModel(models.Model):
@@ -50,6 +51,9 @@ class Restaurant(RestaurantBaseModel):
         RestaurantCuisineCategory, on_delete=models.PROTECT, related_name="restaurant_cuisine")
     restaurant_type = models.ForeignKey(
         RestaurantCategory, on_delete=models.PROTECT, related_name="restaurant_category")
+    # managers
+    objects = models.Manager()
+    active_objects = ActiveManager()
 
     def __str__(self):
         return self.name
