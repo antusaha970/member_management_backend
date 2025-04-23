@@ -5,7 +5,7 @@ from event.models import Event, EventTicket
 from product.models import Product
 from facility.models import Facility
 from member.models import Member
-
+import os
 import pdb
 
 
@@ -388,3 +388,23 @@ class MemberAccountRechargeSerializer(serializers.Serializer):
             raise serializers.ValidationError("Member account does not exist.")
         return super().validate(attrs)
     
+
+class LoungeUploadExcelSerializer(serializers.Serializer):
+    excel_file  = serializers.FileField()
+    
+    def validate_excel_file(self, value):
+        valid_extensions = ['.xls', '.xlsx']
+        ext = os.path.splitext(value.name)[1]
+        if ext.lower() not in valid_extensions:
+            raise serializers.ValidationError("Only .xls and .xlsx files are allowed.")
+        return value
+
+class OthersUploadExcelSerializer(serializers.Serializer):
+    excel_file  = serializers.FileField()
+    
+    def validate_excel_file(self, value):
+        valid_extensions = ['.xls', '.xlsx']
+        ext = os.path.splitext(value.name)[1]
+        if ext.lower() not in valid_extensions:
+            raise serializers.ValidationError("Only .xls and .xlsx files are allowed.")
+        return value
