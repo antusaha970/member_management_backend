@@ -27,6 +27,6 @@ class HasCustomPermission(BasePermission):
                     for perm in group.permission.all():
                         user_permissions.add(perm.name)
 
-            cache.set(cache_key, user_permissions, timeout=3600)  # 1 hour
+            cache.set(cache_key, list(user_permissions), timeout=60*3)  # 1 hour
 
         return self.required_permission in user_permissions
