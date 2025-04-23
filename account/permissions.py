@@ -10,7 +10,7 @@ class HasCustomPermission(BasePermission):
     def has_permission(self, request, view):
         if not request.user or request.user.is_anonymous:
             return False
-        
+
         if self.required_permission is None:
             return False
         user = request.user
@@ -27,6 +27,7 @@ class HasCustomPermission(BasePermission):
                     for perm in group.permission.all():
                         user_permissions.add(perm.name)
 
-            cache.set(cache_key, list(user_permissions), timeout=60*3)  # 1 hour
+            cache.set(cache_key, list(user_permissions),
+                      timeout=60*30)  # 1 hour
 
         return self.required_permission in user_permissions
