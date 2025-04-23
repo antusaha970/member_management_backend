@@ -15,4 +15,6 @@ urlpatterns = [
          name="restaurant_items_media_view"),
     path("v1/restaurants/items/buy/", views.RestaurantItemBuyView.as_view(),
          name="restaurant_items_buy_view"),
+    path("v1/restaurants/upload/excel", views.RestaurantUploadExcelView.as_view(),
+         name="restaurant_excel_file_upload"),
 ]

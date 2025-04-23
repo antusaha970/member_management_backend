@@ -3,6 +3,7 @@ from .models import RestaurantCuisineCategory, RestaurantCategory, Restaurant, R
 from member.models import Member
 from promo_code_app.models import PromoCode
 import pdb
+import os
 
 
 class RestaurantCuisineCategorySerializer(serializers.ModelSerializer):
@@ -156,3 +157,17 @@ class RestaurantItemBuySerializer(serializers.Serializer):
         except PromoCode.DoesNotExist as e:
             raise serializers.ValidationError(
                 "This is not a valid promo code.")
+
+
+class RestaurantExcelUpload(serializers.Serializer):
+    excel_file = serializers.FileField()
+
+    def validate_excel_file(self, value):
+        # Check file extension
+        valid_extensions = ['.xls', '.xlsx']
+
+        ext = os.path.splitext(value.name)[1]  # Get the file extension
+        if ext.lower() not in valid_extensions:
+            raise serializers.ValidationError(
+                "Only .xls and .xlsx files are allowed.")
+        return value

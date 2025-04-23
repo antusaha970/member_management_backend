@@ -12,12 +12,14 @@ from member_financial_management.utils.functions import generate_unique_invoice_
 from member.models import Member
 from django.db import transaction
 from functools import reduce
-from datetime import date
+from datetime import date, datetime
+
 from member_financial_management.serializers import InvoiceSerializer
 from core.utils.pagination import CustomPageNumberPagination
 from promo_code_app.models import AppliedPromoCode
 from django.core.cache import cache
 from django.utils.http import urlencode
+import pandas as pd
 import pdb
 from member_financial_management.tasks import delete_invoice_cache
 logger = logging.getLogger("myapp")
@@ -670,6 +672,115 @@ class RestaurantItemBuyView(APIView):
                     "message": "bad request",
                     "errors": serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong. Please try again.",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class RestaurantUploadExcelView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            serializer = serializers.RestaurantExcelUpload(data=request.data)
+            if serializer.is_valid():
+                excel_file = serializer.validated_data["excel_file"]
+                uploaded_file = excel_file
+
+                # Do not modify anything below this line ->>>>>>
+                file_data_cl = None
+                if uploaded_file.name.endswith('.xlsx'):
+                    file_data_cl = pd.read_excel(
+                        uploaded_file, engine='openpyxl', dtype=str)
+                elif uploaded_file.name.endswith('.xls'):
+                    file_data_cl = pd.read_excel(
+                        uploaded_file, engine='xlrd', dtype=str)
+
+                if file_data_cl is not None:  # Ensure file was read successfully
+                    # pandas clean starts here, do not write anything below this line
+                    file_data_cl = file_data_cl.dropna(how='all')
+
+                    # Extract and format the date range
+                    cell_data = file_data_cl.iat[2, 5]
+                    date_range_payment = cell_data.strip()
+                    p_start_date, p_end_date = date_range_payment.split(" to ")
+                    p_start_date = datetime.strptime(
+                        p_start_date, "%d/%m/%Y").strftime("%Y-%m-%d")
+                    p_end_date = datetime.strptime(
+                        p_end_date, "%d/%m/%Y").strftime("%Y-%m-%d")
+                    # print("checking dates: ", p_start_date, p_end_date)
+                    if (p_start_date != p_end_date):
+                        return Response({
+                            "code": 400,
+                            "status": "failed",
+                            "message": "Invalid date range",
+                            "errors": {
+                                "date_range": ["Invalid date range"]
+                            }
+                        }, status=400)
+
+                    # Select relevant columns and rename them
+                    file_data_cl = file_data_cl[['Unnamed: 0', 'Unnamed: 1', 'Unnamed: 2', 'Unnamed: 4',
+                                                 'Unnamed: 5', 'Unnamed: 6', 'Unnamed: 8', 'Unnamed: 9', 'Unnamed: 10']]
+                    file_data_cl.dropna(
+                        subset=[file_data_cl.columns[1]], inplace=True)
+                    file_data_cl = file_data_cl[~(
+                        file_data_cl['Unnamed: 0'] == 'SL')]
+
+                    file_data_cl.columns = [
+                        'serial_number', 'sales_code', 'member_account', 'cash_amount', 'card_amount',
+                        'due_amount', 'total', 'srv_charge', 'grand_total'
+                    ]
+
+                    # Add start and end dates
+                    file_data_cl['Start_Date'] = p_start_date
+                    file_data_cl['End_Date'] = p_end_date
+
+                    # Convert numeric columns to appropriate types for summation
+                    numeric_columns = ['cash_amount', 'card_amount',
+                                       'due_amount', 'total', 'srv_charge', 'grand_total']
+                    file_data_cl[numeric_columns] = file_data_cl[numeric_columns].apply(
+                        pd.to_numeric, errors='coerce').fillna(0)
+                    # do your operations here ->>>>
+                    # Calculate totals for numeric columns
+                    totals = {col: file_data_cl[col].sum()
+                              for col in numeric_columns}
+                    # totals.update({
+                    #     'serial_number': "Total",
+                    #     'sales_code': "",
+                    #     'member_account': "",
+                    #     'Start_Date': "",
+                    #     'End_Date': ""
+                    # })
+                    totals['cash_amount'] = int(totals['cash_amount'])
+                    totals['card_amount'] = int(totals['card_amount'])
+                    totals['due_amount'] = int(totals['due_amount'])
+                    totals['total'] = int(totals['total'])
+                    totals['srv_charge'] = int(totals['srv_charge'])
+                    totals['grand_total'] = int(totals['grand_total'])
+                    # pandas clean ends here, do not write above this line
+
+                    # Save the data to the session for use in preview_sales view
+                    # print(file_data_cl)
+                    print(file_data_cl.to_dict(
+                        orient='records'))
+                    print(totals)
+
+                    return Response("ok")
+            else:
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "bad request",
+                    "errors": serializer.errors
+                }, status=400)
         except Exception as e:
             logger.exception(str(e))
             return Response({
