@@ -412,6 +412,10 @@ class LoungeUploadExcelSerializer(serializers.Serializer):
 
 class OthersUploadExcelSerializer(serializers.Serializer):
     excel_file = serializers.FileField()
+    income_particular = serializers.PrimaryKeyRelatedField(
+        queryset=IncomeParticular.active_objects.all())
+    received_from = serializers.PrimaryKeyRelatedField(
+        queryset=IncomeReceivingOption.active_objects.all())
 
     def validate_excel_file(self, value):
         valid_extensions = ['.xls', '.xlsx']

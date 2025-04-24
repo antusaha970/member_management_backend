@@ -2056,6 +2056,24 @@ class OthersUploadExcelView(APIView):
                 elif uploaded_file.name.endswith('.xls'):
                     file_data_cl = pd.read_excel(
                         uploaded_file, engine='xlrd', dtype=str)
+                    # Extract and format the date range
+                pick_date = file_data_cl.iat[1, 0]
+                if isinstance(pick_date, str):
+                    date_data = pick_date.strip().split(": ")[1]
+                    lng_date = datetime.strptime(
+                        date_data, "%d.%m.%y").strftime("%Y-%m-%d")
+
+                    sales_date = datetime.strptime(
+                        date_data, "%d.%m.%y").date()
+                else:
+                    return Response({
+                        "code": 400,
+                        "status": "failed",
+                        "message": "Invalid date format",
+                        "errors": {
+                            "pick_date": [f"Error: Expected a string, but got {type(pick_date)}. Value: {pick_date}"]
+                        }
+                    })
                 if file_data_cl is not None:
                     file_data_cl = file_data_cl.dropna(how='all')
 
@@ -2079,8 +2097,143 @@ class OthersUploadExcelView(APIView):
                     totals['due_amount'] = int(totals['due_amount'])
                     totals['total'] = int(totals['total'])
                     # Process the data as needed
-                    print(file_data_cl.to_dict(orient='records'))
-                    # print(totals)
+                    data = file_data_cl.to_dict(orient='records')
+                    income_particular = serializer.validated_data["income_particular"]
+                    received_from = serializer.validated_data["received_from"]
+                    with transaction.atomic():
+                        invoice_type, _ = InvoiceType.objects.get_or_create(
+                            name="others")
+                        cash_payment_method, _ = PaymentMethod.objects.get_or_create(
+                            name="cash")
+                        card_payment_method, _ = PaymentMethod.objects.get_or_create(
+                            name="card")
+                        both_payment_method, _ = PaymentMethod.objects.get_or_create(
+                            name="both")
+                        sale_type, _ = SaleType.objects.get_or_create(
+                            name="others")
+                        full_income_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
+                            name="full")
+                        partial_income_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
+                            name="partial")
+                        uploaded_member_data = []
+                        for record in data:
+                            paid_amount = record["cash_amount"] + \
+                                record["card_amount"]
+                            total_amount = record["total"]
+                            due_amount = record["due_amount"]
+                            payment_method = None
+                            start_date = lng_date
+                            if record["card_amount"] == 0 and record["cash_amount"] == 0:
+                                payment_method = both_payment_method
+                            elif record["card_amount"] != 0:
+                                payment_method = card_payment_method
+                            else:
+                                payment_method = cash_payment_method
+                            if paid_amount == total_amount:
+                                income_receiving_type = full_income_receiving_type
+                            else:
+                                income_receiving_type = partial_income_receiving_type
+                            try:
+                                member = Member.objects.get(
+                                    member_ID=record["member_ID"])
+                            except Member.DoesNotExist:
+                                uploaded_member_data.append({
+                                    "member": record["member_ID"],
+                                    "status": "failed",
+                                    "reason": "Member doesn't exist",
+                                })
+                                continue
+                            invoice = Invoice.objects.create(
+                                invoice_number=generate_unique_invoice_number(),
+                                balance_due=record["due_amount"],
+                                paid_amount=paid_amount,
+                                due_date=start_date,
+                                issue_date=datetime.today(),
+                                total_amount=total_amount,
+                                is_full_paid=paid_amount == total_amount,
+                                status="paid" if total_amount == paid_amount else "partial_paid",
+                                invoice_type=invoice_type,
+                                generated_by=request.user,
+                                member=member)
+                            transaction_obj = Transaction.objects.create(
+                                amount=paid_amount,
+                                member=member,
+                                invoice=invoice,
+                                payment_method=payment_method,
+                                notes="This transaction was recorded from excel file."
+                            )
+                            payment_obj = Payment.objects.create(
+                                payment_amount=paid_amount,
+                                payment_status=invoice.status,
+                                notes="This payment was recorded from excel file.",
+                                transaction=transaction_obj,
+                                invoice=invoice,
+                                member=member,
+                                payment_method=payment_method,
+                                processed_by=request.user
+                            )
+                            due_date = start_date if record["due_amount"] == 0 else None
+                            sale_obj = Sale.objects.create(sale_number=generate_unique_sale_number(),
+                                                           sub_total=invoice.total_amount,
+                                                           total_amount=invoice.total_amount,
+                                                           payment_status=invoice.status,
+                                                           due_date=due_date,
+                                                           notes="Sale created from excel file.",
+                                                           sale_source_type=sale_type,
+                                                           customer=member,
+                                                           payment_method=payment_method,
+                                                           invoice=invoice
+                                                           )
+                            Income.objects.create(
+                                receivable_amount=invoice.total_amount,
+                                final_receivable=invoice.total_amount,
+                                actual_received=invoice.paid_amount,
+                                reaming_due=invoice.balance_due,
+                                particular=income_particular,
+                                received_from_type=received_from,
+                                member=member,
+                                received_by=payment_method,
+                                sale=sale_obj,
+                                receiving_type=income_receiving_type)
+                            if due_amount > 0:  # it has due
+                                due_obj = Due.objects.create(
+                                    original_amount=invoice.total_amount,
+                                    due_amount=invoice.balance_due,
+                                    paid_amount=invoice.paid_amount,
+                                    due_date=start_date,
+                                    payment_status=invoice.status,
+                                    member=member,
+                                    invoice=invoice,
+                                    payment=payment_obj,
+                                    transaction=transaction_obj,
+                                )
+                                MemberDue.objects.create(
+                                    amount_due=due_obj.due_amount,
+                                    due_date=start_date,
+                                    amount_paid=invoice.paid_amount,
+                                    payment_date=datetime.today(),
+                                    notes="This due has been recorded from excel file",
+                                    member=member,
+                                    due_reference=due_obj
+                                )
+                            uploaded_member_data.append({
+                                "member_ID": member.member_ID,
+                                "status": "success",
+                                "reason": "Successfully uploaded"
+                            })
+                        log_activity_task.delay_on_commit(
+                            request_data_activity_log(request),
+                            verb="View",
+                            severity_level="info",
+                            description="User uploaded an excel file",
+                        )
+                        delete_all_financial_cache.delay()
+                        return Response({
+                            "code": 201,
+                            "status": "success",
+                            "message": "Data uploaded successfully",
+                            "data": uploaded_member_data
+                        }, status=status.HTTP_201_CREATED)
                     return Response({
                         "code": 200,
                         "status": "success",
