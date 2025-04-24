@@ -17,6 +17,7 @@ from django.utils.http import urlencode
 from . import serializers
 from .utils.functions import generate_unique_sale_number
 from .tasks import delete_all_financial_cache,delete_member_accounts_cache
+import pandas as pd
 logger = logging.getLogger("myapp")
 
 
@@ -1783,6 +1784,166 @@ class MemberAccountRechargeView(APIView):
                 verb="View",
                 severity_level="info",
                 description="User tried to recharge a member account and faced error",
+            )
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            
+class LoungeUploadExcelView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        try:
+            serializer = serializers.LoungeUploadExcelSerializer(data=request.data)
+            if serializer.is_valid():
+                excel_file = serializer.validated_data["excel_file"]
+                uploaded_file = excel_file
+                file_data_cl = None
+                
+                if uploaded_file.name.endswith('.xlsx'):
+                    file_data_cl = pd.read_excel(
+                        uploaded_file, engine='openpyxl', dtype=str)
+                elif uploaded_file.name.endswith('.xls'):
+                    file_data_cl = pd.read_excel(
+                        uploaded_file, engine='xlrd', dtype=str)
+
+                if file_data_cl is not None:
+                    file_data_cl = file_data_cl.dropna(how='all')
+
+                    # Select relevant columns and rename them
+                    file_data_cl = file_data_cl[['Unnamed: 1', 'Unnamed: 2', 'Unnamed: 3',
+                                                'Unnamed: 4', 'Unnamed: 5']]  # total 5 columns
+
+                    file_data_cl.columns = ['member_ID', 'cash_amount', 'card_amount', 'due_amount', 'total']
+
+                    file_data_cl = file_data_cl.iloc[3:-1].reset_index(drop=True)
+
+                    # Convert numeric columns
+                    numeric_columns = ['cash_amount', 'card_amount', 'due_amount', 'total']
+                    file_data_cl[numeric_columns] = file_data_cl[numeric_columns].apply(
+                        pd.to_numeric, errors='coerce').fillna(0)
+
+                    # Calculate totals
+                    totals = {col: int(file_data_cl[col].sum()) for col in numeric_columns}
+
+                    # print(file_data_cl.to_dict(orient='records'))
+                    # print(totals)
+                    
+                    totals['cash_amount'] = int(totals['cash_amount'])
+                    totals['card_amount'] = int(totals['card_amount'])
+                    totals['due_amount'] = int(totals['due_amount'])
+                    totals['total'] = int(totals['total'])
+                    # Process the data as needed
+                    print(file_data_cl.to_dict(orient='records'))
+                    # print(totals)
+
+                    return Response({
+                        "code": 200,
+                        "status": "success",
+                        "message": "Excel file uploaded successfully",
+                        "totals": totals
+                    }, status=status.HTTP_200_OK)
+            else:
+                # activity log
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="View",
+                    severity_level="info",
+                    description="User tried to upload an excel file and faced error",
+                )
+                # return error response
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Bad request",
+                    "errors": serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="View",
+                severity_level="info",
+                description="User tried to upload an excel file and faced error",
+            )
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+class OthersUploadExcelView(APIView):
+    
+    def post(self,request):
+        try:
+            serializer = serializers.OthersUploadExcelSerializer(data=request.data)
+            if serializer.is_valid():
+                excel_file = serializer.validated_data["excel_file"]
+                uploaded_file = excel_file
+                file_data_cl = None
+                if uploaded_file.name.endswith('.xlsx'):
+                    file_data_cl = pd.read_excel(
+                        uploaded_file, engine='openpyxl', dtype=str)
+                elif uploaded_file.name.endswith('.xls'):
+                    file_data_cl = pd.read_excel(
+                        uploaded_file, engine='xlrd', dtype=str)
+                if file_data_cl is not None:
+                    file_data_cl = file_data_cl.dropna(how='all')
+
+                    # Select relevant columns and rename them
+                    file_data_cl = file_data_cl[['Unnamed: 1', 'Unnamed: 2', 'Unnamed: 3',
+                                                'Unnamed: 4', 'Unnamed: 5']]
+                    file_data_cl.columns = ['member_ID', 'cash_amount', 'card_amount', 'due_amount', 'total']
+                    file_data_cl = file_data_cl.iloc[3:-1].reset_index(drop=True)
+                    # Convert numeric columns
+                    numeric_columns = ['cash_amount', 'card_amount', 'due_amount', 'total']
+                    file_data_cl[numeric_columns] = file_data_cl[numeric_columns].apply(
+                        pd.to_numeric, errors='coerce').fillna(0)
+                    # Calculate totals
+                    totals = {col: int(file_data_cl[col].sum()) for col in numeric_columns}
+                    totals['cash_amount'] = int(totals['cash_amount'])
+                    totals['card_amount'] = int(totals['card_amount'])
+                    totals['due_amount'] = int(totals['due_amount'])
+                    totals['total'] = int(totals['total'])
+                    # Process the data as needed
+                    print(file_data_cl.to_dict(orient='records'))
+                    # print(totals) 
+                    return Response({
+                        "code": 200,
+                        "status": "success",
+                        "message": "Excel file uploaded successfully",
+                        "totals": totals
+                    }, status=status.HTTP_200_OK)
+            else:
+                # activity log
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="View",
+                    severity_level="info",
+                    description="User tried to upload an excel file and faced error",
+                )
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Bad request",
+                    "errors": serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="View",
+                severity_level="info",
+                description="User tried to upload an excel file and faced error",
             )
             return Response({
                 "code": 500,
