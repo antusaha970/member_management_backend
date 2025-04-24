@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-from .models import Member, MembersFinancialBasics, MemberHistory, CompanionInformation, Documents
+from .models import Member,Email, MembersFinancialBasics, MemberHistory, CompanionInformation, Documents
 from .utils.permission_classes import ViewMemberPermission, AddMemberPermission, UpdateMemberPermission, DeleteMemberPermission
 import logging
 from activity_log.tasks import log_activity_task
@@ -24,9 +24,12 @@ from django.shortcuts import render
 from .utils.filters import MemberFilter
 from .import models
 import pdb
+from django.db.models import Prefetch
+
 from .models import Spouse, Profession
 from .tasks import delete_member_model_dependencies
 logger = logging.getLogger("myapp")
+
 
 
 class MemberView(APIView):
@@ -248,6 +251,8 @@ class MemberView(APIView):
     #                 "server_error": [str(server_error)]
     #             }
     #         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    # --------------------------------------------------------------
+    
     def delete(self, request, member_id):
         try:
             member = Member.objects.only("id", "member_ID", "status").get(member_ID=member_id)
@@ -875,7 +880,13 @@ class MemberEmailAddressView(APIView):
 
     def patch(self, request, member_ID):
         try:
-            member = get_object_or_404(Member, member_ID=member_ID)
+            # member = get_object_or_404(Member, member_ID=member_ID)
+            member = Member.objects.prefetch_related(
+                    Prefetch(
+                        'emails',
+                        queryset=Email.objects.select_related('email_type')  # bringing email_type in single query
+                    )
+                ).get(member_ID=member_ID)
             data = request.data
             serializer = serializers.MemberEmailAddressSerializer(
                 member, data=data)

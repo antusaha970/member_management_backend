@@ -405,49 +405,92 @@ class MemberEmailAddressSerializer(serializers.Serializer):
             })
         return created_instances
 
+    # def update(self, instance, validated_data):
+    #     """
+    #     instance: A Member instance whose contact_numbers will be updated.
+    #     validated_data: Dictionary containing:
+    #         - member_ID (string)
+    #         - data: A list of emails (each may include an "id" if updating an existing contact)
+    #     """
+    #     data_list = validated_data.get('data', [])
+    #     results = []
+
+    #     # Iterate over each item in the submitted data
+    #     for item in data_list:
+    #         email_id = item.get('id', None)
+    #         if email_id:
+    #             # Update an existing email for the given member.
+    #             try:
+    #                 email_obj = instance.emails.get(id=email_id)
+    #             except Email.DoesNotExist:
+    #                 raise serializers.ValidationError(
+    #                     f"email with id {email_id} does not exist for this member."
+    #                 )
+    #             # Update fields if provided; if not, retain current value.
+    #             email_obj.email_type = item.get(
+    #                 'email_type', email_obj.email_type)
+    #             email_obj.email = item.get('email', email_obj.email)
+    #             email_obj.is_primary = item.get(
+    #                 'is_primary', email_obj.is_primary)
+    #             email_obj.save()
+    #             results.append({
+    #                 "status": "updated",
+    #                 "email_id": email_obj.id
+    #             })
+    #         else:
+    #             # Optionally create a new email if no id is provided.
+    #             new_email = Email.objects.create(
+    #                 member=instance, **item)
+    #             results.append({
+    #                 "status": "created",
+    #                 "email_id": new_email.id
+    #             })
+
+    #     return results
+    
+    # --------------------------------
+
     def update(self, instance, validated_data):
-        """
-        instance: A Member instance whose contact_numbers will be updated.
-        validated_data: Dictionary containing:
-            - member_ID (string)
-            - data: A list of emails (each may include an "id" if updating an existing contact)
-        """
         data_list = validated_data.get('data', [])
         results = []
 
-        # Iterate over each item in the submitted data
+        existing_emails = {email.id: email for email in instance.emails.all()}
+
         for item in data_list:
             email_id = item.get('id', None)
             if email_id:
-                # Update an existing email for the given member.
-                try:
-                    email_obj = instance.emails.get(id=email_id)
-                except Email.DoesNotExist:
+                email_obj = existing_emails.get(email_id)
+                if not email_obj:
                     raise serializers.ValidationError(
                         f"email with id {email_id} does not exist for this member."
                     )
-                # Update fields if provided; if not, retain current value.
-                email_obj.email_type = item.get(
-                    'email_type', email_obj.email_type)
-                email_obj.email = item.get('email', email_obj.email)
-                email_obj.is_primary = item.get(
-                    'is_primary', email_obj.is_primary)
-                email_obj.save()
+
+                updated = False
+                if 'email_type' in item and item['email_type'] != email_obj.email_type:
+                    email_obj.email_type = item['email_type']
+                    updated = True
+                if 'email' in item and item['email'] != email_obj.email:
+                    email_obj.email = item['email']
+                    updated = True
+                if 'is_primary' in item and item['is_primary'] != email_obj.is_primary:
+                    email_obj.is_primary = item['is_primary']
+                    updated = True
+
+                if updated:
+                    email_obj.save()
+
                 results.append({
                     "status": "updated",
                     "email_id": email_obj.id
                 })
             else:
-                # Optionally create a new email if no id is provided.
-                new_email = Email.objects.create(
-                    member=instance, **item)
+                new_email = Email.objects.create(member=instance, **item)
                 results.append({
                     "status": "created",
                     "email_id": new_email.id
                 })
 
         return results
-
 
 class AddressSerializer(serializers.Serializer):
     address_type = serializers.PrimaryKeyRelatedField(
