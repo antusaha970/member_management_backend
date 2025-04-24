@@ -1480,26 +1480,30 @@ class GetUserPermissionsView(APIView):
     def get(self, request):
         try:
             user = request.user
-            data = AssignGroupPermission.objects.filter(user=user)
+            data = AssignGroupPermission.objects.select_related(
+                "user").prefetch_related("group", "group__permission").filter(user=user)
             users_data = []
+
             for assign_group in data:
                 user_info = {
                     "user_id": assign_group.user.id if assign_group.user else None,
                     "username": assign_group.user.username if assign_group.user else "No User",
-                    "groups": []
+                    "is_admin": user.is_superuser,
+                    "groups": [],
+                    "permissions": []
                 }
                 for group in assign_group.group.all():
                     group_info = {
                         "group_id": group.id,
                         "group_name": group.name,
-                        "permissions": [
-                            {"permission_id": perm.id, "permission_name": perm.name}
-                            for perm in group.permission.all()
-                        ]
                     }
                     user_info["groups"].append(group_info)
-                users_data.append(user_info)
+                    all_permissions = [{
+                        "permission_id": perm.id, "permission_name": perm.name}
+                        for perm in group.permission.all()]
 
+                    user_info["permissions"].extend(all_permissions)
+                users_data.append(user_info)
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
                 verb="retrieved user permissions",
