@@ -5,7 +5,7 @@ from event.models import Event, EventTicket
 from product.models import Product
 from facility.models import Facility
 from member.models import Member
-
+import os
 import pdb
 
 
@@ -367,24 +367,56 @@ class MemberDuePaymentSerializer(serializers.Serializer):
 
         return super().validate(attrs)
 
+
 class MemberAccountRechargeSerializer(serializers.Serializer):
     member_ID = serializers.CharField(max_length=255)
     amount = serializers.DecimalField(max_digits=12, decimal_places=2)
-    
+
     def validate_member_ID(self, value):
         if not Member.objects.filter(member_ID=value).exists():
             raise serializers.ValidationError("Member ID does not exist.")
         return value
+
     def validate_amount(self, value):
         if value < 100:
-            raise serializers.ValidationError("Amount must be greater than 100.")
-    
+            raise serializers.ValidationError(
+                "Amount must be greater than 100.")
+
         if value > 1000000:
-            raise serializers.ValidationError("Amount can't be greater than  1000000.")
+            raise serializers.ValidationError(
+                "Amount can't be greater than  1000000.")
         return value
+
     def validate(self, attrs):
         member_ID = attrs['member_ID']
         if not MemberAccount.objects.filter(member__member_ID=member_ID).exists():
             raise serializers.ValidationError("Member account does not exist.")
         return super().validate(attrs)
-    
+
+
+class LoungeUploadExcelSerializer(serializers.Serializer):
+    excel_file = serializers.FileField()
+    income_particular = serializers.PrimaryKeyRelatedField(
+        queryset=IncomeParticular.active_objects.all())
+    received_from = serializers.PrimaryKeyRelatedField(
+        queryset=IncomeReceivingOption.active_objects.all())
+
+    def validate_excel_file(self, value):
+        valid_extensions = ['.xls', '.xlsx']
+        ext = os.path.splitext(value.name)[1]
+        if ext.lower() not in valid_extensions:
+            raise serializers.ValidationError(
+                "Only .xls and .xlsx files are allowed.")
+        return value
+
+
+class OthersUploadExcelSerializer(serializers.Serializer):
+    excel_file = serializers.FileField()
+
+    def validate_excel_file(self, value):
+        valid_extensions = ['.xls', '.xlsx']
+        ext = os.path.splitext(value.name)[1]
+        if ext.lower() not in valid_extensions:
+            raise serializers.ValidationError(
+                "Only .xls and .xlsx files are allowed.")
+        return value
