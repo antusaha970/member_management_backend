@@ -7,8 +7,9 @@ from .models import RestaurantCuisineCategory, RestaurantCategory, Restaurant, R
 import logging
 from activity_log.tasks import log_activity_task
 from activity_log.utils.functions import request_data_activity_log
-from member_financial_management.models import Invoice, InvoiceItem, InvoiceType
+from member_financial_management.models import Invoice, InvoiceItem, InvoiceType, Income, IncomeReceivingType, Due, MemberDue
 from member_financial_management.utils.functions import generate_unique_invoice_number
+from member_financial_management.tasks import delete_all_financial_cache
 from member.models import Member
 from django.db import transaction
 from functools import reduce
@@ -695,6 +696,8 @@ class RestaurantUploadExcelView(APIView):
             if serializer.is_valid():
                 excel_file = serializer.validated_data["excel_file"]
                 restaurant = serializer.validated_data["restaurant"]
+                income_particular = serializer.validated_data["income_particular"]
+                received_from = serializer.validated_data["received_from"]
                 uploaded_file = excel_file
 
                 # Do not modify anything below this line ->>>>>>
@@ -765,85 +768,149 @@ class RestaurantUploadExcelView(APIView):
 
                     data = file_data_cl.to_dict(
                         orient='records')
-                    invoice_type, _ = InvoiceType.objects.get_or_create(
-                        name="restaurant")
-                    cash_payment_method, _ = PaymentMethod.objects.get_or_create(
-                        name="cash")
-                    card_payment_method, _ = PaymentMethod.objects.get_or_create(
-                        name="card")
-                    both_payment_method, _ = PaymentMethod.objects.get_or_create(
-                        name="both")
-                    sale_type, _ = SaleType.objects.get_or_create(
-                        name="restaurant")
-                    for record in data:
-                        paid_amount = record["cash_amount"] + \
-                            record["card_amount"]
-                        total_amount = paid_amount+record["srv_charge"]
-                        due_amount = record["due_amount"]
-                        payment_method = None
-                        if record["card_amount"] == 0 and record["cash_amount"] == 0:
-                            payment_method = both_payment_method
-                        elif record["card_amount"] != 0:
-                            payment_method = card_payment_method
-                        else:
-                            payment_method = cash_payment_method
+                    with transaction.atomic():
+                        invoice_type, _ = InvoiceType.objects.get_or_create(
+                            name="restaurant")
+                        cash_payment_method, _ = PaymentMethod.objects.get_or_create(
+                            name="cash")
+                        card_payment_method, _ = PaymentMethod.objects.get_or_create(
+                            name="card")
+                        both_payment_method, _ = PaymentMethod.objects.get_or_create(
+                            name="both")
+                        sale_type, _ = SaleType.objects.get_or_create(
+                            name="restaurant")
+                        full_income_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
+                            name="full")
+                        partial_income_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
+                            name="partial")
+                        uploaded_member_data = []
+                        for record in data:
+                            paid_amount = record["cash_amount"] + \
+                                record["card_amount"]
+                            total_amount = record["grand_total"]
+                            due_amount = record["due_amount"]
+                            payment_method = None
+                            start_date = datetime.strptime(
+                                record["Start_Date"], "%Y-%m-%d").date()
+                            if record["card_amount"] == 0 and record["cash_amount"] == 0:
+                                payment_method = both_payment_method
+                            elif record["card_amount"] != 0:
+                                payment_method = card_payment_method
+                            else:
+                                payment_method = cash_payment_method
+                            if paid_amount == total_amount:
+                                income_receiving_type = full_income_receiving_type
+                            else:
+                                income_receiving_type = partial_income_receiving_type
+                            try:
+                                member = Member.objects.get(
+                                    member_ID=record["member_account"])
+                                is_sale_number_exist = Sale.objects.filter(
+                                    sale_number=record["sales_code"]).exists()
 
-                        try:
-                            member = Member.objects.get(
-                                member_ID=record["member_account"])
-                            is_sale_number_exist = Sale.objects.filter(
-                                sale_number=record["sales_code"]).exists()
-                            if not is_sale_number_exist:
+                                if is_sale_number_exist:
+                                    uploaded_member_data.append({
+                                        "member": record["member_account"],
+                                        "sales_code": record["sales_code"],
+                                        "status": "failed",
+                                        "reason": "Sales code already exist",
+                                    })
+                                    continue
+                            except Member.DoesNotExist:
+                                uploaded_member_data.append({
+                                    "member": record["member_account"],
+                                    "sales_code": record["sales_code"],
+                                    "status": "failed",
+                                    "reason": "Member doesn't exist",
+                                })
                                 continue
-                        except Member.DoesNotExist:
-                            continue
-                        invoice = Invoice.objects.create(
-                            invoice_number=generate_unique_invoice_number(),
-                            balance_due=record["due_amount"],
-                            paid_amount=paid_amount,
-                            due_date=datetime.today(),
-                            total_amount=paid_amount+record["srv_charge"],
-                            is_full_paid=paid_amount == total_amount,
-                            status="paid" if total_amount == paid_amount else "partial_paid",
-                            invoice_type=invoice_type,
-                            generated_by=request.user,
-                            member=member,
-                            restaurant=restaurant)
-                        transaction_obj = Transaction.objects.create(
-                            amount=paid_amount,
-                            member=member,
-                            invoice=invoice,
-                            payment_method=payment_method,
-                            notes="This transaction was recorded from excel file."
-                        )
-                        payment_obj = Payment.objects.create(
-                            payment_amount=paid_amount,
-                            payment_status=invoice.status,
-                            notes="This payment was recorded from excel file.",
-                            transaction=transaction_obj,
-                            invoice=invoice,
-                            member=member,
-                            payment_method=payment_method,
-                            processed_by=request.user
-                        )
-                        due_date = datetime.today(
-                        ) if record["due_amount"] == 0 else None
-                        sale_obj = Sale.objects.create(sale_number=record["sales_code"],
-                                                       sub_total=invoice.total_amount,
-                                                       total_amount=invoice.total_amount,
-                                                       payment_status=invoice.status,
-                                                       due_date=due_date,
-                                                       notes="Sale created from excel file.",
-                                                       sale_source_type=sale_type,
-                                                       customer=member,
-                                                       payment_method=payment_method,
-                                                       invoice=invoice
-                                                       )
-                        if due_amount > 0:  # it has due
-                            pass
-
-                    # print(totals)
-                    return Response("ok")
+                            invoice = Invoice.objects.create(
+                                invoice_number=generate_unique_invoice_number(),
+                                balance_due=record["due_amount"],
+                                paid_amount=paid_amount,
+                                due_date=start_date,
+                                issue_date=datetime.today(),
+                                total_amount=total_amount,
+                                is_full_paid=paid_amount == total_amount,
+                                status="paid" if total_amount == paid_amount else "partial_paid",
+                                invoice_type=invoice_type,
+                                generated_by=request.user,
+                                member=member,
+                                restaurant=restaurant)
+                            transaction_obj = Transaction.objects.create(
+                                amount=paid_amount,
+                                member=member,
+                                invoice=invoice,
+                                payment_method=payment_method,
+                                notes="This transaction was recorded from excel file."
+                            )
+                            payment_obj = Payment.objects.create(
+                                payment_amount=paid_amount,
+                                payment_status=invoice.status,
+                                notes="This payment was recorded from excel file.",
+                                transaction=transaction_obj,
+                                invoice=invoice,
+                                member=member,
+                                payment_method=payment_method,
+                                processed_by=request.user
+                            )
+                            due_date = start_date if record["due_amount"] == 0 else None
+                            sale_obj = Sale.objects.create(sale_number=record["sales_code"],
+                                                           sub_total=invoice.total_amount,
+                                                           total_amount=invoice.total_amount,
+                                                           payment_status=invoice.status,
+                                                           due_date=due_date,
+                                                           notes="Sale created from excel file.",
+                                                           sale_source_type=sale_type,
+                                                           customer=member,
+                                                           payment_method=payment_method,
+                                                           invoice=invoice
+                                                           )
+                            Income.objects.create(
+                                receivable_amount=invoice.total_amount,
+                                final_receivable=invoice.total_amount,
+                                actual_received=invoice.paid_amount,
+                                reaming_due=invoice.balance_due,
+                                particular=income_particular,
+                                received_from_type=received_from,
+                                member=member,
+                                received_by=payment_method,
+                                sale=sale_obj,
+                                receiving_type=income_receiving_type)
+                            if due_amount > 0:  # it has due
+                                due_obj = Due.objects.create(
+                                    original_amount=invoice.total_amount,
+                                    due_amount=invoice.balance_due,
+                                    paid_amount=invoice.paid_amount,
+                                    due_date=start_date,
+                                    payment_status=invoice.status,
+                                    member=member,
+                                    invoice=invoice,
+                                    payment=payment_obj,
+                                    transaction=transaction_obj,
+                                )
+                                MemberDue.objects.create(
+                                    amount_due=due_obj.due_amount,
+                                    due_date=start_date,
+                                    amount_paid=invoice.paid_amount,
+                                    payment_date=datetime.today(),
+                                    notes="This due has been recorded from excel file",
+                                    member=member,
+                                    due_reference=due_obj
+                                )
+                            uploaded_member_data.append({
+                                "member_ID": member.member_ID,
+                                "sales_code": record["sales_code"],
+                                "status": "success",
+                                "reason": "Successfully uploaded"
+                            })
+                        delete_all_financial_cache.delay()
+                        return Response({
+                            "code": 201,
+                            "status": "success",
+                            "message": "Data uploaded successfully",
+                            "data": uploaded_member_data
+                        }, status=status.HTTP_201_CREATED)
             else:
                 return Response({
                     "code": 400,
