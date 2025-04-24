@@ -102,7 +102,7 @@ class MemberView(APIView):
 
     def patch(self, request, member_id):
         try:
-            member = Member.objects.get(member_ID=member_id)
+            member = Member.objects.select_related("membership_type","gender","marital_status","institute_name","membership_status").get(member_ID=member_id)
             data = request.data
             member_serializer = serializers.MemberSerializer(member, data=data)
             is_member_serializer_valid = member_serializer.is_valid()
@@ -171,14 +171,91 @@ class MemberView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    # def delete(self, request, member_id):
+    #     try:
+    #         member = Member.objects.get(member_ID=member_id)
+    #         # find the member
+    #         if member.status == 2:
+    #             # if member is already deleted
+    #             log_activity_task.delay_on_commit(
+    #                 request_data_activity_log(request),
+    #                 verb="Member delete failed",
+    #                 severity_level="info",
+    #                 description="user tried to delete member but made an invalid request",
+    #             )
+    #             return Response({
+    #                 "code": 400,
+    #                 "status": "failed",
+    #                 "message": "Member is already deleted",
+    #             }, status=status.HTTP_400_BAD_REQUEST)
+    #         # if not deleted then update the member status to delete
+    #         with transaction.atomic():
+    #             all_instance = MemberHistory.objects.filter(member=member)
+    #             update_lst = []
+    #             for instance in all_instance:
+    #                 instance.end_date = timezone.now()
+    #                 instance.transferred_reason = "deleted"
+    #                 instance.transferred = True
+    #                 update_lst.append(instance)
+    #             MemberHistory.objects.bulk_update(
+    #                 update_lst, ["end_date", "transferred_reason", "transferred"])
+    #             member.member_ID = None
+    #             member.status = 2
+    #             member.is_active = False
+    #             member.save(update_fields=['status', 'member_ID', 'is_active'])
+    #             delete_member_model_dependencies.delay_on_commit(member.id)
+    #             log_activity_task.delay_on_commit(
+    #                 request_data_activity_log(request),
+    #                 verb="Member delete success",
+    #                 severity_level="info",
+    #                 description="user tried to delete a member and succeeded",
+    #             )
+    #             return Response({
+    #                 "code": 204,
+    #                 'message': "member deleted",
+    #                 'status': "success",
+    #             }, status=status.HTTP_204_NO_CONTENT)
+
+    #     except Member.DoesNotExist:
+    #         log_activity_task.delay_on_commit(
+    #             request_data_activity_log(request),
+    #             verb="Member delete failed",
+    #             severity_level="error",
+    #             description="user tried to delete member but made an invalid request",
+    #         )
+    #         return Response({
+    #             "code": 404,
+    #             "status": "failed",
+    #             "message": "Member not found",
+    #             "errors": {
+    #                 "member": ["Member not found by this member_ID"]
+    #             }
+    #         }, status=status.HTTP_404_NOT_FOUND)
+
+    #     except Exception as server_error:
+    #         logger.exception(str(server_error))
+    #         log_activity_task.delay_on_commit(
+    #             request_data_activity_log(request),
+    #             verb="Member delete failed",
+    #             severity_level="error",
+    #             description="user tried to delete member but made an invalid request",
+    #         )
+    #         return Response({
+    #             "code": 500,
+    #             "status": "failed",
+    #             "message": "Something went wrong",
+    #             "errors": {
+    #                 "server_error": [str(server_error)]
+    #             }
+    #         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     def delete(self, request, member_id):
         try:
-            member = Member.objects.get(member_ID=member_id)
-            # find the member
+            member = Member.objects.only("id", "member_ID", "status").get(member_ID=member_id)
+
             if member.status == 2:
-                # if member is already deleted
+                log_data = request_data_activity_log(request)
                 log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),
+                    log_data,
                     verb="Member delete failed",
                     severity_level="info",
                     description="user tried to delete member but made an invalid request",
@@ -188,28 +265,30 @@ class MemberView(APIView):
                     "status": "failed",
                     "message": "Member is already deleted",
                 }, status=status.HTTP_400_BAD_REQUEST)
-            # if not deleted then update the member status to delete
+
             with transaction.atomic():
-                all_instance = MemberHistory.objects.filter(member=member)
-                update_lst = []
-                for instance in all_instance:
-                    instance.end_date = timezone.now()
-                    instance.transferred_reason = "deleted"
-                    instance.transferred = True
-                    update_lst.append(instance)
-                MemberHistory.objects.bulk_update(
-                    update_lst, ["end_date", "transferred_reason", "transferred"])
-                member.member_ID = None
-                member.status = 2
-                member.is_active = False
-                member.save(update_fields=['status', 'member_ID', 'is_active'])
+                MemberHistory.objects.filter(member=member).update(
+                    end_date=timezone.now(),
+                    transferred_reason="deleted",
+                    transferred=True
+                )
+
+                Member.objects.filter(member_ID=member.member_ID).update(
+                    member_ID=None,
+                    status=2,
+                    is_active=False
+                )
+
                 delete_member_model_dependencies.delay_on_commit(member.id)
+
+                log_data = request_data_activity_log(request)
                 log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),
+                    log_data,
                     verb="Member delete success",
                     severity_level="info",
                     description="user tried to delete a member and succeeded",
                 )
+
                 return Response({
                     "code": 204,
                     'message': "member deleted",
@@ -217,8 +296,9 @@ class MemberView(APIView):
                 }, status=status.HTTP_204_NO_CONTENT)
 
         except Member.DoesNotExist:
+            log_data = request_data_activity_log(request)
             log_activity_task.delay_on_commit(
-                request_data_activity_log(request),
+                log_data,
                 verb="Member delete failed",
                 severity_level="error",
                 description="user tried to delete member but made an invalid request",
@@ -234,8 +314,9 @@ class MemberView(APIView):
 
         except Exception as server_error:
             logger.exception(str(server_error))
+            log_data = request_data_activity_log(request)
             log_activity_task.delay_on_commit(
-                request_data_activity_log(request),
+                log_data,
                 verb="Member delete failed",
                 severity_level="error",
                 description="user tried to delete member but made an invalid request",
@@ -249,9 +330,12 @@ class MemberView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
     def get(self, request, member_id):
         try:
-            member = Member.objects.get(member_ID=member_id)
+            # member = Member.objects.get(member_ID=member_id)
+            member = Member.objects.select_related(
+                'marital_status','membership_status','institute_name','membership_type','gender').get(member_ID=member_id)
             # check if member status is deleted or not
             if member.status == 2:
                 log_activity_task.delay_on_commit(
@@ -474,7 +558,7 @@ class MemberListView(APIView):
     def get(self, request):
         try:
             queryset = Member.objects.filter(
-                status=0, is_active=True).order_by("id")
+                status=0, is_active=True).select_related("membership_type", "institute_name", "membership_status", "marital_status", "gender").order_by("id")
 
             # Apply filtering only if filters are provided in the request
             if request.GET:  # Check if any query parameters exist
@@ -1860,8 +1944,7 @@ class MemberSingleHistoryView(APIView):
 
     def get(self, request, member_ID):
         try:
-            member_history = MemberHistory.objects.filter(
-                member__member_ID=member_ID)
+            member_history = MemberHistory.objects.filter(member__member_ID=member_ID)
             serializer = serializers.MemberHistorySerializer(
                 member_history, many=True)
             log_activity_task.delay_on_commit(
