@@ -668,23 +668,22 @@ class MemberSpecialDaySerializer(serializers.Serializer):
         return created_instances
 
     def update(self, instance, validated_data):
-
         data_list = validated_data.get('data', [])
         results = []
 
-        # Iterate over each item in the submitted data
+        special_days_qs = instance.special_days.all()
+        special_day_dict = {sd.id: sd for sd in special_days_qs}
+
         for item in data_list:
             special_day_id = item.get('id', None)
             if special_day_id:
-                try:
-                    special_day_obj = instance.special_days.get(
-                        id=special_day_id)
-                except SpecialDay.DoesNotExist:
+                special_day_obj = special_day_dict.get(special_day_id)
+                if not special_day_obj:
                     raise serializers.ValidationError(
                         f"Special day with id {special_day_id} does not exist for this member."
                     )
-                special_day_obj.title = item.get(
-                    'title', special_day_obj.title)
+                # update fields
+                special_day_obj.title = item.get('title', special_day_obj.title)
                 special_day_obj.date = item.get('date', special_day_obj.date)
                 special_day_obj.save()
                 results.append({
@@ -692,7 +691,7 @@ class MemberSpecialDaySerializer(serializers.Serializer):
                     "special_day_id": special_day_obj.id
                 })
             else:
-                # Optionally create a new contact number if no id is provided.
+                # create new special day
                 new_special_day = SpecialDay.objects.create(
                     member=instance, **item)
                 results.append({
@@ -702,34 +701,8 @@ class MemberSpecialDaySerializer(serializers.Serializer):
 
         return results
 
-    # def update(self, instance, validated_data):
-    #     data = validated_data['data']
-    #     updated_instances = []
 
-    #     for item in data:
-    #         special_day_id = item.get('id')
-    #         if special_day_id is not None:
-    #             special_day_obj = instance
-    #             special_day_obj.title = item.get('title', special_day_obj.title)
-    #             special_day_obj.date = item.get('date', special_day_obj.date)
-    #             special_day_obj.save()
-    #             updated_instances.append({
-    #                 "status": "updated",
-    #                 "special_day_id": special_day_obj.id
-    #             })
-    #         else:
-    #             member_ID = validated_data.get("member_ID")
-    #             if Member.objects.filter(member_ID=member_ID).exists():
-    #                 raise serializers.ValidationError(
-    #                     "No member exists with this id")
-    #             member = Member.objects.get(member_ID=member_ID)
-    #             instance = SpecialDay.objects.create(**item, member=member)
-    #             updated_instances.append({
-    #                 "status": "created",
-    #                 "special_day_id": instance.id
-    #             })
-
-    #     return updated_instances
+    
 
 
 class MemberCertificateSerializer(serializers.Serializer):
@@ -1179,3 +1152,9 @@ class MemberSpecialDaysViewSerializer(serializers.ModelSerializer):
         model = SpecialDay
         exclude = ["member"]
         depth = 1
+        
+class MemberDocumentViewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Documents
+        fields = "__all__"
+        

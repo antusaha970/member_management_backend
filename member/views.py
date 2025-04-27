@@ -1628,7 +1628,7 @@ class MemberCompanionView(APIView):
             if serializer.is_valid():
                 with transaction.atomic():
                     if instance is not None:
-                        instance = serializer.save(instance=instance)
+                        instance = serializer.save()
                         log_activity_task.delay_on_commit(
                             request_data_activity_log(request),
                             verb="Companion information updated",
@@ -1753,6 +1753,45 @@ class MemberDocumentView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    def get(self,request):
+        try:
+            documents = models.Documents.objects.all()
+            
+            paginator = CustomPageNumberPagination()
+            paginated_queryset = paginator.paginate_queryset(
+                documents, request, view=self)
+            serializer = serializers.MemberDocumentViewSerializer(paginated_queryset, many=True)
+            
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Member documents retrieve successfully",
+                severity_level="info",
+                description="A user has successfully retrieved all member documents.",
+            )
+            return paginator.get_paginated_response({
+                "code": 200,
+                "message": "Member documents retrieved successfully",
+                "status": "success",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Member documents retrieve failed",
+                severity_level="error",
+                description="A user tried to retrieve member documents but made an invalid request",
+            )
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
     def patch(self, request):
         try:
             data = request.data
@@ -2069,6 +2108,7 @@ class MemberSpecialDayView(APIView):
     def patch(self, request, member_ID):
         try:
             member = get_object_or_404(Member, member_ID=member_ID)
+
             data = request.data
             serializer = serializers.MemberSpecialDaySerializer(
                 member, data=data)
