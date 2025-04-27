@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-from .models import Member,Email, MembersFinancialBasics, MemberHistory, CompanionInformation, Documents
+from .models import Member,Email, MembersFinancialBasics,Certificate, MemberHistory, CompanionInformation, Documents
 from .utils.permission_classes import ViewMemberPermission, AddMemberPermission, UpdateMemberPermission, DeleteMemberPermission
 import logging
 from activity_log.tasks import log_activity_task
@@ -2186,7 +2186,8 @@ class MemberCertificateView(APIView):
             data = request.data
             id = data.get('id')
             if id:
-                instance = models.Certificate.objects.get(pk=id)
+                instance = Certificate.objects.select_related('member').get(pk=id)
+
                 serializer = serializers.MemberCertificateSerializer(
                     instance, data=data)
             else:
