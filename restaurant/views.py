@@ -699,218 +699,228 @@ class RestaurantUploadExcelView(APIView):
                 income_particular = serializer.validated_data["income_particular"]
                 received_from = serializer.validated_data["received_from"]
                 uploaded_file = excel_file
+                try:
+                    # Do not modify anything below this line ->>>>>>
+                    file_data_cl = None
+                    if uploaded_file.name.endswith('.xlsx'):
+                        file_data_cl = pd.read_excel(
+                            uploaded_file, engine='openpyxl', dtype=str)
+                    elif uploaded_file.name.endswith('.xls'):
+                        file_data_cl = pd.read_excel(
+                            uploaded_file, engine='xlrd', dtype=str)
 
-                # Do not modify anything below this line ->>>>>>
-                file_data_cl = None
-                if uploaded_file.name.endswith('.xlsx'):
-                    file_data_cl = pd.read_excel(
-                        uploaded_file, engine='openpyxl', dtype=str)
-                elif uploaded_file.name.endswith('.xls'):
-                    file_data_cl = pd.read_excel(
-                        uploaded_file, engine='xlrd', dtype=str)
+                    if file_data_cl is not None:  # Ensure file was read successfully
+                        # pandas clean starts here, do not write anything below this line
+                        file_data_cl = file_data_cl.dropna(how='all')
 
-                if file_data_cl is not None:  # Ensure file was read successfully
-                    # pandas clean starts here, do not write anything below this line
-                    file_data_cl = file_data_cl.dropna(how='all')
+                        # Extract and format the date range
+                        cell_data = file_data_cl.iat[2, 5]
+                        date_range_payment = cell_data.strip()
+                        p_start_date, p_end_date = date_range_payment.split(
+                            " to ")
+                        p_start_date = datetime.strptime(
+                            p_start_date, "%d/%m/%Y").strftime("%Y-%m-%d")
+                        p_end_date = datetime.strptime(
+                            p_end_date, "%d/%m/%Y").strftime("%Y-%m-%d")
+                        # print("checking dates: ", p_start_date, p_end_date)
+                        if (p_start_date != p_end_date):
+                            return Response({
+                                "code": 400,
+                                "status": "failed",
+                                "message": "Invalid date range",
+                                "errors": {
+                                    "date_range": ["Invalid date range"]
+                                }
+                            }, status=400)
 
-                    # Extract and format the date range
-                    cell_data = file_data_cl.iat[2, 5]
-                    date_range_payment = cell_data.strip()
-                    p_start_date, p_end_date = date_range_payment.split(" to ")
-                    p_start_date = datetime.strptime(
-                        p_start_date, "%d/%m/%Y").strftime("%Y-%m-%d")
-                    p_end_date = datetime.strptime(
-                        p_end_date, "%d/%m/%Y").strftime("%Y-%m-%d")
-                    # print("checking dates: ", p_start_date, p_end_date)
-                    if (p_start_date != p_end_date):
-                        return Response({
-                            "code": 400,
-                            "status": "failed",
-                            "message": "Invalid date range",
-                            "errors": {
-                                "date_range": ["Invalid date range"]
-                            }
-                        }, status=400)
+                        # Select relevant columns and rename them
+                        file_data_cl = file_data_cl[['Unnamed: 0', 'Unnamed: 1', 'Unnamed: 2', 'Unnamed: 4',
+                                                    'Unnamed: 5', 'Unnamed: 6', 'Unnamed: 8', 'Unnamed: 9', 'Unnamed: 10']]
+                        file_data_cl.dropna(
+                            subset=[file_data_cl.columns[1]], inplace=True)
+                        file_data_cl = file_data_cl[~(
+                            file_data_cl['Unnamed: 0'] == 'SL')]
 
-                    # Select relevant columns and rename them
-                    file_data_cl = file_data_cl[['Unnamed: 0', 'Unnamed: 1', 'Unnamed: 2', 'Unnamed: 4',
-                                                 'Unnamed: 5', 'Unnamed: 6', 'Unnamed: 8', 'Unnamed: 9', 'Unnamed: 10']]
-                    file_data_cl.dropna(
-                        subset=[file_data_cl.columns[1]], inplace=True)
-                    file_data_cl = file_data_cl[~(
-                        file_data_cl['Unnamed: 0'] == 'SL')]
+                        file_data_cl.columns = [
+                            'serial_number', 'sales_code', 'member_account', 'cash_amount', 'card_amount',
+                            'due_amount', 'total', 'srv_charge', 'grand_total'
+                        ]
 
-                    file_data_cl.columns = [
-                        'serial_number', 'sales_code', 'member_account', 'cash_amount', 'card_amount',
-                        'due_amount', 'total', 'srv_charge', 'grand_total'
-                    ]
+                        # Add start and end dates
+                        file_data_cl['Start_Date'] = p_start_date
+                        file_data_cl['End_Date'] = p_end_date
 
-                    # Add start and end dates
-                    file_data_cl['Start_Date'] = p_start_date
-                    file_data_cl['End_Date'] = p_end_date
+                        # Convert numeric columns to appropriate types for summation
+                        numeric_columns = ['cash_amount', 'card_amount',
+                                           'due_amount', 'total', 'srv_charge', 'grand_total']
+                        file_data_cl[numeric_columns] = file_data_cl[numeric_columns].apply(
+                            pd.to_numeric, errors='coerce').fillna(0)
+                        # do your operations here ->>>>
+                        # Calculate totals for numeric columns
+                        totals = {col: file_data_cl[col].sum()
+                                  for col in numeric_columns}
+                        totals['cash_amount'] = int(totals['cash_amount'])
+                        totals['card_amount'] = int(totals['card_amount'])
+                        totals['due_amount'] = int(totals['due_amount'])
+                        totals['total'] = int(totals['total'])
+                        totals['srv_charge'] = int(totals['srv_charge'])
+                        totals['grand_total'] = int(totals['grand_total'])
+                        # pandas clean ends here, do not write above this line
+                except Exception as e:
+                    return Response({
+                        "code": 400,
+                        "status": "failed",
+                        "message": "Something went wrong",
+                        "errors": {
+                            "excel_file": ["There was an error while reading the file. Please check correct file has been uploaded."]
+                        }
+                    }, status=400)
 
-                    # Convert numeric columns to appropriate types for summation
-                    numeric_columns = ['cash_amount', 'card_amount',
-                                       'due_amount', 'total', 'srv_charge', 'grand_total']
-                    file_data_cl[numeric_columns] = file_data_cl[numeric_columns].apply(
-                        pd.to_numeric, errors='coerce').fillna(0)
-                    # do your operations here ->>>>
-                    # Calculate totals for numeric columns
-                    totals = {col: file_data_cl[col].sum()
-                              for col in numeric_columns}
-                    totals['cash_amount'] = int(totals['cash_amount'])
-                    totals['card_amount'] = int(totals['card_amount'])
-                    totals['due_amount'] = int(totals['due_amount'])
-                    totals['total'] = int(totals['total'])
-                    totals['srv_charge'] = int(totals['srv_charge'])
-                    totals['grand_total'] = int(totals['grand_total'])
-                    # pandas clean ends here, do not write above this line
+                data = file_data_cl.to_dict(
+                    orient='records')
+                with transaction.atomic():
+                    invoice_type, _ = InvoiceType.objects.get_or_create(
+                        name="restaurant")
+                    cash_payment_method, _ = PaymentMethod.objects.get_or_create(
+                        name="cash")
+                    card_payment_method, _ = PaymentMethod.objects.get_or_create(
+                        name="card")
+                    both_payment_method, _ = PaymentMethod.objects.get_or_create(
+                        name="both")
+                    sale_type, _ = SaleType.objects.get_or_create(
+                        name="restaurant")
+                    full_income_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
+                        name="full")
+                    partial_income_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
+                        name="partial")
+                    uploaded_member_data = []
+                    for record in data:
+                        paid_amount = record["cash_amount"] + \
+                            record["card_amount"]
+                        total_amount = record["grand_total"]
+                        due_amount = record["due_amount"]
+                        payment_method = None
+                        start_date = datetime.strptime(
+                            record["Start_Date"], "%Y-%m-%d").date()
+                        if record["card_amount"] == 0 and record["cash_amount"] == 0:
+                            payment_method = both_payment_method
+                        elif record["card_amount"] != 0:
+                            payment_method = card_payment_method
+                        else:
+                            payment_method = cash_payment_method
+                        if paid_amount == total_amount:
+                            income_receiving_type = full_income_receiving_type
+                        else:
+                            income_receiving_type = partial_income_receiving_type
+                        try:
+                            member = Member.objects.get(
+                                member_ID=record["member_account"])
+                            is_sale_number_exist = Sale.objects.filter(
+                                sale_number=record["sales_code"]).exists()
 
-                    data = file_data_cl.to_dict(
-                        orient='records')
-                    with transaction.atomic():
-                        invoice_type, _ = InvoiceType.objects.get_or_create(
-                            name="restaurant")
-                        cash_payment_method, _ = PaymentMethod.objects.get_or_create(
-                            name="cash")
-                        card_payment_method, _ = PaymentMethod.objects.get_or_create(
-                            name="card")
-                        both_payment_method, _ = PaymentMethod.objects.get_or_create(
-                            name="both")
-                        sale_type, _ = SaleType.objects.get_or_create(
-                            name="restaurant")
-                        full_income_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
-                            name="full")
-                        partial_income_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
-                            name="partial")
-                        uploaded_member_data = []
-                        for record in data:
-                            paid_amount = record["cash_amount"] + \
-                                record["card_amount"]
-                            total_amount = record["grand_total"]
-                            due_amount = record["due_amount"]
-                            payment_method = None
-                            start_date = datetime.strptime(
-                                record["Start_Date"], "%Y-%m-%d").date()
-                            if record["card_amount"] == 0 and record["cash_amount"] == 0:
-                                payment_method = both_payment_method
-                            elif record["card_amount"] != 0:
-                                payment_method = card_payment_method
-                            else:
-                                payment_method = cash_payment_method
-                            if paid_amount == total_amount:
-                                income_receiving_type = full_income_receiving_type
-                            else:
-                                income_receiving_type = partial_income_receiving_type
-                            try:
-                                member = Member.objects.get(
-                                    member_ID=record["member_account"])
-                                is_sale_number_exist = Sale.objects.filter(
-                                    sale_number=record["sales_code"]).exists()
-
-                                if is_sale_number_exist:
-                                    uploaded_member_data.append({
-                                        "member": record["member_account"],
-                                        "sales_code": record["sales_code"],
-                                        "status": "failed",
-                                        "reason": "Sales code already exist",
-                                    })
-                                    continue
-                            except Member.DoesNotExist:
+                            if is_sale_number_exist:
                                 uploaded_member_data.append({
                                     "member": record["member_account"],
                                     "sales_code": record["sales_code"],
                                     "status": "failed",
-                                    "reason": "Member doesn't exist",
+                                    "reason": "Sales code already exist",
                                 })
                                 continue
-                            invoice = Invoice.objects.create(
-                                invoice_number=generate_unique_invoice_number(),
-                                balance_due=record["due_amount"],
-                                paid_amount=paid_amount,
-                                due_date=start_date,
-                                issue_date=datetime.today(),
-                                total_amount=total_amount,
-                                is_full_paid=paid_amount == total_amount,
-                                status="paid" if total_amount == paid_amount else "partial_paid",
-                                invoice_type=invoice_type,
-                                generated_by=request.user,
-                                member=member,
-                                restaurant=restaurant)
-                            transaction_obj = Transaction.objects.create(
-                                amount=paid_amount,
-                                member=member,
-                                invoice=invoice,
-                                payment_method=payment_method,
-                                notes="This transaction was recorded from excel file."
-                            )
-                            payment_obj = Payment.objects.create(
-                                payment_amount=paid_amount,
-                                payment_status=invoice.status,
-                                notes="This payment was recorded from excel file.",
-                                transaction=transaction_obj,
-                                invoice=invoice,
-                                member=member,
-                                payment_method=payment_method,
-                                processed_by=request.user
-                            )
-                            due_date = start_date if record["due_amount"] == 0 else None
-                            sale_obj = Sale.objects.create(sale_number=record["sales_code"],
-                                                           sub_total=invoice.total_amount,
-                                                           total_amount=invoice.total_amount,
-                                                           payment_status=invoice.status,
-                                                           due_date=due_date,
-                                                           notes="Sale created from excel file.",
-                                                           sale_source_type=sale_type,
-                                                           customer=member,
-                                                           payment_method=payment_method,
-                                                           invoice=invoice
-                                                           )
-                            Income.objects.create(
-                                receivable_amount=invoice.total_amount,
-                                final_receivable=invoice.total_amount,
-                                actual_received=invoice.paid_amount,
-                                reaming_due=invoice.balance_due,
-                                particular=income_particular,
-                                received_from_type=received_from,
-                                member=member,
-                                received_by=payment_method,
-                                sale=sale_obj,
-                                receiving_type=income_receiving_type)
-                            if due_amount > 0:  # it has due
-                                due_obj = Due.objects.create(
-                                    original_amount=invoice.total_amount,
-                                    due_amount=invoice.balance_due,
-                                    paid_amount=invoice.paid_amount,
-                                    due_date=start_date,
-                                    payment_status=invoice.status,
-                                    member=member,
-                                    invoice=invoice,
-                                    payment=payment_obj,
-                                    transaction=transaction_obj,
-                                )
-                                MemberDue.objects.create(
-                                    amount_due=due_obj.due_amount,
-                                    due_date=start_date,
-                                    amount_paid=invoice.paid_amount,
-                                    payment_date=datetime.today(),
-                                    notes="This due has been recorded from excel file",
-                                    member=member,
-                                    due_reference=due_obj
-                                )
+                        except Member.DoesNotExist:
                             uploaded_member_data.append({
-                                "member_ID": member.member_ID,
+                                "member": record["member_account"],
                                 "sales_code": record["sales_code"],
-                                "status": "success",
-                                "reason": "Successfully uploaded"
+                                "status": "failed",
+                                "reason": "Member doesn't exist",
                             })
-                        delete_all_financial_cache.delay()
-                        return Response({
-                            "code": 201,
+                            continue
+                        invoice = Invoice.objects.create(
+                            invoice_number=generate_unique_invoice_number(),
+                            balance_due=record["due_amount"],
+                            paid_amount=paid_amount,
+                            due_date=start_date,
+                            issue_date=datetime.today(),
+                            total_amount=total_amount,
+                            is_full_paid=paid_amount == total_amount,
+                            status="paid" if total_amount == paid_amount else "partial_paid",
+                            invoice_type=invoice_type,
+                            generated_by=request.user,
+                            member=member,
+                            restaurant=restaurant)
+                        transaction_obj = Transaction.objects.create(
+                            amount=paid_amount,
+                            member=member,
+                            invoice=invoice,
+                            payment_method=payment_method,
+                            notes="This transaction was recorded from excel file."
+                        )
+                        payment_obj = Payment.objects.create(
+                            payment_amount=paid_amount,
+                            payment_status=invoice.status,
+                            notes="This payment was recorded from excel file.",
+                            transaction=transaction_obj,
+                            invoice=invoice,
+                            member=member,
+                            payment_method=payment_method,
+                            processed_by=request.user
+                        )
+                        due_date = start_date if record["due_amount"] == 0 else None
+                        sale_obj = Sale.objects.create(sale_number=record["sales_code"],
+                                                       sub_total=invoice.total_amount,
+                                                       total_amount=invoice.total_amount,
+                                                       payment_status=invoice.status,
+                                                       due_date=due_date,
+                                                       notes="Sale created from excel file.",
+                                                       sale_source_type=sale_type,
+                                                       customer=member,
+                                                       payment_method=payment_method,
+                                                       invoice=invoice
+                                                       )
+                        Income.objects.create(
+                            receivable_amount=invoice.total_amount,
+                            final_receivable=invoice.total_amount,
+                            actual_received=invoice.paid_amount,
+                            reaming_due=invoice.balance_due,
+                            particular=income_particular,
+                            received_from_type=received_from,
+                            member=member,
+                            received_by=payment_method,
+                            sale=sale_obj,
+                            receiving_type=income_receiving_type)
+                        if due_amount > 0:  # it has due
+                            due_obj = Due.objects.create(
+                                original_amount=invoice.total_amount,
+                                due_amount=invoice.balance_due,
+                                paid_amount=invoice.paid_amount,
+                                due_date=start_date,
+                                payment_status=invoice.status,
+                                member=member,
+                                invoice=invoice,
+                                payment=payment_obj,
+                                transaction=transaction_obj,
+                            )
+                            MemberDue.objects.create(
+                                amount_due=due_obj.due_amount,
+                                due_date=start_date,
+                                amount_paid=invoice.paid_amount,
+                                payment_date=datetime.today(),
+                                notes="This due has been recorded from excel file",
+                                member=member,
+                                due_reference=due_obj
+                            )
+                        uploaded_member_data.append({
+                            "member_ID": member.member_ID,
+                            "sales_code": record["sales_code"],
                             "status": "success",
-                            "message": "Data uploaded successfully",
-                            "data": uploaded_member_data
-                        }, status=status.HTTP_201_CREATED)
+                            "reason": "Successfully uploaded"
+                        })
+                    delete_all_financial_cache.delay()
+                    return Response({
+                        "code": 201,
+                        "status": "success",
+                        "message": "Data uploaded successfully",
+                        "data": uploaded_member_data
+                    }, status=status.HTTP_201_CREATED)
             else:
                 return Response({
                     "code": 400,
