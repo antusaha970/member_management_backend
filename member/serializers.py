@@ -285,8 +285,7 @@ class MemberContactNumberSerializer(serializers.Serializer):
         child=ContactDetailSerializer(), required=True)
 
     def validate_member_ID(self, value):
-        if self.instance:
-            return value
+        
         is_exist = Member.objects.filter(member_ID=value).exists()
         if not is_exist:
             raise serializers.ValidationError(
@@ -325,39 +324,52 @@ class MemberContactNumberSerializer(serializers.Serializer):
         """
         data_list = validated_data.get('data', [])
         results = []
+        all_con_num_obj = instance.contact_numbers.all()
+        all_con_num_data = {obj.id: obj for obj in all_con_num_obj}
 
-        # Iterate over each item in the submitted data
         for item in data_list:
             contact_id = item.get('id', None)
             if contact_id:
-                # Update an existing contact number for the given member.
-                try:
-                    contact_obj = instance.contact_numbers.get(id=contact_id)
-                except ContactNumber.DoesNotExist:
+                contact_obj = all_con_num_data.get(contact_id)
+                if not contact_obj:
                     raise serializers.ValidationError(
                         f"Contact with id {contact_id} does not exist for this member."
                     )
-                # Update fields if provided; if not, retain current value.
-                contact_obj.contact_type = item.get(
-                    'contact_type', contact_obj.contact_type)
-                contact_obj.number = item.get('number', contact_obj.number)
-                contact_obj.is_primary = item.get(
-                    'is_primary', contact_obj.is_primary)
-                contact_obj.save()
-                results.append({
-                    "status": "updated",
-                    "contact_number_id": contact_obj.id
-                })
+
+                changed = False
+
+                if 'contact_type' in item and item['contact_type'] != contact_obj.contact_type:
+                    contact_obj.contact_type = item['contact_type']
+                    changed = True
+                if 'number' in item and item['number'] != contact_obj.number:
+                    contact_obj.number = item['number']
+                    changed = True
+                if 'is_primary' in item and item['is_primary'] != contact_obj.is_primary:
+                    contact_obj.is_primary = item['is_primary']
+                    changed = True
+
+                if changed:
+                    contact_obj.save()
+                    results.append({
+                        "status": "updated",
+                        "contact_number_id": contact_obj.id
+                    })
+                else:
+                    results.append({
+                        "status": "no_change",
+                        "contact_number_id": contact_obj.id
+                    })
+
             else:
-                # Optionally create a new contact number if no id is provided.
-                new_contact = ContactNumber.objects.create(
-                    member=instance, **item)
+                # Create a new contact number if no ID is provided
+                new_contact = ContactNumber.objects.create(member=instance, **item)
                 results.append({
                     "status": "created",
                     "contact_number_id": new_contact.id
                 })
 
         return results
+
 
 
 class EmailAddressSerializer(serializers.Serializer):
@@ -374,8 +386,7 @@ class MemberEmailAddressSerializer(serializers.Serializer):
         child=EmailAddressSerializer(), required=True)
 
     def validate_member_ID(self, value):
-        if self.instance:
-            return value
+        
         is_exist = Member.objects.filter(member_ID=value).exists()
         if not is_exist:
             raise serializers.ValidationError(
@@ -405,54 +416,10 @@ class MemberEmailAddressSerializer(serializers.Serializer):
             })
         return created_instances
 
-    # def update(self, instance, validated_data):
-    #     """
-    #     instance: A Member instance whose contact_numbers will be updated.
-    #     validated_data: Dictionary containing:
-    #         - member_ID (string)
-    #         - data: A list of emails (each may include an "id" if updating an existing contact)
-    #     """
-    #     data_list = validated_data.get('data', [])
-    #     results = []
-
-    #     # Iterate over each item in the submitted data
-    #     for item in data_list:
-    #         email_id = item.get('id', None)
-    #         if email_id:
-    #             # Update an existing email for the given member.
-    #             try:
-    #                 email_obj = instance.emails.get(id=email_id)
-    #             except Email.DoesNotExist:
-    #                 raise serializers.ValidationError(
-    #                     f"email with id {email_id} does not exist for this member."
-    #                 )
-    #             # Update fields if provided; if not, retain current value.
-    #             email_obj.email_type = item.get(
-    #                 'email_type', email_obj.email_type)
-    #             email_obj.email = item.get('email', email_obj.email)
-    #             email_obj.is_primary = item.get(
-    #                 'is_primary', email_obj.is_primary)
-    #             email_obj.save()
-    #             results.append({
-    #                 "status": "updated",
-    #                 "email_id": email_obj.id
-    #             })
-    #         else:
-    #             # Optionally create a new email if no id is provided.
-    #             new_email = Email.objects.create(
-    #                 member=instance, **item)
-    #             results.append({
-    #                 "status": "created",
-    #                 "email_id": new_email.id
-    #             })
-
-    #     return results
-    
-    # --------------------------------
-
     def update(self, instance, validated_data):
         data_list = validated_data.get('data', [])
         results = []
+        updated = False
 
         existing_emails = {email.id: email for email in instance.emails.all()}
 
@@ -465,7 +432,6 @@ class MemberEmailAddressSerializer(serializers.Serializer):
                         f"email with id {email_id} does not exist for this member."
                     )
 
-                updated = False
                 if 'email_type' in item and item['email_type'] != email_obj.email_type:
                     email_obj.email_type = item['email_type']
                     updated = True
@@ -478,11 +444,15 @@ class MemberEmailAddressSerializer(serializers.Serializer):
 
                 if updated:
                     email_obj.save()
-
-                results.append({
-                    "status": "updated",
-                    "email_id": email_obj.id
-                })
+                    results.append({
+                        "status": "updated",
+                        "email_id": email_obj.id
+                    })
+                else:
+                    results.append({
+                        "status": "no_change",
+                        "email_id": email_obj.id
+                    })
             else:
                 new_email = Email.objects.create(member=instance, **item)
                 results.append({
@@ -498,7 +468,7 @@ class AddressSerializer(serializers.Serializer):
     address = serializers.CharField()
     is_primary = serializers.BooleanField(required=False)
     title = serializers.CharField(max_length=100, required=False)
-    id = serializers.CharField(required=False)
+    id = serializers.IntegerField(required=False)
 
 
 class MemberAddressSerializer(serializers.Serializer):
@@ -507,8 +477,7 @@ class MemberAddressSerializer(serializers.Serializer):
         child=AddressSerializer(), required=True)
 
     def validate_member_ID(self, value):
-        if self.instance:
-            return value
+        
         is_exist = Member.objects.filter(member_ID=value).exists()
         if not is_exist:
             raise serializers.ValidationError(
@@ -543,39 +512,53 @@ class MemberAddressSerializer(serializers.Serializer):
         instance: A Member instance whose address will be updated.
         validated_data: Dictionary containing:
             - member_ID (string)
-            - data: A list of emails (each may include an "id" if updating an existing contact)
+            - data: A list of addresses (each may include an "id" if updating an existing address)
         """
         data_list = validated_data.get('data', [])
         results = []
+        all_mem_address = instance.addresses.all()
+        all_mem_data = {address.id: address for address in all_mem_address}
+        # pdb.set_trace()
 
-        # Iterate over each item in the submitted data
         for item in data_list:
             address_id = item.get('id', None)
             if address_id:
-                # Update an existing email for the given member.
-                try:
-                    address_obj = instance.addresses.get(id=address_id)
-                except Address.DoesNotExist:
+                address_obj = all_mem_data.get(address_id)
+                if not address_obj :
                     raise serializers.ValidationError(
-                        f"address with id {address_id} does not exist for this member."
+                        f"Address with id {address_id} does not exist for this member."
                     )
-                # Update fields if provided; if not, retain current value.
-                address_obj.address_type = item.get(
-                    'address_type', address_obj.address_type)
-                address_obj.address = item.get('address', address_obj.address)
-                address_obj.title = item.get(
-                    'title', address_obj.title)
-                address_obj.is_primary = item.get(
-                    'is_primary', address_obj.is_primary)
-                address_obj.save()
-                results.append({
-                    "status": "updated",
-                    "address_id": address_obj.id
-                })
+
+                changed = False
+
+                if 'address_type' in item and item['address_type'] != address_obj.address_type:
+                    address_obj.address_type = item['address_type']
+                    changed = True
+                if 'address' in item and item['address'] != address_obj.address:
+                    address_obj.address = item['address']
+                    changed = True
+                if 'title' in item and item['title'] != address_obj.title:
+                    address_obj.title = item['title']
+                    changed = True
+                if 'is_primary' in item and item['is_primary'] != address_obj.is_primary:
+                    address_obj.is_primary = item['is_primary']
+                    changed = True
+
+                if changed:
+                    address_obj.save()
+                    results.append({
+                        "status": "updated",
+                        "address_id": address_obj.id
+                    })
+                else:
+                    results.append({
+                        "status": "no_change",
+                        "address_id": address_obj.id
+                    })
+
             else:
-                # Optionally create a new address if no id is provided.
-                address = Address.objects.create(
-                    member=instance, **item)
+                # Create a new address if no ID is provided
+                address = Address.objects.create(member=instance, **item)
                 results.append({
                     "status": "created",
                     "address_id": address.id
@@ -616,19 +599,32 @@ class MemberSpouseSerializer(serializers.Serializer):
 
     def update(self, instance, validated_data):
         id = validated_data.get("id")
+        is_update = False
         if id is not None:
             spouse_obj = instance
-            spouse_obj.spouse_name = validated_data.get(
-                'spouse_name', spouse_obj.spouse_name)
-            spouse_obj.spouse_contact_number = validated_data.get(
-                'contact_number', spouse_obj.spouse_contact_number)
-            spouse_obj.spouse_dob = validated_data.get(
-                'spouse_dob', spouse_obj.spouse_dob)
-            spouse_obj.image = validated_data.get('image', spouse_obj.image)
-            spouse_obj.current_status = validated_data.get(
-                'current_status', spouse_obj.current_status)
-            spouse_obj.save()
-            return spouse_obj
+            if 'spouse_name' in validated_data and spouse_obj.spouse_name != validated_data.get('spouse_name', spouse_obj.spouse_name):
+                spouse_obj.spouse_name = validated_data['spouse_name']
+                is_update = True
+            
+            if 'contact_number' in validated_data and spouse_obj.spouse_contact_number != validated_data.get('contact_number', spouse_obj.spouse_contact_number):
+                is_update = True
+                spouse_obj.spouse_contact_number = validated_data['contact_number']
+            
+            if 'spouse_dob' in validated_data and spouse_obj.spouse_dob != validated_data.get('spouse_dob', spouse_obj.spouse_dob):
+                is_update = True
+                spouse_obj.spouse_dob = validated_data['spouse_dob']
+            
+            if 'image' in validated_data and spouse_obj.image != validated_data.get('image', spouse_obj.image):
+                is_update = True
+                spouse_obj.image = validated_data['image']
+            
+            if 'current_status' in validated_data and spouse_obj.current_status != validated_data.get('current_status', spouse_obj.current_status):
+                is_update = True
+                spouse_obj.current_status = validated_data['current_status']
+            
+            if is_update:
+                spouse_obj.save()
+                return spouse_obj
 
         return instance
 
@@ -822,6 +818,7 @@ class MemberDescendantsSerializer(serializers.Serializer):
             
             if is_updated:
                 descendant_obj.save()
+                return descendant_obj
         
         return instance
 

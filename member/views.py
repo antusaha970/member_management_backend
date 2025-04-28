@@ -174,85 +174,6 @@ class MemberView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    # def delete(self, request, member_id):
-    #     try:
-    #         member = Member.objects.get(member_ID=member_id)
-    #         # find the member
-    #         if member.status == 2:
-    #             # if member is already deleted
-    #             log_activity_task.delay_on_commit(
-    #                 request_data_activity_log(request),
-    #                 verb="Member delete failed",
-    #                 severity_level="info",
-    #                 description="user tried to delete member but made an invalid request",
-    #             )
-    #             return Response({
-    #                 "code": 400,
-    #                 "status": "failed",
-    #                 "message": "Member is already deleted",
-    #             }, status=status.HTTP_400_BAD_REQUEST)
-    #         # if not deleted then update the member status to delete
-    #         with transaction.atomic():
-    #             all_instance = MemberHistory.objects.filter(member=member)
-    #             update_lst = []
-    #             for instance in all_instance:
-    #                 instance.end_date = timezone.now()
-    #                 instance.transferred_reason = "deleted"
-    #                 instance.transferred = True
-    #                 update_lst.append(instance)
-    #             MemberHistory.objects.bulk_update(
-    #                 update_lst, ["end_date", "transferred_reason", "transferred"])
-    #             member.member_ID = None
-    #             member.status = 2
-    #             member.is_active = False
-    #             member.save(update_fields=['status', 'member_ID', 'is_active'])
-    #             delete_member_model_dependencies.delay_on_commit(member.id)
-    #             log_activity_task.delay_on_commit(
-    #                 request_data_activity_log(request),
-    #                 verb="Member delete success",
-    #                 severity_level="info",
-    #                 description="user tried to delete a member and succeeded",
-    #             )
-    #             return Response({
-    #                 "code": 204,
-    #                 'message': "member deleted",
-    #                 'status': "success",
-    #             }, status=status.HTTP_204_NO_CONTENT)
-
-    #     except Member.DoesNotExist:
-    #         log_activity_task.delay_on_commit(
-    #             request_data_activity_log(request),
-    #             verb="Member delete failed",
-    #             severity_level="error",
-    #             description="user tried to delete member but made an invalid request",
-    #         )
-    #         return Response({
-    #             "code": 404,
-    #             "status": "failed",
-    #             "message": "Member not found",
-    #             "errors": {
-    #                 "member": ["Member not found by this member_ID"]
-    #             }
-    #         }, status=status.HTTP_404_NOT_FOUND)
-
-    #     except Exception as server_error:
-    #         logger.exception(str(server_error))
-    #         log_activity_task.delay_on_commit(
-    #             request_data_activity_log(request),
-    #             verb="Member delete failed",
-    #             severity_level="error",
-    #             description="user tried to delete member but made an invalid request",
-    #         )
-    #         return Response({
-    #             "code": 500,
-    #             "status": "failed",
-    #             "message": "Something went wrong",
-    #             "errors": {
-    #                 "server_error": [str(server_error)]
-    #             }
-    #         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    # --------------------------------------------------------------
-    
     def delete(self, request, member_id):
         try:
             member = Member.objects.only("id", "member_ID", "status").get(member_ID=member_id)
@@ -338,7 +259,6 @@ class MemberView(APIView):
 
     def get(self, request, member_id):
         try:
-            # member = Member.objects.get(member_ID=member_id)
             member = Member.objects.select_related(
                 'marital_status','membership_status','institute_name','membership_type','gender').get(member_ID=member_id)
             # check if member status is deleted or not
@@ -768,7 +688,7 @@ class MemberContactNumberView(APIView):
 
     def patch(self, request, member_ID):
         try:
-            member = get_object_or_404(Member, member_ID=member_ID)
+            member = Member.objects.get(member_ID=member_ID)
             data = request.data
             serializer = serializers.MemberContactNumberSerializer(
                 member, data=data)
@@ -783,7 +703,7 @@ class MemberContactNumberView(APIView):
                 )
                 return Response({
                     "code": 200,
-                    "message": "Member contact number has been created successfully",
+                    "message": "Member contact number has been updated successfully",
                     "status": "success",
                     "data": instance
                 }, status=status.HTTP_200_OK)
@@ -800,6 +720,22 @@ class MemberContactNumberView(APIView):
                     "message": "Invalid request",
                     "errors": serializer.errors,
                 }, status=status.HTTP_400_BAD_REQUEST)
+        
+        except models.Member.DoesNotExist:
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Update member contact number failed",
+                severity_level="error",
+                description="user tried to update member contact number but made an invalid request",
+            )
+            return Response({
+                "code": 404,
+                "status": "failed",
+                "message": "Member does not exist",
+                "errors": {
+                    "member": ["Member does not exist"]
+                }
+            }, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -880,7 +816,7 @@ class MemberEmailAddressView(APIView):
 
     def patch(self, request, member_ID):
         try:
-            # member = get_object_or_404(Member, member_ID=member_ID)
+            
             member = Member.objects.prefetch_related(
                     Prefetch(
                         'emails',
@@ -918,6 +854,22 @@ class MemberEmailAddressView(APIView):
                     "message": "Invalid request",
                     "errors": serializer.errors,
                 }, status=status.HTTP_400_BAD_REQUEST)
+        except models.Member.DoesNotExist:
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Update member email address failed",
+                severity_level="error",
+                description="user tried to update member email address but made an invalid request",
+            )
+            return Response({
+                "code": 404,
+                "status": "failed",
+                "message": "Member does not exist",
+                "errors": {
+                    "member": ["Member does not exist"]
+                }
+            }, status=status.HTTP_404_NOT_FOUND)
+        
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -998,12 +950,12 @@ class MemberAddressView(APIView):
 
     def patch(self, request, member_ID):
         try:
-            member = get_object_or_404(Member, member_ID=member_ID)
+            member = models.Member.objects.get(member_ID=member_ID)
             data = request.data
             serializer = serializers.MemberAddressSerializer(member, data=data)
             if serializer.is_valid():
                 with transaction.atomic():
-                    instance = serializer.save(instance=member)
+                    instance = serializer.save()
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),
                     verb="Update member address successful",
@@ -1029,6 +981,22 @@ class MemberAddressView(APIView):
                     "message": "Invalid request",
                     "errors": serializer.errors,
                 }, status=status.HTTP_400_BAD_REQUEST)
+        
+        except models.Member.DoesNotExist:
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Update member address  failed",
+                severity_level="error",
+                description="user tried to update member address but made an invalid request",
+            )
+            return Response({
+                "code": 404,
+                "status": "failed",
+                "message": "Member does not exist",
+                "errors": {
+                    "member": ["Member does not exist"]
+                }
+            }, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -1113,12 +1081,28 @@ class MemberSpouseView(APIView):
         try:
             data = request.data
             id = data.get('id')
+            instance = None
             if id:
-                instance = models.Spouse.objects.get(pk=id)
-                serializer = serializers.MemberSpouseSerializer(
-                    instance, data=data)
+                try:
+                    instance = models.Spouse.objects.get(pk=id)
+                except models.Spouse.DoesNotExist:
+                    log_activity_task.delay_on_commit(
+                        request_data_activity_log(request),
+                        verb="Update member spouse failed",
+                        severity_level="error",
+                        description="User tried to update a non-existing member spouse",
+                    )
+                    return Response({
+                        "code": 404,
+                        "status": "failed",
+                        "message": "Member spouse does not exist for this id",
+                        "errors": {
+                            "spouse_id": ["Member spouse does not exist"]
+                        }
+                    }, status=status.HTTP_404_NOT_FOUND)
+            if instance:
+                serializer = serializers.MemberSpouseSerializer(instance, data=data)    
             else:
-                instance = None
                 serializer = serializers.MemberSpouseSerializer(data=data)
 
             if serializer.is_valid():
