@@ -662,7 +662,7 @@ class InvoiceShowView(APIView):
             if cached_data:
                 return Response(cached_data, status=200)
             # hit db if miss
-            queryset = Invoice.objects.select_related(
+            queryset = Invoice.active_objects.select_related(
                 "invoice_type", "generated_by", "member", "restaurant", "event"
             ).prefetch_related(
                 Prefetch("invoice_items__restaurant_items"),
@@ -771,6 +771,26 @@ class InvoiceSpecificView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    def delete(self, request, id):
+        try:
+            pass
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="delete",
+                severity_level="info",
+                description="user tried to delete a single invoice and faced error",
+            )
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class IncomeView(APIView):
     permission_classes = [IsAuthenticated]
@@ -785,7 +805,7 @@ class IncomeView(APIView):
                 return Response(cached_data, status=200)
 
             # hit db if miss
-            data = Income.objects.filter(is_active=True).select_related(
+            data = Income.active_objects.filter(is_active=True).select_related(
                 "particular", "received_from_type", "receiving_type", "member", "received_by", "sale").order_by("id")
             paginator = CustomPageNumberPagination()
             paginated_queryset = paginator.paginate_queryset(
@@ -876,7 +896,7 @@ class SalesView(APIView):
                 return Response(cached_data, status=200)
 
             # hit db if miss
-            data = Sale.objects.filter(is_active=True).select_related(
+            data = Sale.active_objects.filter(is_active=True).select_related(
                 "sale_source_type", "customer", "payment_method", "invoice").order_by("id")
             paginator = CustomPageNumberPagination()
             paginated_queryset = paginator.paginate_queryset(

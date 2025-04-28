@@ -65,6 +65,10 @@ class Invoice(FinancialBaseModel):
     event = models.ForeignKey(Event, on_delete=models.PROTECT,
                               related_name="invoice_event", blank=True, null=True, default=None)
 
+    # managers
+    objects = models.Manager()
+    active_objects = ActiveManager()
+
     def __str__(self):
         return f"{self.invoice_number}"
 
@@ -244,6 +248,10 @@ class Income(FinancialBaseModel):
         PaymentMethod, on_delete=models.PROTECT, related_name="income_received_by")
     sale = models.ForeignKey(
         Sale, on_delete=models.PROTECT, related_name="income_sale")
+
+    # managers
+    objects = models.Manager()
+    active_objects = ActiveManager()
 
 
 class MemberAccount(FinancialBaseModel):
