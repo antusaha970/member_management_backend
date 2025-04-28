@@ -51,7 +51,7 @@ class Invoice(FinancialBaseModel):
         max_digits=10, decimal_places=2, blank=True, null=True, default=None)
     status = models.CharField(
         max_length=30, choices=INVOICE_STATUS_CHOICES, default="unpaid")
-
+    excel_upload_date = models.DateField(null=True, blank=True, default=None)
     # relations
     invoice_type = models.ForeignKey(
         InvoiceType, on_delete=models.PROTECT, related_name="invoice_type")
