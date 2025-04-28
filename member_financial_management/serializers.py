@@ -417,6 +417,7 @@ class OthersUploadExcelSerializer(serializers.Serializer):
         queryset=IncomeParticular.active_objects.all())
     received_from = serializers.PrimaryKeyRelatedField(
         queryset=IncomeReceivingOption.active_objects.all())
+    confirm_reupload = serializers.BooleanField()
 
     def validate_excel_file(self, value):
         valid_extensions = ['.xls', '.xlsx']
