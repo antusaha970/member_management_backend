@@ -1877,6 +1877,32 @@ class LoungeUploadExcelView(APIView):
                 data = file_data_cl.to_dict(orient='records')
                 income_particular = serializer.validated_data["income_particular"]
                 received_from = serializer.validated_data["received_from"]
+                confirm_reupload = serializer.validated_data["confirm_reupload"]
+                if not confirm_reupload:
+                    if len(data) >= 1:
+                        single_record = data[0]
+                        single_member_ID = single_record["member_ID"]
+                        single_cash_amount = single_record["cash_amount"]
+                        single_card_amount = single_record["card_amount"]
+                        single_due_amount = single_record["due_amount"]
+                        single_total = single_record["total"]
+                        is_same_invoice_exist = Invoice.objects.filter(
+                            member__member_ID=single_member_ID,
+                            balance_due=single_due_amount,
+                            paid_amount=single_card_amount+single_cash_amount,
+                            total_amount=single_total,
+                            excel_upload_date=lng_date,
+                            invoice_type__name="lounge"
+                        ).exists()
+                        if is_same_invoice_exist:
+                            return Response({
+                                "code": 400,
+                                "status": "failed",
+                                "message": "This file was previously uploaded with same data.",
+                                "errors": {
+                                    "excel_file": ["This file was uploaded previously with same data. If you want to reupload it make sure you have confirm_reupload  attribute set to true."]
+                                }
+                            }, status=400)
                 with transaction.atomic():
                     invoice_type, _ = InvoiceType.objects.get_or_create(
                         name="lounge")
@@ -1931,7 +1957,9 @@ class LoungeUploadExcelView(APIView):
                             status="paid" if total_amount == paid_amount else "partial_paid",
                             invoice_type=invoice_type,
                             generated_by=request.user,
-                            member=member)
+                            member=member,
+                            excel_upload_date=lng_date
+                        )
                         transaction_obj = Transaction.objects.create(
                             amount=paid_amount,
                             member=member,
