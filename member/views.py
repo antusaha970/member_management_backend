@@ -1249,16 +1249,36 @@ class MemberDescendsView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def patch(self, request):
+            
         try:
             data = request.data
             id = data.get('id')
+            instance = None
+
             if id:
-                instance = models.Descendant.objects.get(pk=id)
-                serializer = serializers.MemberDescendantsSerializer(
-                    instance, data=data)
+                try:
+                    instance = models.Descendant.objects.get(pk=id)
+                except models.Descendant.DoesNotExist:
+                    log_activity_task.delay_on_commit(
+                        request_data_activity_log(request),
+                        verb="Update member descendants failed",
+                        severity_level="error",
+                        description="User tried to update a non-existing member descendant",
+                    )
+                    return Response({
+                        "code": 404,
+                        "status": "failed",
+                        "message": "Member Descendant does not exist for this id",
+                        "errors": {
+                            "descendant_id": ["Member Descendant does not exist"]
+                        }
+                    }, status=status.HTTP_404_NOT_FOUND)
+
+            if instance:
+                serializer = serializers.MemberDescendantsSerializer(instance, data=data)
             else:
-                instance = None
                 serializer = serializers.MemberDescendantsSerializer(data=data)
+
             if serializer.is_valid():
                 with transaction.atomic():
                     if instance is not None:
@@ -1267,7 +1287,7 @@ class MemberDescendsView(APIView):
                             request_data_activity_log(request),
                             verb="Update member descendants succeeded",
                             severity_level="info",
-                            description="user tried to update member descendants and succeeded",
+                            description="User updated member descendants successfully",
                         )
                         return Response({
                             "code": 200,
@@ -1281,9 +1301,9 @@ class MemberDescendsView(APIView):
                         instance = serializer.save()
                         log_activity_task.delay_on_commit(
                             request_data_activity_log(request),
-                            verb="Update member descendants succeeded",
+                            verb="Create member descendants succeeded",
                             severity_level="info",
-                            description="user tried to update member descendants and succeeded",
+                            description="User created member descendants successfully",
                         )
                         return Response({
                             "code": 201,
@@ -1298,7 +1318,7 @@ class MemberDescendsView(APIView):
                     request_data_activity_log(request),
                     verb="Update member descendants failed",
                     severity_level="error",
-                    description="user tried to update member descendants but made an invalid request",
+                    description="Invalid request for updating/creating member descendants",
                 )
                 return Response({
                     "code": 400,
@@ -1306,13 +1326,14 @@ class MemberDescendsView(APIView):
                     "message": "Invalid request",
                     "errors": serializer.errors,
                 }, status=status.HTTP_400_BAD_REQUEST)
+
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
                 verb="Update member descendants failed",
                 severity_level="error",
-                description="user tried to update member descendants but made an invalid request",
+                description="Server error during updating/creating member descendants",
             )
             return Response({
                 "code": 500,
@@ -1386,7 +1407,7 @@ class MemberJobView(APIView):
 
     def patch(self, request, member_ID):
         try:
-            member = get_object_or_404(Member, member_ID=member_ID)
+            member = models.Member.objects.get(member_ID = member_ID)
             data = request.data
             serializer = serializers.MemberJobSerializer(member, data=data)
             if serializer.is_valid():
@@ -1417,6 +1438,22 @@ class MemberJobView(APIView):
                     "message": "Invalid request",
                     "errors": serializer.errors,
                 }, status=status.HTTP_400_BAD_REQUEST)
+        except models.Member.DoesNotExist:
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Update member job information failed",
+                severity_level="error",
+                description="user tried to update member job information but made an invalid request",
+            )
+            return Response({
+                "code": 404,
+                "status": "failed",
+                "message": "Member does not exist",
+                "errors": {
+                    "member": ["Member does not exist"]
+                }
+            }, status=status.HTTP_404_NOT_FOUND)
+            
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -1499,10 +1536,11 @@ class MemberEmergencyContactView(APIView):
 
     def patch(self, request, member_ID):
         try:
-            member = get_object_or_404(Member, member_ID=member_ID)
+            member = models.Member.objects.get(member_ID=member_ID)
+            print(member)
+
             data = request.data
-            serializer = serializers.MemberEmergencyContactSerializer(member,
-                                                                      data=data)
+            serializer = serializers.MemberEmergencyContactSerializer(member,data=data)
             if serializer.is_valid():
                 with transaction.atomic():
                     instance = serializer.save(instance=member)
@@ -1531,6 +1569,21 @@ class MemberEmergencyContactView(APIView):
                     "message": "Invalid request",
                     "errors": serializer.errors,
                 }, status=status.HTTP_400_BAD_REQUEST)
+        except models.Member.DoesNotExist:
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Emergency contact update failed",
+                severity_level="error",
+                description="A user tried to update an emergency contact but made an invalid request",
+            )
+            return Response({
+                "code": 404,
+                "status": "failed",
+                "message": "Member does not exist",
+                "errors": {
+                    "member": ["Member does not exist"]
+                }
+            }, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -2107,7 +2160,7 @@ class MemberSpecialDayView(APIView):
 
     def patch(self, request, member_ID):
         try:
-            member = get_object_or_404(Member, member_ID=member_ID)
+            member = models.Member.objects.get(member_ID=member_ID)
 
             data = request.data
             serializer = serializers.MemberSpecialDaySerializer(
@@ -2140,6 +2193,21 @@ class MemberSpecialDayView(APIView):
                     "message": "Invalid request",
                     "errors": serializer.errors,
                 }, status=status.HTTP_400_BAD_REQUEST)
+        except models.Member.DoesNotExist:
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="member special days update failed",
+                severity_level="error",
+                description="A user tried to update member special days but made an invalid request",
+            )
+            return Response({
+                "code": 404,
+                "status": "failed",
+                "message": "Member not found",
+                "errors": {
+                    "member": ["Member not found by this member_ID"]
+                }
+            }, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(

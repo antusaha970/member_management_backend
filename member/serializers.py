@@ -682,14 +682,28 @@ class MemberSpecialDaySerializer(serializers.Serializer):
                     raise serializers.ValidationError(
                         f"Special day with id {special_day_id} does not exist for this member."
                     )
-                # update fields
-                special_day_obj.title = item.get('title', special_day_obj.title)
-                special_day_obj.date = item.get('date', special_day_obj.date)
-                special_day_obj.save()
-                results.append({
-                    "status": "updated",
-                    "special_day_id": special_day_obj.id
-                })
+                # Check if any field actually changed
+                changed = False
+
+                if 'title' in item and item['title'] != special_day_obj.title:
+                    special_day_obj.title = item['title']
+                    changed = True
+                if 'date' in item and item['date'] != special_day_obj.date:
+                    special_day_obj.date = item['date']
+                    changed = True
+
+                if changed:
+                    special_day_obj.save()
+                    results.append({
+                        "status": "updated",
+                        "special_day_id": special_day_obj.id
+                    })
+                else:
+                    results.append({
+                        "status": "no_change",
+                        "special_day_id": special_day_obj.id
+                    })
+
             else:
                 # create new special day
                 new_special_day = SpecialDay.objects.create(
@@ -700,7 +714,6 @@ class MemberSpecialDaySerializer(serializers.Serializer):
                 })
 
         return results
-
 
     
 
@@ -766,8 +779,7 @@ class MemberDescendantsSerializer(serializers.Serializer):
     id = serializers.IntegerField(required=False)
 
     def validate_member_ID(self, value):
-        if self.instance:
-            return value
+        
         is_exist = Member.objects.filter(member_ID=value).exists()
         if not is_exist:
             raise serializers.ValidationError(
@@ -785,27 +797,32 @@ class MemberDescendantsSerializer(serializers.Serializer):
 
     def update(self, instance, validated_data):
         id = validated_data.get("id")
+        response_data = []
         if id is not None:
+            is_updated = False
+
             descendant_obj = instance
-            descendant_obj.descendant_contact_number = validated_data.get(
-                "descendant_contact_number", descendant_obj.descendant_contact_number)
-            descendant_obj.dob = validated_data.get(
-                "dob", descendant_obj.dob)
-            descendant_obj.image = validated_data.get(
-                "image", descendant_obj.image)
-            descendant_obj.relation_type = validated_data.get(
-                "relation_type", descendant_obj.relation_type)
-            descendant_obj.name = validated_data.get(
-                "name", descendant_obj.name)
-            descendant_obj.save()
-        else:
-            member_ID = validated_data.pop("member_ID")
-            if Member.objects.filter(member_ID=member_ID).exists():
-                raise serializers.ValidationError(
-                    "No member exists with this id")
-            member = Member.objects.get(member_ID=member_ID)
-            instance = Descendant.objects.create(
-                **validated_data, member=member)
+            if "descendant_contact_number" in validated_data and descendant_obj.descendant_contact_number != validated_data.get("descendant_contact_number"):
+                descendant_obj.descendant_contact_number = validated_data.get("descendant_contact_number")
+                is_updated = True
+            if "dob" in validated_data and descendant_obj.dob != validated_data.get("dob"):
+                descendant_obj.dob = validated_data.get("dob")
+                is_updated = True
+        
+            if "image" in validated_data and descendant_obj.image != validated_data.get("image"):
+                descendant_obj.image = validated_data.get("image")
+                is_updated = True
+            
+            if "relation_type" in validated_data and descendant_obj.relation_type != validated_data.get("relation_type"):
+                descendant_obj.relation_type = validated_data.get("relation_type")
+                is_updated = True
+            if "name" in validated_data and descendant_obj.name != validated_data.get("name"):
+                descendant_obj.name = validated_data.get("name")
+                is_updated = True
+            
+            if is_updated:
+                descendant_obj.save()
+        
         return instance
 
 
@@ -824,8 +841,7 @@ class MemberJobSerializer(serializers.Serializer):
         child=MemberJobDataSerializer(), required=True)
 
     def validate_member_ID(self, value):
-        if self.instance:
-            return value
+        
         is_exist = Member.objects.filter(member_ID=value).exists()
         if not is_exist:
             raise serializers.ValidationError(
@@ -855,41 +871,59 @@ class MemberJobSerializer(serializers.Serializer):
         data_list = validated_data.get('data', [])
         results = []
 
-        # Iterate over each item in the submitted data
+        # Get all current professions for the member
+        all_job_instance = instance.professions.all()
+        all_job_data = {job.id: job for job in all_job_instance}
+
         for item in data_list:
             job_id = item.get('id', None)
             if job_id:
-                # Update an existing email for the given member.
-                try:
-                    job_obj = instance.professions.get(id=job_id)
-                except Profession.DoesNotExist:
+                # Update an existing job
+                job_obj = all_job_data.get(job_id)
+                print(job_obj,"job obj")
+                if job_obj is None:
                     raise serializers.ValidationError(
-                        f"job with id {job_id} does not exist for this member."
+                        f"Job with id {job_id} does not exist for this member."
                     )
-                # Update fields if provided; if not, retain current value.
-                job_obj.title = item.get(
-                    'title', job_obj.title)
-                job_obj.organization_name = item.get(
-                    'organization_name', job_obj.organization_name)
-                job_obj.job_description = item.get(
-                    'job_description', job_obj.job_description)
-                job_obj.location = item.get(
-                    'location', job_obj.location)
-                job_obj.save()
-                results.append({
-                    "status": "updated",
-                    "job_id": job_obj.id
-                })
+                
+                # Check if any field actually changed
+                changed = False
+
+                if 'title' in item and item['title'] != job_obj.title:
+                    job_obj.title = item['title']
+                    changed = True
+                if 'organization_name' in item and item['organization_name'] != job_obj.organization_name:
+                    job_obj.organization_name = item['organization_name']
+                    changed = True
+                if 'job_description' in item and item['job_description'] != job_obj.job_description:
+                    job_obj.job_description = item['job_description']
+                    changed = True
+                if 'location' in item and item['location'] != job_obj.location:
+                    job_obj.location = item['location']
+                    changed = True
+
+                if changed:
+                    job_obj.save()
+                    results.append({
+                        "status": "updated",
+                        "job_id": job_obj.id
+                    })
+                else:
+                    results.append({
+                        "status": "no_change",
+                        "job_id": job_obj.id
+                    })
+
             else:
-                # Optionally create a new address if no id is provided.
-                job = Profession.objects.create(
-                    member=instance, **item)
+                # Create a new job
+                job = Profession.objects.create(member=instance, **item)
                 results.append({
                     "status": "created",
                     "job_id": job.id
                 })
 
         return results
+
 
 
 class MemberEmergencyContactDataSerializer(serializers.Serializer):
@@ -905,8 +939,7 @@ class MemberEmergencyContactSerializer(serializers.Serializer):
         child=MemberEmergencyContactDataSerializer(), required=True)
 
     def validate_member_ID(self, value):
-        if self.instance:
-            return value
+       
         is_exist = Member.objects.filter(member_ID=value).exists()
         if not is_exist:
             raise serializers.ValidationError(
@@ -932,37 +965,51 @@ class MemberEmergencyContactSerializer(serializers.Serializer):
         instance: A Member instance whose Emergency contact will be updated.
         validated_data: Dictionary containing:
             - member_ID (string)
-            - data: A list of contact (each may include an "id" if updating an existing job)
+            - data: A list of contacts (each may include an "id" if updating an existing emergency contact)
         """
         data_list = validated_data.get('data', [])
         results = []
 
-        # Iterate over each item in the submitted data
+        all_em_con_instance = instance.emergency_contacts.all()
+        all_em_con_data = {em_con.id: em_con for em_con in all_em_con_instance}
+
         for item in data_list:
             emergency_contact_id = item.get('id', None)
             if emergency_contact_id:
-                # Update an existing email for the given member.
-                try:
-                    emergency_contact_obj = instance.emergency_contacts.get(
-                        id=emergency_contact_id)
-                except EmergencyContact.DoesNotExist:
+                # Update an existing emergency contact
+                emergency_contact_obj = all_em_con_data.get(emergency_contact_id)
+                if emergency_contact_obj is None:
                     raise serializers.ValidationError(
-                        f"emergency contact with id {emergency_contact_id} does not exist for this member."
+                        f"Emergency contact with id {emergency_contact_id} does not exist for this member."
                     )
-                # Update fields if provided; if not, retain current value.
-                emergency_contact_obj.contact_name = item.get(
-                    'contact_name', emergency_contact_obj.contact_name)
-                emergency_contact_obj.contact_number = item.get(
-                    'contact_number', emergency_contact_obj.contact_number)
-                emergency_contact_obj.relation_with_member = item.get(
-                    'relation_with_member', emergency_contact_obj.relation_with_member)
-                emergency_contact_obj.save()
-                results.append({
-                    "status": "updated",
-                    "emergency_contact_id": emergency_contact_obj.id
-                })
+
+                # Check if any field actually changed
+                changed = False
+
+                if 'contact_name' in item and item['contact_name'] != emergency_contact_obj.contact_name:
+                    emergency_contact_obj.contact_name = item['contact_name']
+                    changed = True
+                if 'contact_number' in item and item['contact_number'] != emergency_contact_obj.contact_number:
+                    emergency_contact_obj.contact_number = item['contact_number']
+                    changed = True
+                if 'relation_with_member' in item and item['relation_with_member'] != emergency_contact_obj.relation_with_member:
+                    emergency_contact_obj.relation_with_member = item['relation_with_member']
+                    changed = True
+
+                if changed:
+                    emergency_contact_obj.save()
+                    results.append({
+                        "status": "updated",
+                        "emergency_contact_id": emergency_contact_obj.id
+                    })
+                else:
+                    results.append({
+                        "status": "no_change",
+                        "emergency_contact_id": emergency_contact_obj.id
+                    })
+
             else:
-                # Optionally create a new address if no id is provided.
+                # Create a new emergency contact
                 emergency_contact = EmergencyContact.objects.create(
                     member=instance, **item)
                 results.append({
@@ -971,6 +1018,7 @@ class MemberEmergencyContactSerializer(serializers.Serializer):
                 })
 
         return results
+
 
 
 class MemberCompanionInformationSerializer(serializers.Serializer):
