@@ -434,5 +434,5 @@ class InvoiceDeleteSerializer(serializers.Serializer):
 
 
 class InvoiceCustomDeleteSerializer(serializers.Serializer):
-    issued_date = serializers.DateField()
-    invoice_type = serializers.CharField()
+    issued_date = serializers.DateField(allow_null=True)
+    invoice_type = serializers.CharField(allow_null=True)

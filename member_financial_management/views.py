@@ -12,7 +12,7 @@ from django.db.models import Prefetch
 import pdb
 from core.utils.pagination import CustomPageNumberPagination
 from django.shortcuts import get_object_or_404
-from .models import PaymentMethod, Transaction, Payment, Sale, SaleType, IncomeParticular, IncomeReceivingOption, Income, IncomeReceivingType, MemberAccount, Due, MemberDue, Invoice, InvoiceType
+from .models import PaymentMethod, Transaction, Payment, Sale, SaleType, IncomeParticular, IncomeReceivingOption, Income, IncomeReceivingType, MemberAccount, Due, MemberDue, Invoice, InvoiceType, InvoiceItem
 from django.utils.http import urlencode
 from . import serializers
 from .utils.functions import generate_unique_sale_number
@@ -732,15 +732,22 @@ class InvoiceShowView(APIView):
             if serializer.is_valid():
                 invoice_ids = serializer.data["invoice_id"]
                 with transaction.atomic():
-                    invoices = Invoice.active_objects.prefetch_related(
-                        "transaction_invoice", "payment_invoice", "sale_invoice", "due_invoice", "invoice_items", "due_invoice__member_due_due_reference").select_for_update().filter(pk__in=invoice_ids)
+                    invoices = Invoice.active_objects.filter(
+                        pk__in=invoice_ids)
                     invoices.all().update(is_active=False)
+                    invoices = Invoice.objects.prefetch_related(
+                        "transaction_invoice", "payment_invoice", "sale_invoice", "due_invoice", "invoice_items", "due_invoice__member_due_due_reference").select_for_update().filter(pk__in=invoice_ids)
                     for invoice in invoices:
-                        invoice.transaction_invoice.all().update(is_active=False)
-                        invoice.payment_invoice.all().update(is_active=False)
-                        invoice.sale_invoice.all().update(is_active=False)
-                        invoice.due_invoice.all().update(is_active=False)
-                        invoice.invoice_items.all().update(is_active=False)
+                        Transaction.objects.filter(
+                            invoice=invoice).update(is_active=False)
+                        Payment.objects.filter(
+                            invoice=invoice).update(is_active=False)
+                        Sale.objects.filter(
+                            invoice=invoice).update(is_active=False)
+                        Due.objects.filter(invoice=invoice).update(
+                            is_active=False)
+                        InvoiceItem.objects.filter(
+                            invoice=invoice).update(is_active=False)
                         for due in invoice.due_invoice.all():
                             MemberDue.objects.filter(
                                 due_reference=due).update(is_active=False)
@@ -888,7 +895,40 @@ class InvoiceCustomDeleteView(APIView):
             serializer = serializers.InvoiceCustomDeleteSerializer(
                 data=request.data)
             if serializer.is_valid():
-                return Response("Ok")
+                issued_date = serializer.validated_data["issued_date"]
+                invoice_type = serializer.validated_data["invoice_type"]
+                filters = {}
+                if issued_date is not None:
+                    filters["issue_date"] = issued_date
+                if invoice_type is not None:
+                    filters["invoice_type__name"] = invoice_type
+                with transaction.atomic():
+                    invoices = Invoice.active_objects.filter(**filters)
+                    deleted_count = invoices.all().update(is_active=False)
+                    invoices = Invoice.objects.prefetch_related(
+                        "transaction_invoice", "payment_invoice", "sale_invoice", "due_invoice", "invoice_items", "due_invoice__member_due_due_reference").select_for_update().filter(**filters)
+                    for invoice in invoices:
+                        invoice.transaction_invoice.all().update(is_active=False)
+                        invoice.payment_invoice.all().update(is_active=False)
+                        invoice.sale_invoice.all().update(is_active=False)
+                        invoice.due_invoice.all().update(is_active=False)
+                        invoice.invoice_items.all().update(is_active=False)
+                        for due in invoice.due_invoice.all():
+                            MemberDue.objects.filter(
+                                due_reference=due).update(is_active=False)
+                        for sale in invoice.sale_invoice.all():
+                            Income.objects.filter(
+                                sale=sale).update(is_active=False)
+                if deleted_count > 0:
+                    delete_all_financial_cache.delay()
+                return Response({
+                    "code": 200,
+                    "status": "success",
+                    "message": "Invoices deleted based on custom filtering",
+                    "data": {
+                        "delete_count": deleted_count
+                    }
+                }, status=200)
             else:
                 return Response({
                     "code": 400,
