@@ -880,6 +880,40 @@ class InvoiceSpecificView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+class InvoiceCustomDeleteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request):
+        try:
+            serializer = serializers.InvoiceCustomDeleteSerializer(
+                data=request.data)
+            if serializer.is_valid():
+                return Response("Ok")
+            else:
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Something went wrong",
+                    "errors": serializer.errors
+                }, status=400)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Delete",
+                severity_level="info",
+                description="User tried to delete some invoices based on custom filtering but faced an error. ",
+            )
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 class IncomeView(APIView):
     permission_classes = [IsAuthenticated]
 

@@ -15,6 +15,8 @@ urlpatterns = [
          name="income_receiving_option_view"),
     path("v1/invoices/", views.InvoiceShowView.as_view(),
          name="invoice_show_view"),
+    path("v1/invoices/custom/delete/", views.InvoiceCustomDeleteView.as_view(),
+         name="invoice_custom_delete_view"),
     path("v1/invoices/<int:id>/", views.InvoiceSpecificView.as_view(),
          name="invoice_specific_view"),
     path("v1/sales/", views.SalesView.as_view(),
