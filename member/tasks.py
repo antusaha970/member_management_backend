@@ -2,7 +2,7 @@ from celery import shared_task
 from .models import Member
 from django.db import transaction
 from .models import ContactNumber, Email, Address, Spouse, Descendant, Profession, EmergencyContact, CompanionInformation, Documents, Certificate, SpecialDay
-
+from django.core.cache import cache
 
 @shared_task
 def delete_member_model_dependencies(id):
@@ -35,3 +35,15 @@ def delete_member_model_dependencies(id):
 
     except Exception as E:
         return {"error": str(E)}
+
+
+@shared_task
+def delete_members_cache():
+    try:
+        cache.delete_pattern("members_list::*")
+        cache.delete_pattern("specific_member_list::*")
+        cache.delete_pattern("all_member_history::*")
+        cache.delete_pattern("specific_member_history::*")
+        return "success"
+    except Exception as e:
+        return str(e)

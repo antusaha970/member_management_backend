@@ -28,6 +28,9 @@ from django.db.models import Prefetch
 from .utils.utility_functions import log_request
 from .models import Spouse, Profession
 from .tasks import delete_member_model_dependencies
+from django.core.cache import cache
+from django.utils.http import urlencode
+from .tasks import delete_members_cache
 logger = logging.getLogger("myapp")
 
 
@@ -59,6 +62,8 @@ class MemberView(APIView):
                     log_request(request, "Member create", "info", "A new member has been created by the user")
                     MemberHistory.objects.create(start_date=timezone.now(
                     ), stored_member_id=member.member_ID, member=member)
+                    # cache delete
+                    delete_members_cache.delay()
                     return Response({
                         'code': 201,
                         'status': 'success',
@@ -102,6 +107,9 @@ class MemberView(APIView):
                     member = member_serializer.save()
                     # activity log
                     log_request(request, "Member update success", "info", "user updated a member successfully")
+                    # cache delete
+                    delete_members_list_cache.delay()
+
                     return Response({
                         'code': 200,
                         'status': 'success',
@@ -152,6 +160,8 @@ class MemberView(APIView):
             if member.status == 2:
                 # activity log
                 log_request(request, "Member delete failed", "info", "user tried to delete member but made an invalid request")
+                # cache delete
+                delete_members_cache.delay()
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -175,7 +185,8 @@ class MemberView(APIView):
 
                 # activity log
                 log_request(request, "Member delete success", "info", "user tried to delete a member and succeeded")
-
+                # cache delete
+                delete_members_cache.delay()
                 return Response({
                     "code": 204,
                     'message': "member deleted",
@@ -213,6 +224,12 @@ class MemberView(APIView):
 
     def get(self, request, member_id):
         try:
+            query_items = sorted(request.query_params.items())
+            query_string = urlencode(query_items) if query_items else "default"
+            cache_key = f"specific_member_list::{query_string}"
+            cached_response = cache.get(cache_key)
+            if cached_response:
+                return Response(cached_response, status=200)
             
             member = Member.objects.select_related(
                 'marital_status', 'membership_status', 'institute_name',
@@ -294,12 +311,16 @@ class MemberView(APIView):
             }
             # activity log
             log_request(request, "Member view successfully", "info", "user tried to view a member and succeeded")
-            return Response({
+            final_response = Response({
                 "code": 200,
                 "status": "success",
                 "message": f"View member information for member {member_id}",
                 'data': data
             }, status=status.HTTP_200_OK)
+            # cache response
+            cache.set(cache_key, final_response.data, 60*2)
+            return final_response
+            
         except Member.DoesNotExist:
             # activity log
             log_request(request, "Member view failed", "error", "user tried to view a member but made an invalid request")
@@ -427,6 +448,14 @@ class MemberListView(APIView):
 
     def get(self, request):
         try:
+            query_items = sorted(request.query_params.items())
+            query_string = urlencode(query_items) if query_items else "default"
+            cache_key = f"members_list::{query_string}"
+            cached_response = cache.get(cache_key)
+            if cached_response:
+                return Response(cached_response, status=200)
+            
+            # Get all members
             queryset = Member.objects.filter(
                 status=0, is_active=True).select_related("membership_type", "institute_name", "membership_status", "marital_status", "gender").order_by("id")
 
@@ -446,9 +475,9 @@ class MemberListView(APIView):
                 # Check if "download_excel" is in query params
             if request.GET.get("download_excel"):
                 return self.export_to_excel(queryset)
+            
             paginator = CustomPageNumberPagination()
-
-            paginated_queryset = paginator.paginate_queryset(queryset, request)
+            paginated_queryset = paginator.paginate_queryset(queryset, request, view=self)
 
             if paginated_queryset is None:
                 paginated_queryset = queryset
@@ -457,12 +486,14 @@ class MemberListView(APIView):
                 paginated_queryset, many=True)
             # activity log
             log_request(request, "Member list view success","info","user viewed member list")
-            return paginator.get_paginated_response({
+            final_response = paginator.get_paginated_response({
                 "code": 200,
                 "status": "success",
                 "message": "View all members",
                 "data": serializer.data
             }, 200)
+            cache.set(cache_key, final_response.data, 60*3)
+            return final_response
 
         except Exception as server_error:
             logger.exception(str(server_error))
@@ -1682,13 +1713,21 @@ class MemberHistoryView(APIView):
 
     def get(self, request):
         try:
+            query_items = sorted(request.query_params.items())
+            query_string = urlencode(query_items) if query_items else "default"
+            # convert dictionary for get query params
+            query_dict = dict(query_items)
+            cache_key = f"all_member_history::{query_string}"
+            cached_response = cache.get(cache_key)
+            if cached_response:
+                return Response(cached_response, status=200)
+            
             history = MemberHistory.objects.all()
 
-            # Get query parameters
-            start_date = request.query_params.get("start_date")
-            end_date = request.query_params.get("end_date")
-            transferred = request.query_params.get("transferred")
-
+            # Now get the values
+            start_date = query_dict.get("start_date")
+            end_date = query_dict.get("end_date")
+            transferred = query_dict.get("transferred")
             # Apply filters if query parameters exist
             if start_date and end_date:
                 history = history.filter(
@@ -1714,12 +1753,16 @@ class MemberHistoryView(APIView):
             # activity log
             log_request(request, "Viewing all members history","info","A user has successfully viewing all members history.")
             
-            return paginator.get_paginated_response({
+            final_response = paginator.get_paginated_response({
                 "code": 200,
                 "status": "success",
                 "message": "Viewing all members history",
                 "data": serializer.data
             }, 200)
+
+            # Cache the response
+            cache.set(cache_key, final_response.data, 60*2)
+            return final_response
         except Exception as e:
             logger.exception(str(e))
             # activity log
@@ -1734,11 +1777,18 @@ class MemberHistoryView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+
 class MemberSingleHistoryView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, member_ID):
         try:
+            query_items = sorted(request.query_params.items())
+            query_string = urlencode(query_items) if query_items else "default"
+            cache_key = f"specific_member_history::{query_string}"
+            cached_response = cache.get(cache_key)
+            if cached_response:
+                return Response(cached_response, status=200)
             member_history = MemberHistory.objects.filter(stored_member_id=member_ID)
             serializer = serializers.MemberHistorySerializer(
                 member_history, many=True)
@@ -1746,12 +1796,16 @@ class MemberSingleHistoryView(APIView):
             # activity log
             log_request(request, "Viewing single member history","info","A user has successfully viewing single member history.")
             
-            return Response({
+            final_response = Response({
                 'code': 200,
                 'status': 'success',
                 "message": "viewing member history",
                 "data": serializer.data
             }, status=status.HTTP_200_OK)
+            
+            # Cache the response
+            cache.set(cache_key, final_response.data, 60*2)
+            return final_response
         except MemberHistory.DoesNotExist:
             
             # activity log
