@@ -43,12 +43,12 @@ urlpatterns = [
          name="member_account_view"),
     path("v1/member_accounts/<str:id>/", views.MemberAccountSpecificSpecificView.as_view(),
          name="member_accounts_specific_view"),
-    
-    path("v1/lounge/upload/excel/",views.LoungeUploadExcelView.as_view(),
+
+    path("v1/lounge/upload/excel/", views.LoungeUploadExcelView.as_view(),
          name="lounge_excel_upload_view"),
-    path("v1/others/upload/excel/",views.OthersUploadExcelView.as_view(),
+    path("v1/others/upload/excel/", views.OthersUploadExcelView.as_view(),
          name="others_excel_upload_view"),
-    
-    
-    
+
+
+
 ]

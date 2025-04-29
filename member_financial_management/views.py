@@ -732,7 +732,7 @@ class InvoiceSpecificView(APIView):
 
     def get(self, request, id):
         try:
-            queryset = get_object_or_404(Invoice.objects.select_related(
+            queryset = get_object_or_404(Invoice.active_objects.select_related(
                 "invoice_type", "generated_by", "member", "restaurant", "event"
             ).prefetch_related(
                 Prefetch("invoice_items__restaurant_items"),
@@ -773,7 +773,37 @@ class InvoiceSpecificView(APIView):
 
     def delete(self, request, id):
         try:
-            pass
+            with transaction.atomic():
+                invoice = Invoice.active_objects.prefetch_related(
+                    "transaction_invoice", "payment_invoice", "sale_invoice", "due_invoice", "invoice_items", "due_invoice__member_due_due_reference").select_for_update().get(pk=id)
+                invoice.is_active = False
+                invoice.save(update_fields=["is_active"])
+                invoice.transaction_invoice.all().update(is_active=False)
+                invoice.payment_invoice.all().update(is_active=False)
+                invoice.sale_invoice.all().update(is_active=False)
+                invoice.due_invoice.all().update(is_active=False)
+                invoice.invoice_items.all().update(is_active=False)
+                for due in invoice.due_invoice.all():
+                    MemberDue.objects.filter(
+                        due_reference=due).update(is_active=False)
+                for sale in invoice.sale_invoice.all():
+                    Income.objects.filter(sale=sale).update(is_active=False)
+
+                delete_all_financial_cache.delay()
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="delete",
+                    severity_level="info",
+                    description="user deleted a single invoice",
+                )
+                return Response({
+                    "code": 200,
+                    "status": "success",
+                    "message": "Invoice deleted successfully",
+                    "data": {
+                        "invoice": id
+                    }
+                }, status=200)
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
