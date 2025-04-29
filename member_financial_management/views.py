@@ -12,7 +12,7 @@ from django.db.models import Prefetch
 import pdb
 from core.utils.pagination import CustomPageNumberPagination
 from django.shortcuts import get_object_or_404
-from .models import PaymentMethod, Transaction, Payment, Sale, SaleType, IncomeParticular, IncomeReceivingOption, Income, IncomeReceivingType, MemberAccount, Due, MemberDue, Invoice, InvoiceType
+from .models import PaymentMethod, Transaction, Payment, Sale, SaleType, IncomeParticular, IncomeReceivingOption, Income, IncomeReceivingType, MemberAccount, Due, MemberDue, Invoice, InvoiceType, InvoiceItem
 from django.utils.http import urlencode
 from . import serializers
 from .utils.functions import generate_unique_sale_number
@@ -662,7 +662,7 @@ class InvoiceShowView(APIView):
             if cached_data:
                 return Response(cached_data, status=200)
             # hit db if miss
-            queryset = Invoice.objects.select_related(
+            queryset = Invoice.active_objects.select_related(
                 "invoice_type", "generated_by", "member", "restaurant", "event"
             ).prefetch_related(
                 Prefetch("invoice_items__restaurant_items"),
@@ -726,13 +726,78 @@ class InvoiceShowView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    def delete(self, request):
+        try:
+            serializer = serializers.InvoiceDeleteSerializer(data=request.data)
+            if serializer.is_valid():
+                invoice_ids = serializer.data["invoice_id"]
+                with transaction.atomic():
+                    invoices = Invoice.active_objects.filter(
+                        pk__in=invoice_ids)
+                    invoices.all().update(is_active=False)
+                    invoices = Invoice.objects.prefetch_related(
+                        "transaction_invoice", "payment_invoice", "sale_invoice", "due_invoice", "invoice_items", "due_invoice__member_due_due_reference").select_for_update().filter(pk__in=invoice_ids)
+                    for invoice in invoices:
+                        Transaction.objects.filter(
+                            invoice=invoice).update(is_active=False)
+                        Payment.objects.filter(
+                            invoice=invoice).update(is_active=False)
+                        Sale.objects.filter(
+                            invoice=invoice).update(is_active=False)
+                        Due.objects.filter(invoice=invoice).update(
+                            is_active=False)
+                        InvoiceItem.objects.filter(
+                            invoice=invoice).update(is_active=False)
+                        for due in invoice.due_invoice.all():
+                            MemberDue.objects.filter(
+                                due_reference=due).update(is_active=False)
+                        for sale in invoice.sale_invoice.all():
+                            Income.objects.filter(
+                                sale=sale).update(is_active=False)
+                delete_all_financial_cache.delay()
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="delete",
+                    severity_level="info",
+                    description="user deleted some invoices invoice",
+                )
+                return Response({
+                    "code": 200,
+                    "status": "success",
+                    "message": "Invoices deleted successfully",
+                    "data": invoice_ids
+                }, status=200)
+            else:
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Bad request",
+                    "errors": serializer.errors
+                }, status=400)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="delete",
+                severity_level="info",
+                description="user tried to delete a single invoice and faced error",
+            )
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class InvoiceSpecificView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, id):
         try:
-            queryset = get_object_or_404(Invoice.objects.select_related(
+            queryset = get_object_or_404(Invoice.active_objects.select_related(
                 "invoice_type", "generated_by", "member", "restaurant", "event"
             ).prefetch_related(
                 Prefetch("invoice_items__restaurant_items"),
@@ -771,6 +836,123 @@ class InvoiceSpecificView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    def delete(self, request, id):
+        try:
+            with transaction.atomic():
+                invoice = Invoice.active_objects.prefetch_related(
+                    "transaction_invoice", "payment_invoice", "sale_invoice", "due_invoice", "invoice_items", "due_invoice__member_due_due_reference").select_for_update().get(pk=id)
+                invoice.is_active = False
+                invoice.save(update_fields=["is_active"])
+                invoice.transaction_invoice.all().update(is_active=False)
+                invoice.payment_invoice.all().update(is_active=False)
+                invoice.sale_invoice.all().update(is_active=False)
+                invoice.due_invoice.all().update(is_active=False)
+                invoice.invoice_items.all().update(is_active=False)
+                for due in invoice.due_invoice.all():
+                    MemberDue.objects.filter(
+                        due_reference=due).update(is_active=False)
+                for sale in invoice.sale_invoice.all():
+                    Income.objects.filter(sale=sale).update(is_active=False)
+
+                delete_all_financial_cache.delay()
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="delete",
+                    severity_level="info",
+                    description="user deleted a single invoice",
+                )
+                return Response({
+                    "code": 200,
+                    "status": "success",
+                    "message": "Invoice deleted successfully",
+                    "data": {
+                        "invoice": id
+                    }
+                }, status=200)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="delete",
+                severity_level="info",
+                description="user tried to delete a single invoice and faced error",
+            )
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class InvoiceCustomDeleteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request):
+        try:
+            serializer = serializers.InvoiceCustomDeleteSerializer(
+                data=request.data)
+            if serializer.is_valid():
+                issued_date = serializer.validated_data["issued_date"]
+                invoice_type = serializer.validated_data["invoice_type"]
+                filters = {}
+                if issued_date is not None:
+                    filters["issue_date"] = issued_date
+                if invoice_type is not None:
+                    filters["invoice_type__name"] = invoice_type
+                with transaction.atomic():
+                    invoices = Invoice.active_objects.filter(**filters)
+                    deleted_count = invoices.all().update(is_active=False)
+                    invoices = Invoice.objects.prefetch_related(
+                        "transaction_invoice", "payment_invoice", "sale_invoice", "due_invoice", "invoice_items", "due_invoice__member_due_due_reference").select_for_update().filter(**filters)
+                    for invoice in invoices:
+                        invoice.transaction_invoice.all().update(is_active=False)
+                        invoice.payment_invoice.all().update(is_active=False)
+                        invoice.sale_invoice.all().update(is_active=False)
+                        invoice.due_invoice.all().update(is_active=False)
+                        invoice.invoice_items.all().update(is_active=False)
+                        for due in invoice.due_invoice.all():
+                            MemberDue.objects.filter(
+                                due_reference=due).update(is_active=False)
+                        for sale in invoice.sale_invoice.all():
+                            Income.objects.filter(
+                                sale=sale).update(is_active=False)
+                if deleted_count > 0:
+                    delete_all_financial_cache.delay()
+                return Response({
+                    "code": 200,
+                    "status": "success",
+                    "message": "Invoices deleted based on custom filtering",
+                    "data": {
+                        "delete_count": deleted_count
+                    }
+                }, status=200)
+            else:
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Something went wrong",
+                    "errors": serializer.errors
+                }, status=400)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Delete",
+                severity_level="info",
+                description="User tried to delete some invoices based on custom filtering but faced an error. ",
+            )
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class IncomeView(APIView):
     permission_classes = [IsAuthenticated]
@@ -785,7 +967,7 @@ class IncomeView(APIView):
                 return Response(cached_data, status=200)
 
             # hit db if miss
-            data = Income.objects.filter(is_active=True).select_related(
+            data = Income.active_objects.filter(is_active=True).select_related(
                 "particular", "received_from_type", "receiving_type", "member", "received_by", "sale").order_by("id")
             paginator = CustomPageNumberPagination()
             paginated_queryset = paginator.paginate_queryset(
@@ -876,7 +1058,7 @@ class SalesView(APIView):
                 return Response(cached_data, status=200)
 
             # hit db if miss
-            data = Sale.objects.filter(is_active=True).select_related(
+            data = Sale.active_objects.filter(is_active=True).select_related(
                 "sale_source_type", "customer", "payment_method", "invoice").order_by("id")
             paginator = CustomPageNumberPagination()
             paginated_queryset = paginator.paginate_queryset(
