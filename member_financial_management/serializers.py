@@ -426,3 +426,8 @@ class OthersUploadExcelSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 "Only .xls and .xlsx files are allowed.")
         return value
+
+
+class InvoiceDeleteSerializer(serializers.Serializer):
+    invoice_id = serializers.PrimaryKeyRelatedField(
+        queryset=Invoice.active_objects.all(), many=True)
