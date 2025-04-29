@@ -2,7 +2,8 @@ from django.db.models import Max
 from member.models import Member
 import pdb
 import re
-
+from activity_log.tasks import log_activity_task
+from activity_log.utils.functions import request_data_activity_log
 
 # def generate_member_id(membership_type):
 #     # Get the last member ID in the same membership type category
@@ -67,3 +68,12 @@ def generate_member_id(membership_type):
     next_available_id = f"{membership_type}{str(next_available).zfill(4)}"
 
     return {"missing_ids": missing_ids, "next_available": next_available_id}
+
+
+def log_request(request, verb, level, description):
+    log_activity_task.delay_on_commit(
+        request_data_activity_log(request),
+        verb=verb,
+        severity_level=level,
+        description=description,
+    )
