@@ -907,7 +907,8 @@ class InvoiceSpecificView(APIView):
                 invoice.invoice_items.all().update(is_active=False)
 
                 for due in invoice.due_invoice.all():
-                    MemberDue.objects.filter(due_reference=due).update(is_active=False)
+                    MemberDue.objects.filter(
+                        due_reference=due).update(is_active=False)
 
                 for sale in invoice.sale_invoice.all():
                     Income.objects.filter(sale=sale).update(is_active=False)
@@ -945,6 +946,46 @@ class InvoiceSpecificView(APIView):
                 verb="delete",
                 severity_level="error",
                 description="user tried to delete a single invoice and faced error",
+            )
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def patch(self, request, id):
+        try:
+            is_exist = Invoice.active_objects.filter(pk=id).exists()
+            if not is_exist:
+                return Response({
+                    "code": 404,
+                    "status": "failed",
+                    "message": "No invoice found with this id.",
+                    "errors": {
+                        "invoice": ["No invoice found with this id."]
+                    }
+                }, status=404)
+            serializer = serializers.InvoiceUpdateSerializer(data=request.data)
+            if serializer.is_valid():
+                return Response("ok")
+            else:
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Bad request.",
+                    "errors": serializer.errors
+                }, status=404)
+
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Delete",
+                severity_level="info",
+                description="User tried to delete some invoices based on custom filtering but faced an error. ",
             )
             return Response({
                 "code": 500,
