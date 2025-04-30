@@ -659,8 +659,8 @@ class CustomTokenRefreshView(TokenRefreshView):
                     days=7).total_seconds()
             )
 
-        response.data.pop("access")
-        response.data.pop("refresh")
+        # response.data.pop("access")
+        # response.data.pop("refresh")
         response.data.update(
             {"code": 200, "status": "success", "message": "new access token given in cookie"})
         log_activity_task.delay_on_commit(
