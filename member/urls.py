@@ -48,7 +48,7 @@ urlpatterns = [
     path('v1/members/history/<str:member_ID>/', views.MemberSingleHistoryView.as_view(),
          name="member_history_single_view"),
     path('v1/members/<str:member_id>/', views.MemberView.as_view(),
-         name="member_update_view"),
+         name="member_update_and_delete_view"),
 
 
 ]

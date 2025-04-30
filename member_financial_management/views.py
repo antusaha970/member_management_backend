@@ -12,11 +12,16 @@ from django.db.models import Prefetch
 import pdb
 from core.utils.pagination import CustomPageNumberPagination
 from django.shortcuts import get_object_or_404
-from .models import PaymentMethod, Transaction, Payment, Sale, SaleType, IncomeParticular, IncomeReceivingOption, Income, IncomeReceivingType, MemberAccount, Due, MemberDue, Invoice
+from .models import PaymentMethod, Transaction, Payment, Sale, SaleType, IncomeParticular, IncomeReceivingOption, Income, IncomeReceivingType, MemberAccount, Due, MemberDue, Invoice, InvoiceType, InvoiceItem
 from django.utils.http import urlencode
 from . import serializers
 from .utils.functions import generate_unique_sale_number
-from .tasks import delete_all_financial_cache,delete_member_accounts_cache
+from .tasks import delete_all_financial_cache, delete_member_accounts_cache
+from .utils.functions import generate_unique_invoice_number, generate_unique_sale_number
+from datetime import datetime
+from member.models import Member
+import pandas as pd
+from django.http import Http404
 logger = logging.getLogger("myapp")
 
 
@@ -658,7 +663,7 @@ class InvoiceShowView(APIView):
             if cached_data:
                 return Response(cached_data, status=200)
             # hit db if miss
-            queryset = Invoice.objects.select_related(
+            queryset = Invoice.active_objects.select_related(
                 "invoice_type", "generated_by", "member", "restaurant", "event"
             ).prefetch_related(
                 Prefetch("invoice_items__restaurant_items"),
@@ -722,13 +727,78 @@ class InvoiceShowView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    def delete(self, request):
+        try:
+            serializer = serializers.InvoiceDeleteSerializer(data=request.data)
+            if serializer.is_valid():
+                invoice_ids = serializer.data["invoice_id"]
+                with transaction.atomic():
+                    invoices = Invoice.active_objects.filter(
+                        pk__in=invoice_ids)
+                    invoices.all().update(is_active=False)
+                    invoices = Invoice.objects.prefetch_related(
+                        "transaction_invoice", "payment_invoice", "sale_invoice", "due_invoice", "invoice_items", "due_invoice__member_due_due_reference").select_for_update().filter(pk__in=invoice_ids)
+                    for invoice in invoices:
+                        Transaction.objects.filter(
+                            invoice=invoice).update(is_active=False)
+                        Payment.objects.filter(
+                            invoice=invoice).update(is_active=False)
+                        Sale.objects.filter(
+                            invoice=invoice).update(is_active=False)
+                        Due.objects.filter(invoice=invoice).update(
+                            is_active=False)
+                        InvoiceItem.objects.filter(
+                            invoice=invoice).update(is_active=False)
+                        for due in invoice.due_invoice.all():
+                            MemberDue.objects.filter(
+                                due_reference=due).update(is_active=False)
+                        for sale in invoice.sale_invoice.all():
+                            Income.objects.filter(
+                                sale=sale).update(is_active=False)
+                delete_all_financial_cache.delay()
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="delete",
+                    severity_level="info",
+                    description="user deleted some invoices invoice",
+                )
+                return Response({
+                    "code": 200,
+                    "status": "success",
+                    "message": "Invoices deleted successfully",
+                    "data": invoice_ids
+                }, status=200)
+            else:
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Bad request",
+                    "errors": serializer.errors
+                }, status=400)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="delete",
+                severity_level="info",
+                description="user tried to delete a single invoice and faced error",
+            )
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class InvoiceSpecificView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, id):
         try:
-            queryset = get_object_or_404(Invoice.objects.select_related(
+            queryset = get_object_or_404(Invoice.active_objects.select_related(
                 "invoice_type", "generated_by", "member", "restaurant", "event"
             ).prefetch_related(
                 Prefetch("invoice_items__restaurant_items"),
@@ -767,6 +837,191 @@ class InvoiceSpecificView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    # def delete(self, request, id):
+    #     try:
+    #         with transaction.atomic():
+    #             invoice = Invoice.active_objects.prefetch_related(
+    #                 "transaction_invoice", "payment_invoice", "sale_invoice", "due_invoice", "invoice_items", "due_invoice__member_due_due_reference").select_for_update().get(pk=id)
+    #             invoice.is_active = False
+    #             invoice.save(update_fields=["is_active"])
+    #             invoice.transaction_invoice.all().update(is_active=False)
+    #             invoice.payment_invoice.all().update(is_active=False)
+    #             invoice.sale_invoice.all().update(is_active=False)
+    #             invoice.due_invoice.all().update(is_active=False)
+    #             invoice.invoice_items.all().update(is_active=False)
+    #             for due in invoice.due_invoice.all():
+    #                 MemberDue.objects.filter(
+    #                     due_reference=due).update(is_active=False)
+    #             for sale in invoice.sale_invoice.all():
+    #                 Income.objects.filter(sale=sale).update(is_active=False)
+
+    #             delete_all_financial_cache.delay()
+    #             log_activity_task.delay_on_commit(
+    #                 request_data_activity_log(request),
+    #                 verb="delete",
+    #                 severity_level="info",
+    #                 description="user deleted a single invoice",
+    #             )
+    #             return Response({
+    #                 "code": 200,
+    #                 "status": "success",
+    #                 "message": "Invoice deleted successfully",
+    #                 "data": {
+    #                     "invoice": id
+    #                 }
+    #             }, status=200)
+    #     except Exception as e:
+    #         logger.exception(str(e))
+    #         log_activity_task.delay_on_commit(
+    #             request_data_activity_log(request),
+    #             verb="delete",
+    #             severity_level="info",
+    #             description="user tried to delete a single invoice and faced error",
+    #         )
+    #         return Response({
+    #             "code": 500,
+    #             "status": "failed",
+    #             "message": "Something went wrong",
+    #             "errors": {
+    #                 "server_error": [str(e)]
+    #             }
+    #         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def delete(self, request, id):
+        try:
+            with transaction.atomic():
+                try:
+                    invoice = Invoice.active_objects.prefetch_related(
+                        "transaction_invoice", "payment_invoice", "sale_invoice", "due_invoice",
+                        "invoice_items", "due_invoice__member_due_due_reference"
+                    ).select_for_update().get(pk=id)
+                except Invoice.DoesNotExist:
+                    raise Http404("Invoice does not exist for this id")
+
+                invoice.is_active = False
+                invoice.save(update_fields=["is_active"])
+                invoice.transaction_invoice.all().update(is_active=False)
+                invoice.payment_invoice.all().update(is_active=False)
+                invoice.sale_invoice.all().update(is_active=False)
+                invoice.due_invoice.all().update(is_active=False)
+                invoice.invoice_items.all().update(is_active=False)
+
+                for due in invoice.due_invoice.all():
+                    MemberDue.objects.filter(due_reference=due).update(is_active=False)
+
+                for sale in invoice.sale_invoice.all():
+                    Income.objects.filter(sale=sale).update(is_active=False)
+
+                delete_all_financial_cache.delay()
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="delete",
+                    severity_level="info",
+                    description="user deleted a single invoice",
+                )
+                return Response({
+                    "code": 200,
+                    "status": "success",
+                    "message": "Invoice deleted successfully",
+                    "data": {
+                        "invoice": id
+                    }
+                }, status=200)
+
+        except Http404 as e:
+            return Response({
+                "code": 404,
+                "status": "failed",
+                "message": "Invoice not found",
+                "errors": {
+                    "invoice": [str(e)]
+                }
+            }, status=404)
+
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="delete",
+                severity_level="error",
+                description="user tried to delete a single invoice and faced error",
+            )
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class InvoiceCustomDeleteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request):
+        try:
+            serializer = serializers.InvoiceCustomDeleteSerializer(
+                data=request.data)
+            if serializer.is_valid():
+                issued_date = serializer.validated_data["issued_date"]
+                invoice_type = serializer.validated_data["invoice_type"]
+                filters = {}
+                if issued_date is not None:
+                    filters["issue_date"] = issued_date
+                if invoice_type is not None:
+                    filters["invoice_type__name"] = invoice_type
+                with transaction.atomic():
+                    invoices = Invoice.active_objects.filter(**filters)
+                    deleted_count = invoices.all().update(is_active=False)
+                    invoices = Invoice.objects.prefetch_related(
+                        "transaction_invoice", "payment_invoice", "sale_invoice", "due_invoice", "invoice_items", "due_invoice__member_due_due_reference").select_for_update().filter(**filters)
+                    for invoice in invoices:
+                        invoice.transaction_invoice.all().update(is_active=False)
+                        invoice.payment_invoice.all().update(is_active=False)
+                        invoice.sale_invoice.all().update(is_active=False)
+                        invoice.due_invoice.all().update(is_active=False)
+                        invoice.invoice_items.all().update(is_active=False)
+                        for due in invoice.due_invoice.all():
+                            MemberDue.objects.filter(
+                                due_reference=due).update(is_active=False)
+                        for sale in invoice.sale_invoice.all():
+                            Income.objects.filter(
+                                sale=sale).update(is_active=False)
+                if deleted_count > 0:
+                    delete_all_financial_cache.delay()
+                return Response({
+                    "code": 200,
+                    "status": "success",
+                    "message": "Invoices deleted based on custom filtering",
+                    "data": {
+                        "delete_count": deleted_count
+                    }
+                }, status=200)
+            else:
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Something went wrong",
+                    "errors": serializer.errors
+                }, status=400)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Delete",
+                severity_level="info",
+                description="User tried to delete some invoices based on custom filtering but faced an error. ",
+            )
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class IncomeView(APIView):
     permission_classes = [IsAuthenticated]
@@ -781,7 +1036,7 @@ class IncomeView(APIView):
                 return Response(cached_data, status=200)
 
             # hit db if miss
-            data = Income.objects.filter(is_active=True).select_related(
+            data = Income.active_objects.filter(is_active=True).select_related(
                 "particular", "received_from_type", "receiving_type", "member", "received_by", "sale").order_by("id")
             paginator = CustomPageNumberPagination()
             paginated_queryset = paginator.paginate_queryset(
@@ -872,7 +1127,7 @@ class SalesView(APIView):
                 return Response(cached_data, status=200)
 
             # hit db if miss
-            data = Sale.objects.filter(is_active=True).select_related(
+            data = Sale.active_objects.filter(is_active=True).select_related(
                 "sale_source_type", "customer", "payment_method", "invoice").order_by("id")
             paginator = CustomPageNumberPagination()
             paginated_queryset = paginator.paginate_queryset(
@@ -1748,17 +2003,18 @@ class MemberAccountRechargeView(APIView):
                 member_ID = serializer.validated_data["member_ID"]
                 amount = serializer.validated_data["amount"]
                 with transaction.atomic():
-                    member_account = MemberAccount.objects.get(member__member_ID=member_ID)
+                    member_account = MemberAccount.objects.get(
+                        member__member_ID=member_ID)
                     member_account.balance += amount
                     member_account.save(update_fields=["balance"])
-                    
+
                     delete_member_accounts_cache.delay()
                     return Response({
                         "code": 200,
                         "status": "success",
                         "message": "Member account balance recharged successfully",
                         "data": {
-                            
+
                             "member_ID": member_ID,
                             "amount": amount,
                         }
@@ -1783,6 +2039,554 @@ class MemberAccountRechargeView(APIView):
                 verb="View",
                 severity_level="info",
                 description="User tried to recharge a member account and faced error",
+            )
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class LoungeUploadExcelView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            serializer = serializers.LoungeUploadExcelSerializer(
+                data=request.data)
+            if serializer.is_valid():
+                excel_file = serializer.validated_data["excel_file"]
+                uploaded_file = excel_file
+                file_data_cl = None
+                try:
+
+                    if uploaded_file.name.endswith('.xlsx'):
+                        file_data_cl = pd.read_excel(
+                            uploaded_file, engine='openpyxl', dtype=str)
+                    elif uploaded_file.name.endswith('.xls'):
+                        file_data_cl = pd.read_excel(
+                            uploaded_file, engine='xlrd', dtype=str)
+                    # Extract and format the date range
+                    pick_date = file_data_cl.iat[1, 0]
+                    if isinstance(pick_date, str):
+                        date_data = pick_date.strip().split(": ")[1]
+                        lng_date = datetime.strptime(
+                            date_data, "%d.%m.%y").strftime("%Y-%m-%d")
+
+                        sales_date = datetime.strptime(
+                            date_data, "%d.%m.%y").date()
+                    else:
+                        return Response({
+                            "code": 400,
+                            "status": "failed",
+                            "message": "Invalid date format",
+                            "errors": {
+                                "pick_date": [f"Error: Expected a string, but got {type(pick_date)}. Value: {pick_date}"]
+                            }
+                        }, status=400)
+
+                    if file_data_cl is not None:
+                        file_data_cl = file_data_cl.dropna(how='all')
+
+                        # Select relevant columns and rename them
+                        file_data_cl = file_data_cl[['Unnamed: 1', 'Unnamed: 2', 'Unnamed: 3',
+                                                    'Unnamed: 4', 'Unnamed: 5']]  # total 5 columns
+
+                        file_data_cl.columns = [
+                            'member_ID', 'cash_amount', 'card_amount', 'due_amount', 'total']
+
+                        file_data_cl = file_data_cl.iloc[3:-
+                                                         1].reset_index(drop=True)
+
+                        # Convert numeric columns
+                        numeric_columns = ['cash_amount',
+                                           'card_amount', 'due_amount', 'total']
+                        file_data_cl[numeric_columns] = file_data_cl[numeric_columns].apply(
+                            pd.to_numeric, errors='coerce').fillna(0)
+
+                        # Calculate totals
+                        totals = {col: int(file_data_cl[col].sum())
+                                  for col in numeric_columns}
+
+                        totals['cash_amount'] = int(totals['cash_amount'])
+                        totals['card_amount'] = int(totals['card_amount'])
+                        totals['due_amount'] = int(totals['due_amount'])
+                        totals['total'] = int(totals['total'])
+                except Exception as e:
+                    return Response({
+                        "code": 400,
+                        "status": "failed",
+                        "message": "Invalid excel file",
+                        "errors": {
+                            "excel_file": ["There was an error while reading excel file. Please check if you have uploaded the correct file."]
+                        }
+                    }, status=400)
+
+                data = file_data_cl.to_dict(orient='records')
+                income_particular = serializer.validated_data["income_particular"]
+                received_from = serializer.validated_data["received_from"]
+                confirm_reupload = serializer.validated_data["confirm_reupload"]
+                if not confirm_reupload:
+                    if len(data) >= 1:
+                        single_record = data[0]
+                        single_member_ID = single_record["member_ID"]
+                        single_cash_amount = single_record["cash_amount"]
+                        single_card_amount = single_record["card_amount"]
+                        single_due_amount = single_record["due_amount"]
+                        single_total = single_record["total"]
+                        is_same_invoice_exist = Invoice.objects.filter(
+                            member__member_ID=single_member_ID,
+                            balance_due=single_due_amount,
+                            paid_amount=single_card_amount+single_cash_amount,
+                            total_amount=single_total,
+                            excel_upload_date=lng_date,
+                            invoice_type__name="lounge"
+                        ).exists()
+                        if is_same_invoice_exist:
+                            return Response({
+                                "code": 400,
+                                "status": "failed",
+                                "message": "This file was previously uploaded with same data.",
+                                "errors": {
+                                    "excel_file": ["This file was uploaded previously with same data. If you want to reupload it make sure you have confirm_reupload  attribute set to true."]
+                                }
+                            }, status=400)
+                with transaction.atomic():
+                    invoice_type, _ = InvoiceType.objects.get_or_create(
+                        name="lounge")
+                    cash_payment_method, _ = PaymentMethod.objects.get_or_create(
+                        name="cash")
+                    card_payment_method, _ = PaymentMethod.objects.get_or_create(
+                        name="card")
+                    both_payment_method, _ = PaymentMethod.objects.get_or_create(
+                        name="both")
+                    sale_type, _ = SaleType.objects.get_or_create(
+                        name="lounge")
+                    full_income_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
+                        name="full")
+                    partial_income_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
+                        name="partial")
+                    uploaded_member_data = []
+                    for record in data:
+                        paid_amount = record["cash_amount"] + \
+                            record["card_amount"]
+                        total_amount = record["total"]
+                        due_amount = record["due_amount"]
+                        payment_method = None
+                        start_date = lng_date
+                        if record["card_amount"] == 0 and record["cash_amount"] == 0:
+                            payment_method = both_payment_method
+                        elif record["card_amount"] != 0:
+                            payment_method = card_payment_method
+                        else:
+                            payment_method = cash_payment_method
+                        if paid_amount == total_amount:
+                            income_receiving_type = full_income_receiving_type
+                        else:
+                            income_receiving_type = partial_income_receiving_type
+                        try:
+                            member = Member.objects.get(
+                                member_ID=record["member_ID"])
+                        except Member.DoesNotExist:
+                            uploaded_member_data.append({
+                                "member": record["member_ID"],
+                                "status": "failed",
+                                "reason": "Member doesn't exist",
+                            })
+                            continue
+                        invoice = Invoice.objects.create(
+                            invoice_number=generate_unique_invoice_number(),
+                            balance_due=record["due_amount"],
+                            paid_amount=paid_amount,
+                            due_date=start_date,
+                            issue_date=datetime.today(),
+                            total_amount=total_amount,
+                            is_full_paid=paid_amount == total_amount,
+                            status="paid" if total_amount == paid_amount else "partial_paid",
+                            invoice_type=invoice_type,
+                            generated_by=request.user,
+                            member=member,
+                            excel_upload_date=lng_date
+                        )
+                        transaction_obj = Transaction.objects.create(
+                            amount=paid_amount,
+                            member=member,
+                            invoice=invoice,
+                            payment_method=payment_method,
+                            notes="This transaction was recorded from excel file."
+                        )
+                        payment_obj = Payment.objects.create(
+                            payment_amount=paid_amount,
+                            payment_status=invoice.status,
+                            notes="This payment was recorded from excel file.",
+                            transaction=transaction_obj,
+                            invoice=invoice,
+                            member=member,
+                            payment_method=payment_method,
+                            processed_by=request.user
+                        )
+                        due_date = start_date if record["due_amount"] == 0 else None
+                        sale_obj = Sale.objects.create(sale_number=generate_unique_sale_number(),
+                                                       sub_total=invoice.total_amount,
+                                                       total_amount=invoice.total_amount,
+                                                       payment_status=invoice.status,
+                                                       due_date=due_date,
+                                                       notes="Sale created from excel file.",
+                                                       sale_source_type=sale_type,
+                                                       customer=member,
+                                                       payment_method=payment_method,
+                                                       invoice=invoice
+                                                       )
+                        Income.objects.create(
+                            receivable_amount=invoice.total_amount,
+                            final_receivable=invoice.total_amount,
+                            actual_received=invoice.paid_amount,
+                            reaming_due=invoice.balance_due,
+                            particular=income_particular,
+                            received_from_type=received_from,
+                            member=member,
+                            received_by=payment_method,
+                            sale=sale_obj,
+                            receiving_type=income_receiving_type)
+                        if due_amount > 0:  # it has due
+                            due_obj = Due.objects.create(
+                                original_amount=invoice.total_amount,
+                                due_amount=invoice.balance_due,
+                                paid_amount=invoice.paid_amount,
+                                due_date=start_date,
+                                payment_status=invoice.status,
+                                member=member,
+                                invoice=invoice,
+                                payment=payment_obj,
+                                transaction=transaction_obj,
+                            )
+                            MemberDue.objects.create(
+                                amount_due=due_obj.due_amount,
+                                due_date=start_date,
+                                amount_paid=invoice.paid_amount,
+                                payment_date=datetime.today(),
+                                notes="This due has been recorded from excel file",
+                                member=member,
+                                due_reference=due_obj
+                            )
+                        uploaded_member_data.append({
+                            "member_ID": member.member_ID,
+                            "status": "success",
+                            "reason": "Successfully uploaded"
+                        })
+                    log_activity_task.delay_on_commit(
+                        request_data_activity_log(request),
+                        verb="View",
+                        severity_level="info",
+                        description="User uploaded an excel file",
+                    )
+                    delete_all_financial_cache.delay()
+                    return Response({
+                        "code": 201,
+                        "status": "success",
+                        "message": "Data uploaded successfully",
+                        "data": uploaded_member_data
+                    }, status=status.HTTP_201_CREATED)
+                return Response({
+                    "code": 200,
+                    "status": "success",
+                    "message": "Excel file uploaded successfully",
+                    "totals": totals
+                }, status=status.HTTP_200_OK)
+            else:
+                # activity log
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="View",
+                    severity_level="info",
+                    description="User tried to upload an excel file and faced error",
+                )
+                # return error response
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Bad request",
+                    "errors": serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="View",
+                severity_level="info",
+                description="User tried to upload an excel file and faced error",
+            )
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class OthersUploadExcelView(APIView):
+
+    def post(self, request):
+        try:
+            serializer = serializers.OthersUploadExcelSerializer(
+                data=request.data)
+            if serializer.is_valid():
+                excel_file = serializer.validated_data["excel_file"]
+                uploaded_file = excel_file
+                try:
+                    file_data_cl = None
+                    if uploaded_file.name.endswith('.xlsx'):
+                        file_data_cl = pd.read_excel(
+                            uploaded_file, engine='openpyxl', dtype=str)
+                    elif uploaded_file.name.endswith('.xls'):
+                        file_data_cl = pd.read_excel(
+                            uploaded_file, engine='xlrd', dtype=str)
+                        # Extract and format the date range
+                    pick_date = file_data_cl.iat[1, 0]
+                    if isinstance(pick_date, str):
+                        date_data = pick_date.strip().split(": ")[1]
+                        lng_date = datetime.strptime(
+                            date_data, "%d.%m.%y").strftime("%Y-%m-%d")
+
+                        sales_date = datetime.strptime(
+                            date_data, "%d.%m.%y").date()
+                    else:
+                        return Response({
+                            "code": 400,
+                            "status": "failed",
+                            "message": "Invalid date format",
+                            "errors": {
+                                "pick_date": [f"Error: Expected a string, but got {type(pick_date)}. Value: {pick_date}"]
+                            }
+                        })
+                    if file_data_cl is not None:
+                        file_data_cl = file_data_cl.dropna(how='all')
+
+                        # Select relevant columns and rename them
+                        file_data_cl = file_data_cl[['Unnamed: 1', 'Unnamed: 2', 'Unnamed: 3',
+                                                    'Unnamed: 4', 'Unnamed: 5']]
+                        file_data_cl.columns = [
+                            'member_ID', 'cash_amount', 'card_amount', 'due_amount', 'total']
+                        file_data_cl = file_data_cl.iloc[3:-
+                                                         1].reset_index(drop=True)
+                        # Convert numeric columns
+                        numeric_columns = ['cash_amount',
+                                           'card_amount', 'due_amount', 'total']
+                        file_data_cl[numeric_columns] = file_data_cl[numeric_columns].apply(
+                            pd.to_numeric, errors='coerce').fillna(0)
+                        # Calculate totals
+                        totals = {col: int(file_data_cl[col].sum())
+                                  for col in numeric_columns}
+                        totals['cash_amount'] = int(totals['cash_amount'])
+                        totals['card_amount'] = int(totals['card_amount'])
+                        totals['due_amount'] = int(totals['due_amount'])
+                        totals['total'] = int(totals['total'])
+                except Exception as e:
+                    return Response({
+                        "code": 400,
+                        "status": "failed",
+                        "message": "Invalid excel file",
+                        "errors": {
+                            "excel_file": ["There was an error while reading the excel. Please check if you have uploaded the correct file."]
+                        }
+                    }, status=400)
+                # Process the data as needed
+                data = file_data_cl.to_dict(orient='records')
+                income_particular = serializer.validated_data["income_particular"]
+                received_from = serializer.validated_data["received_from"]
+                confirm_reupload = serializer.validated_data["confirm_reupload"]
+                if not confirm_reupload:
+                    if len(data) >= 1:
+                        single_record = data[0]
+                        single_member_ID = single_record["member_ID"]
+                        single_cash_amount = single_record["cash_amount"]
+                        single_card_amount = single_record["card_amount"]
+                        single_due_amount = single_record["due_amount"]
+                        single_total = single_record["total"]
+                        is_same_invoice_exist = Invoice.objects.filter(
+                            member__member_ID=single_member_ID,
+                            balance_due=single_due_amount,
+                            paid_amount=single_card_amount+single_cash_amount,
+                            total_amount=single_total,
+                            excel_upload_date=lng_date,
+                            invoice_type__name="others"
+                        ).exists()
+                        if is_same_invoice_exist:
+                            return Response({
+                                "code": 400,
+                                "status": "failed",
+                                "message": "This file was previously uploaded with same data.",
+                                "errors": {
+                                    "excel_file": ["This file was uploaded previously with same data. If you want to reupload it make sure you have confirm_reupload  attribute set to true."]
+                                }
+                            }, status=400)
+                with transaction.atomic():
+                    invoice_type, _ = InvoiceType.objects.get_or_create(
+                        name="others")
+                    cash_payment_method, _ = PaymentMethod.objects.get_or_create(
+                        name="cash")
+                    card_payment_method, _ = PaymentMethod.objects.get_or_create(
+                        name="card")
+                    both_payment_method, _ = PaymentMethod.objects.get_or_create(
+                        name="both")
+                    sale_type, _ = SaleType.objects.get_or_create(
+                        name="others")
+                    full_income_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
+                        name="full")
+                    partial_income_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
+                        name="partial")
+                    uploaded_member_data = []
+                    for record in data:
+                        paid_amount = record["cash_amount"] + \
+                            record["card_amount"]
+                        total_amount = record["total"]
+                        due_amount = record["due_amount"]
+                        payment_method = None
+                        start_date = lng_date
+                        if record["card_amount"] == 0 and record["cash_amount"] == 0:
+                            payment_method = both_payment_method
+                        elif record["card_amount"] != 0:
+                            payment_method = card_payment_method
+                        else:
+                            payment_method = cash_payment_method
+                        if paid_amount == total_amount:
+                            income_receiving_type = full_income_receiving_type
+                        else:
+                            income_receiving_type = partial_income_receiving_type
+                        try:
+                            member = Member.objects.get(
+                                member_ID=record["member_ID"])
+                        except Member.DoesNotExist:
+                            uploaded_member_data.append({
+                                "member": record["member_ID"],
+                                "status": "failed",
+                                "reason": "Member doesn't exist",
+                            })
+                            continue
+                        invoice = Invoice.objects.create(
+                            invoice_number=generate_unique_invoice_number(),
+                            balance_due=record["due_amount"],
+                            paid_amount=paid_amount,
+                            due_date=start_date,
+                            issue_date=datetime.today(),
+                            total_amount=total_amount,
+                            is_full_paid=paid_amount == total_amount,
+                            status="paid" if total_amount == paid_amount else "partial_paid",
+                            excel_upload_date=lng_date,
+                            invoice_type=invoice_type,
+                            generated_by=request.user,
+                            member=member)
+                        transaction_obj = Transaction.objects.create(
+                            amount=paid_amount,
+                            member=member,
+                            invoice=invoice,
+                            payment_method=payment_method,
+                            notes="This transaction was recorded from excel file."
+                        )
+                        payment_obj = Payment.objects.create(
+                            payment_amount=paid_amount,
+                            payment_status=invoice.status,
+                            notes="This payment was recorded from excel file.",
+                            transaction=transaction_obj,
+                            invoice=invoice,
+                            member=member,
+                            payment_method=payment_method,
+                            processed_by=request.user
+                        )
+                        due_date = start_date if record["due_amount"] == 0 else None
+                        sale_obj = Sale.objects.create(sale_number=generate_unique_sale_number(),
+                                                       sub_total=invoice.total_amount,
+                                                       total_amount=invoice.total_amount,
+                                                       payment_status=invoice.status,
+                                                       due_date=due_date,
+                                                       notes="Sale created from excel file.",
+                                                       sale_source_type=sale_type,
+                                                       customer=member,
+                                                       payment_method=payment_method,
+                                                       invoice=invoice
+                                                       )
+                        Income.objects.create(
+                            receivable_amount=invoice.total_amount,
+                            final_receivable=invoice.total_amount,
+                            actual_received=invoice.paid_amount,
+                            reaming_due=invoice.balance_due,
+                            particular=income_particular,
+                            received_from_type=received_from,
+                            member=member,
+                            received_by=payment_method,
+                            sale=sale_obj,
+                            receiving_type=income_receiving_type)
+                        if due_amount > 0:  # it has due
+                            due_obj = Due.objects.create(
+                                original_amount=invoice.total_amount,
+                                due_amount=invoice.balance_due,
+                                paid_amount=invoice.paid_amount,
+                                due_date=start_date,
+                                payment_status=invoice.status,
+                                member=member,
+                                invoice=invoice,
+                                payment=payment_obj,
+                                transaction=transaction_obj,
+                            )
+                            MemberDue.objects.create(
+                                amount_due=due_obj.due_amount,
+                                due_date=start_date,
+                                amount_paid=invoice.paid_amount,
+                                payment_date=datetime.today(),
+                                notes="This due has been recorded from excel file",
+                                member=member,
+                                due_reference=due_obj
+                            )
+                        uploaded_member_data.append({
+                            "member_ID": member.member_ID,
+                            "status": "success",
+                            "reason": "Successfully uploaded"
+                        })
+                    log_activity_task.delay_on_commit(
+                        request_data_activity_log(request),
+                        verb="View",
+                        severity_level="info",
+                        description="User uploaded an excel file",
+                    )
+                    delete_all_financial_cache.delay()
+                    return Response({
+                        "code": 201,
+                        "status": "success",
+                        "message": "Data uploaded successfully",
+                        "data": uploaded_member_data
+                    }, status=status.HTTP_201_CREATED)
+                return Response({
+                    "code": 200,
+                    "status": "success",
+                    "message": "Excel file uploaded successfully",
+                    "totals": totals
+                }, status=status.HTTP_200_OK)
+            else:
+                # activity log
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="View",
+                    severity_level="info",
+                    description="User tried to upload an excel file and faced error",
+                )
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Bad request",
+                    "errors": serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="View",
+                severity_level="info",
+                description="User tried to upload an excel file and faced error",
             )
             return Response({
                 "code": 500,
