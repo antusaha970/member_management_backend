@@ -1,4 +1,4 @@
-from activity_log.tasks import get_location, get_client_ip, log_activity_task
+from activity_log.tasks import  log_activity_task
 from rest_framework.exceptions import NotAuthenticated, PermissionDenied
 from .tasks import send_otp_email
 from .serializers import RegistrationSerializer, LoginSerializer, ForgetPasswordSerializer, VerifyOtpSerializer
