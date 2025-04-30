@@ -72,7 +72,6 @@ class Invoice(FinancialBaseModel):
     def __str__(self):
         return f"{self.invoice_number}"
 
-
 class InvoiceItem(FinancialBaseModel):
     # relations
     invoice = models.ForeignKey(

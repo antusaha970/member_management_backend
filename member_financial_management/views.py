@@ -21,6 +21,7 @@ from .utils.functions import generate_unique_invoice_number, generate_unique_sal
 from datetime import datetime
 from member.models import Member
 import pandas as pd
+from django.http import Http404
 logger = logging.getLogger("myapp")
 
 
@@ -836,11 +837,67 @@ class InvoiceSpecificView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    # def delete(self, request, id):
+    #     try:
+    #         with transaction.atomic():
+    #             invoice = Invoice.active_objects.prefetch_related(
+    #                 "transaction_invoice", "payment_invoice", "sale_invoice", "due_invoice", "invoice_items", "due_invoice__member_due_due_reference").select_for_update().get(pk=id)
+    #             invoice.is_active = False
+    #             invoice.save(update_fields=["is_active"])
+    #             invoice.transaction_invoice.all().update(is_active=False)
+    #             invoice.payment_invoice.all().update(is_active=False)
+    #             invoice.sale_invoice.all().update(is_active=False)
+    #             invoice.due_invoice.all().update(is_active=False)
+    #             invoice.invoice_items.all().update(is_active=False)
+    #             for due in invoice.due_invoice.all():
+    #                 MemberDue.objects.filter(
+    #                     due_reference=due).update(is_active=False)
+    #             for sale in invoice.sale_invoice.all():
+    #                 Income.objects.filter(sale=sale).update(is_active=False)
+
+    #             delete_all_financial_cache.delay()
+    #             log_activity_task.delay_on_commit(
+    #                 request_data_activity_log(request),
+    #                 verb="delete",
+    #                 severity_level="info",
+    #                 description="user deleted a single invoice",
+    #             )
+    #             return Response({
+    #                 "code": 200,
+    #                 "status": "success",
+    #                 "message": "Invoice deleted successfully",
+    #                 "data": {
+    #                     "invoice": id
+    #                 }
+    #             }, status=200)
+    #     except Exception as e:
+    #         logger.exception(str(e))
+    #         log_activity_task.delay_on_commit(
+    #             request_data_activity_log(request),
+    #             verb="delete",
+    #             severity_level="info",
+    #             description="user tried to delete a single invoice and faced error",
+    #         )
+    #         return Response({
+    #             "code": 500,
+    #             "status": "failed",
+    #             "message": "Something went wrong",
+    #             "errors": {
+    #                 "server_error": [str(e)]
+    #             }
+    #         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     def delete(self, request, id):
         try:
             with transaction.atomic():
-                invoice = Invoice.active_objects.prefetch_related(
-                    "transaction_invoice", "payment_invoice", "sale_invoice", "due_invoice", "invoice_items", "due_invoice__member_due_due_reference").select_for_update().get(pk=id)
+                try:
+                    invoice = Invoice.active_objects.prefetch_related(
+                        "transaction_invoice", "payment_invoice", "sale_invoice", "due_invoice",
+                        "invoice_items", "due_invoice__member_due_due_reference"
+                    ).select_for_update().get(pk=id)
+                except Invoice.DoesNotExist:
+                    raise Http404("Invoice does not exist for this id")
+
                 invoice.is_active = False
                 invoice.save(update_fields=["is_active"])
                 invoice.transaction_invoice.all().update(is_active=False)
@@ -848,9 +905,10 @@ class InvoiceSpecificView(APIView):
                 invoice.sale_invoice.all().update(is_active=False)
                 invoice.due_invoice.all().update(is_active=False)
                 invoice.invoice_items.all().update(is_active=False)
+
                 for due in invoice.due_invoice.all():
-                    MemberDue.objects.filter(
-                        due_reference=due).update(is_active=False)
+                    MemberDue.objects.filter(due_reference=due).update(is_active=False)
+
                 for sale in invoice.sale_invoice.all():
                     Income.objects.filter(sale=sale).update(is_active=False)
 
@@ -869,12 +927,23 @@ class InvoiceSpecificView(APIView):
                         "invoice": id
                     }
                 }, status=200)
+
+        except Http404 as e:
+            return Response({
+                "code": 404,
+                "status": "failed",
+                "message": "Invoice not found",
+                "errors": {
+                    "invoice": [str(e)]
+                }
+            }, status=404)
+
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
                 verb="delete",
-                severity_level="info",
+                severity_level="error",
                 description="user tried to delete a single invoice and faced error",
             )
             return Response({
