@@ -976,6 +976,26 @@ class InvoiceSpecificView(APIView):
                 payment_method = serializer.validated_data["payment_method"]
                 with transaction.atomic():
                     invoice = Invoice.active_objects.get(pk=id)
+                    if invoice.status == "unpaid":
+                        invoice.balance_due = balance_due
+                        invoice.paid_amount = paid_amount
+                        invoice.total_amount = total_amount
+                        invoice.save(update_fields=[
+                                     "balance_due", "paid_amount", "total_amount"])
+                        delete_all_financial_cache.delay()
+                        log_activity_task.delay_on_commit(
+                            request_data_activity_log(request),
+                            verb="Update",
+                            severity_level="info",
+                            description="User Updated an invoice. ",
+                        )
+                        return Response({
+                            "code": 200,
+                            "status": "success",
+                            "message": "Invoice updated successfully",
+                            "data": serializers.InvoiceForViewSerializer(invoice).data
+                        }, status=200)
+
                     full_income_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
                         name="full")
                     partial_income_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
@@ -1773,6 +1793,7 @@ class MemberDueView(APIView):
                 adjust_from_balance = serializer.validated_data["adjust_from_balance"]
                 due = member_due.due_reference
                 invoice = due.invoice
+                # pdb.set_trace()
                 sale = Sale.objects.prefetch_related("income_sale").get(
                     invoice=invoice)
                 income = sale.income_sale.first()

@@ -20,24 +20,25 @@ class ActivityLogAPIView(APIView):
 
     def get(self, request):
         try:
-            query_items = sorted(request.query_params.items())
-            query_string = urlencode(query_items) if query_items else "default"
-            cache_key = f"single_activity_logs::{query_string}"
-            cached_response = cache.get(cache_key)
-            if cached_response:
-                return Response(cached_response, status=200)
             user = request.user
             activity_logs = ActivityLog.objects.filter(
                 user=user).order_by('id')
 
             if not activity_logs.exists():
-                log_request(request, "No activity logs found for this user","error","No activity logs found for this user")
+                log_request(request, "No activity logs found for this user",
+                            "error", "No activity logs found for this user")
                 return Response({
                     "code": status.HTTP_404_NOT_FOUND,
                     "message": "No activity logs found for this user.",
                     "status": "failed",
                     "data": []
                 }, status=status.HTTP_404_NOT_FOUND)
+            query_items = sorted(request.query_params.items())
+            query_string = urlencode(query_items) if query_items else "default"
+            cache_key = f"single_activity_logs::{query_string}_user_{user.id}"
+            cached_response = cache.get(cache_key)
+            if cached_response:
+                return Response(cached_response, status=200)
 
             paginator = CustomPageNumberPagination()
             paginated_queryset = paginator.paginate_queryset(
@@ -50,8 +51,9 @@ class ActivityLogAPIView(APIView):
                 serializer = NormalUserActivityLogSerializer(
                     paginated_queryset, many=True)
 
-            log_request(request, "retrieved logged data successfully","info","retrieved logged data successfully")
-            final_response= paginator.get_paginated_response({
+            log_request(request, "retrieved logged data successfully",
+                        "info", "retrieved logged data successfully")
+            final_response = paginator.get_paginated_response({
                 "code": status.HTTP_200_OK,
                 "message": f"{user.username} retrieved logged data successfully",
                 "status": "success",
@@ -65,7 +67,8 @@ class ActivityLogAPIView(APIView):
         except Exception as e:
             logger.exception(str(e))
             # activity log
-            log_request(request, "An error occurred while retrieving activity logs","error","An error occurred while retrieving activity logs")
+            log_request(request, "An error occurred while retrieving activity logs",
+                        "error", "An error occurred while retrieving activity logs")
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
                 "message": "An error occurred while retrieving activity logs.",
@@ -87,7 +90,7 @@ class AllUserActivityLogAPIView(APIView):
             cached_response = cache.get(cache_key)
             if cached_response:
                 return Response(cached_response, status=200)
-            
+
             activity_logs = ActivityLog.objects.all().order_by('id')
             paginator = CustomPageNumberPagination()
             paginated_queryset = paginator.paginate_queryset(
