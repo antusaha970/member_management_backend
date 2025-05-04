@@ -978,10 +978,9 @@ class InvoiceSpecificView(APIView):
                     invoice = Invoice.active_objects.get(pk=id)
                     if invoice.status == "unpaid":
                         invoice.balance_due = balance_due
-                        invoice.paid_amount = paid_amount
                         invoice.total_amount = total_amount
                         invoice.save(update_fields=[
-                                     "balance_due", "paid_amount", "total_amount"])
+                                     "balance_due",  "total_amount"])
                         delete_all_financial_cache.delay()
                         log_activity_task.delay_on_commit(
                             request_data_activity_log(request),
