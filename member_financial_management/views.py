@@ -1018,8 +1018,10 @@ class InvoiceSpecificView(APIView):
                         processed_by=request.user
                     )
                     due_date = datetime.today()
+                    
                     old_sale_ref = Sale.active_objects.select_related(
                         "sale_source_type").filter(invoice=invoice).first()
+                    
                     sale_type = old_sale_ref.sale_source_type
                     Sale.objects.filter(
                         invoice=invoice).update(is_active=False)
