@@ -12,7 +12,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAdminUser,IsAuthenticated
 from activity_log.tasks import  log_activity_task
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
-from activity_log.tasks import get_location, get_client_ip, log_activity_task
+from activity_log.tasks import log_activity_task
 from activity_log.utils.functions import request_data_activity_log
 import logging
 logger = logging.getLogger("myapp")

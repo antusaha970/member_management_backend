@@ -108,7 +108,7 @@ class MemberView(APIView):
                     # activity log
                     log_request(request, "Member update success", "info", "user updated a member successfully")
                     # cache delete
-                    delete_members_list_cache.delay()
+                    delete_members_cache.delay()
 
                     return Response({
                         'code': 200,
@@ -160,8 +160,6 @@ class MemberView(APIView):
             if member.status == 2:
                 # activity log
                 log_request(request, "Member delete failed", "info", "user tried to delete member but made an invalid request")
-                # cache delete
-                delete_members_cache.delay()
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -318,7 +316,7 @@ class MemberView(APIView):
                 'data': data
             }, status=status.HTTP_200_OK)
             # cache response
-            cache.set(cache_key, final_response.data, 60*2)
+            cache.set(cache_key, final_response.data, 60*30)
             return final_response
             
         except Member.DoesNotExist:
@@ -492,7 +490,7 @@ class MemberListView(APIView):
                 "message": "View all members",
                 "data": serializer.data
             }, 200)
-            cache.set(cache_key, final_response.data, 60*3)
+            cache.set(cache_key, final_response.data, 60*30)
             return final_response
 
         except Exception as server_error:
@@ -1761,7 +1759,7 @@ class MemberHistoryView(APIView):
             }, 200)
 
             # Cache the response
-            cache.set(cache_key, final_response.data, 60*2)
+            cache.set(cache_key, final_response.data, 60*30)
             return final_response
         except Exception as e:
             logger.exception(str(e))
@@ -1804,7 +1802,7 @@ class MemberSingleHistoryView(APIView):
             }, status=status.HTTP_200_OK)
             
             # Cache the response
-            cache.set(cache_key, final_response.data, 60*2)
+            cache.set(cache_key, final_response.data, 60*30)
             return final_response
         except MemberHistory.DoesNotExist:
             

@@ -1,6 +1,7 @@
 import requests
 import logging
 logger = logging.getLogger("myapp")
+from activity_log.tasks import log_activity_task
 
 
 def get_client_ip(request):
@@ -66,3 +67,12 @@ def request_data_activity_log(request):
 
     }
     return data
+
+
+def log_request(request, message, severity_level, description):
+    log_activity_task.delay_on_commit(
+        request_data_activity_log(request),
+        verb=message,
+        severity_level=severity_level,
+        description=description,
+    )

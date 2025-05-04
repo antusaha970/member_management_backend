@@ -907,7 +907,8 @@ class InvoiceSpecificView(APIView):
                 invoice.invoice_items.all().update(is_active=False)
 
                 for due in invoice.due_invoice.all():
-                    MemberDue.objects.filter(due_reference=due).update(is_active=False)
+                    MemberDue.objects.filter(
+                        due_reference=due).update(is_active=False)
 
                 for sale in invoice.sale_invoice.all():
                     Income.objects.filter(sale=sale).update(is_active=False)
@@ -945,6 +946,184 @@ class InvoiceSpecificView(APIView):
                 verb="delete",
                 severity_level="error",
                 description="user tried to delete a single invoice and faced error",
+            )
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def patch(self, request, id):
+        try:
+            is_exist = Invoice.active_objects.filter(pk=id).exists()
+            if not is_exist:
+                return Response({
+                    "code": 404,
+                    "status": "failed",
+                    "message": "No invoice found with this id.",
+                    "errors": {
+                        "invoice": ["No invoice found with this id."]
+                    }
+                }, status=404)
+            serializer = serializers.InvoiceUpdateSerializer(data=request.data)
+            if serializer.is_valid():
+                balance_due = serializer.validated_data["balance_due"]
+                paid_amount = serializer.validated_data["paid_amount"]
+                total_amount = serializer.validated_data["total_amount"]
+                payment_method = serializer.validated_data["payment_method"]
+                with transaction.atomic():
+                    invoice = Invoice.active_objects.get(pk=id)
+                    if invoice.status == "unpaid":
+                        invoice.balance_due = balance_due
+                        invoice.total_amount = total_amount
+                        invoice.save(update_fields=[
+                                     "balance_due",  "total_amount"])
+                        delete_all_financial_cache.delay()
+                        log_activity_task.delay_on_commit(
+                            request_data_activity_log(request),
+                            verb="Update",
+                            severity_level="info",
+                            description="User Updated an invoice. ",
+                        )
+                        return Response({
+                            "code": 200,
+                            "status": "success",
+                            "message": "Invoice updated successfully",
+                            "data": serializers.InvoiceForViewSerializer(invoice).data
+                        }, status=200)
+
+                    full_income_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
+                        name="full")
+                    partial_income_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
+                        name="partial")
+                    paid_amount = paid_amount
+                    total_amount = total_amount
+                    due_amount = balance_due
+                    if paid_amount == total_amount:
+                        income_receiving_type = full_income_receiving_type
+                    else:
+                        income_receiving_type = partial_income_receiving_type
+                    invoice.balance_due = due_amount
+                    invoice.paid_amount = paid_amount
+                    invoice.total_amount = total_amount
+                    if total_amount == paid_amount:
+                        invoice.status = "paid"
+                    else:
+                        invoice.status = invoice.status
+                    invoice.save(update_fields=[
+                                 "balance_due", "paid_amount", "total_amount", "status"])
+                    Transaction.objects.filter(
+                        invoice=invoice).update(is_active=False)
+                    transaction_obj = Transaction.objects.create(
+                        amount=invoice.paid_amount,
+                        member=invoice.member,
+                        invoice=invoice,
+                        payment_method=payment_method,
+                        notes="The transaction has been made after updating an invoice."
+                    )
+                    Payment.objects.filter(
+                        invoice=invoice).update(is_active=False)
+                    payment_obj = Payment.objects.create(
+                        payment_amount=paid_amount,
+                        payment_status=invoice.status,
+                        notes="This payment has been made after updating an invoice.",
+                        transaction=transaction_obj,
+                        invoice=invoice,
+                        member=invoice.member,
+                        payment_method=payment_method,
+                        processed_by=request.user
+                    )
+                    due_date = datetime.today()
+                    old_sale_ref = Sale.active_objects.select_related(
+                        "sale_source_type").filter(invoice=invoice).first()
+                    sale_type = old_sale_ref.sale_source_type
+                    Sale.objects.filter(
+                        invoice=invoice).update(is_active=False)
+                    sale_obj = Sale.objects.create(sale_number=generate_unique_sale_number(),
+                                                   sub_total=invoice.total_amount,
+                                                   total_amount=invoice.total_amount,
+                                                   payment_status=invoice.status,
+                                                   due_date=due_date,
+                                                   notes="This sale has been created after updating an invoice.",
+                                                   sale_source_type=sale_type,
+                                                   customer=invoice.member,
+                                                   payment_method=payment_method,
+                                                   invoice=invoice
+                                                   )
+                    old_income_ref = Income.objects.select_related(
+                        "particular", "received_from_type").filter(sale=old_sale_ref).first()
+                    income_particular = old_income_ref.particular
+                    received_from = old_income_ref.received_from_type
+                    Income.objects.filter(
+                        sale=old_sale_ref).update(is_active=False)
+                    Income.objects.create(
+                        receivable_amount=invoice.total_amount,
+                        final_receivable=invoice.total_amount,
+                        actual_received=invoice.paid_amount,
+                        reaming_due=invoice.balance_due,
+                        particular=income_particular,
+                        received_from_type=received_from,
+                        member=invoice.member,
+                        received_by=payment_method,
+                        sale=sale_obj,
+                        receiving_type=income_receiving_type)
+                    Due.objects.filter(
+                        invoice=invoice).update(is_active=False)
+                    old_due_ref = Due.objects.filter(invoice=invoice).first()
+                    MemberDue.objects.filter(
+                        due_reference=old_due_ref).update(is_active=False)
+                    if due_amount > 0:  # it has due
+                        due_obj = Due.objects.create(
+                            original_amount=invoice.total_amount,
+                            due_amount=invoice.balance_due,
+                            paid_amount=invoice.paid_amount,
+                            due_date=datetime.today(),
+                            payment_status=invoice.status,
+                            member=invoice.member,
+                            invoice=invoice,
+                            payment=payment_obj,
+                            transaction=transaction_obj,
+                        )
+                        MemberDue.objects.create(
+                            amount_due=due_obj.due_amount,
+                            due_date=datetime.today(),
+                            amount_paid=invoice.paid_amount,
+                            payment_date=datetime.today(),
+                            notes="This due has been created when a invoice was updated.",
+                            member=invoice.member,
+                            due_reference=due_obj
+                        )
+                    delete_all_financial_cache.delay()
+                    log_activity_task.delay_on_commit(
+                        request_data_activity_log(request),
+                        verb="Update",
+                        severity_level="info",
+                        description="User Updated an invoice. ",
+                    )
+                    return Response({
+                        "code": 200,
+                        "status": "success",
+                        "message": "Invoice updated successfully",
+                        "data": serializers.InvoiceForViewSerializer(invoice).data
+                    }, status=200)
+            else:
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Bad request.",
+                    "errors": serializer.errors
+                }, status=404)
+
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Update",
+                severity_level="info",
+                description="User Updated an invoice and faced an error. ",
             )
             return Response({
                 "code": 500,
@@ -1611,6 +1790,7 @@ class MemberDueView(APIView):
                 adjust_from_balance = serializer.validated_data["adjust_from_balance"]
                 due = member_due.due_reference
                 invoice = due.invoice
+                # pdb.set_trace()
                 sale = Sale.objects.prefetch_related("income_sale").get(
                     invoice=invoice)
                 income = sale.income_sale.first()
