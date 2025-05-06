@@ -1,4 +1,4 @@
-from activity_log.tasks import  log_activity_task
+from activity_log.tasks import log_activity_task
 from rest_framework.exceptions import NotAuthenticated, PermissionDenied
 from .tasks import send_otp_email
 from .serializers import RegistrationSerializer, LoginSerializer, ForgetPasswordSerializer, VerifyOtpSerializer
@@ -28,7 +28,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
 from rest_framework_simplejwt.exceptions import InvalidToken
 from django.utils.datastructures import MultiValueDict
-from .utils.permissions_classes import RegisterUserPermission
+from .utils.permissions_classes import RegisterUserPermission, GroupViewPermission, GroupCreatePermission, GroupDeletePermission, GroupEditPermission, GroupUserManagementPermission
 from activity_log.utils.functions import request_data_activity_log
 from .utils.rate_limiting_classes import LoginRateThrottle
 from django.core.cache import cache
@@ -288,6 +288,9 @@ class AccountLoginLogoutView(APIView):
 
 
 class ForgetPasswordView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
     def post(self, request):
         """
             Set OTP to the OTP model if user with email exist
@@ -831,8 +834,14 @@ class CustomPermissionView(APIView):
 
 class GroupPermissionView(APIView):
     def get_permissions(self):
-        if self.request.method == "POST" or self.request.method == "PATCH" or self.request.method == "DELETE":
-            return [IsAdminUser()]
+        if self.request.method == "PATCH":
+            return [GroupEditPermission()]
+        elif self.request.method == "DELETE":
+            return [GroupDeletePermission()]
+        elif self.request.method == "POST":
+            return [GroupCreatePermission()]
+        elif self.request.method == "GET":
+            return [GroupViewPermission()]
         else:
             return [IsAuthenticated()]
 
@@ -1012,7 +1021,8 @@ class GroupPermissionView(APIView):
 
 
 class AssignGroupPermissionView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated,
+                          GroupUserManagementPermission]
 
     def post(self, request):
         try:
@@ -1538,7 +1548,7 @@ class GetUserPermissionsView(APIView):
 
 
 class GroupDetailsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, GroupViewPermission]
 
     def get(self, request, id):
         try:
