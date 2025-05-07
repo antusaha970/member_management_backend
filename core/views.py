@@ -7,9 +7,18 @@ from rest_framework.viewsets import ModelViewSet
 from .models import *
 from member.utils.utility_functions import generate_member_id
 import pdb
+from member.utils.permission_classes import AddMemberPermission
+from rest_framework.exceptions import ValidationError, PermissionDenied
+
 
 class MembershipTypeView(APIView):
     permission_classes = [IsAuthenticated]
+    
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [AddMemberPermission()]
+        else:
+            return [IsAuthenticated()]
 
     def post(self, request):
         data = request.data
@@ -51,6 +60,11 @@ class MembershipTypeView(APIView):
 class InstituteNameView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [AddMemberPermission()]
+        else:
+            return [IsAuthenticated()]
     def post(self, request):
         data = request.data
         serializer = InstituteNameSerializer(data=data)
@@ -104,222 +118,198 @@ class GenderViewSet(ModelViewSet):
     serializer_class = GenderSerializer
     queryset = Gender.objects.all()
     permission_classes = [IsAuthenticated]
+    
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [AddMemberPermission()]
+        else:
+            return [IsAuthenticated()]
 
     def handle_exception(self, exc):
         response = super().handle_exception(exc)
+
         if response.status_code == 401:
             return response
-
-        # If there is a DRF validation error, reformat it
-        if response is not None and isinstance(response.data, dict):
-            errors = {field: messages for field,
-                      messages in response.data.items()}
-            
-            return Response({
-                "code": response.status_code,
-                "message": "Operation failed",
-                "status": "failed",
-                'errors': errors}, status=response.status_code)
-            
-        return response
+        # Reformat only known types  validation and permission errors
+        if isinstance(exc, (ValidationError, PermissionDenied)):
+            return Response(response.data, status=response.status_code) 
 
 
 class MembershipStatusChoiceViewSet(ModelViewSet):
     serializer_class = MembershipStatusChoiceSerializer
     queryset = MembershipStatusChoice.objects.all()
     permission_classes = [IsAuthenticated]
+    
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [AddMemberPermission()]
+        else:
+            return [IsAuthenticated()]
 
     def handle_exception(self, exc):
         response = super().handle_exception(exc)
+
         if response.status_code == 401:
             return response
-
-        # If there is a DRF validation error, reformat it
-        if response is not None and isinstance(response.data, dict):
-            errors = {field: messages for field,
-                      messages in response.data.items()}
-            return Response({
-                "code": response.status_code,
-                "message": "Operation failed",
-                "status": "failed",
-                'errors': errors}, status=response.status_code)
-        return response
-
+        # Reformat only known types  validation and permission errors
+        if isinstance(exc, (ValidationError, PermissionDenied)):
+            return Response(response.data, status=response.status_code)
 
 class MaritalStatusChoiceViewSet(ModelViewSet):
     serializer_class = MaritalStatusChoiceSerializer
     queryset = MaritalStatusChoice.objects.all()
     permission_classes = [IsAuthenticated]
+    
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [AddMemberPermission()]
+        else:
+            return [IsAuthenticated()]
 
     def handle_exception(self, exc):
         response = super().handle_exception(exc)
+
         if response.status_code == 401:
             return response
-
-        # If there is a DRF validation error, reformat it
-        if response is not None and isinstance(response.data, dict):
-            errors = {field: messages for field,
-                      messages in response.data.items()}
-            return Response({
-                "code": response.status_code,
-                "message": "Operation failed",
-                "status": "failed",
-                'errors': errors}, status=response.status_code)
-        return response
+        # Reformat only known types  validation and permission errors
+        if isinstance(exc, (ValidationError, PermissionDenied)):
+            return Response(response.data, status=response.status_code)
 
 
 class EmploymentTypeChoiceViewSet(ModelViewSet):
     serializer_class = EmploymentTypeChoiceSerializer
     queryset = EmploymentTypeChoice.objects.all()
     permission_classes = [IsAuthenticated]
+    
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [AddMemberPermission()]
+        else:
+            return [IsAuthenticated()]
 
     def handle_exception(self, exc):
         response = super().handle_exception(exc)
+
         if response.status_code == 401:
             return response
-
-        # If there is a DRF validation error, reformat it
-        if response is not None and isinstance(response.data, dict):
-            errors = {field: messages for field,
-                      messages in response.data.items()}
-            
-            return Response({
-                "code": response.status_code,
-                "message": "Operation failed",
-                "status": "failed",
-                'errors': errors}, status=response.status_code)
-        return response
-
+        # Reformat only known types  validation and permission errors
+        if isinstance(exc, (ValidationError, PermissionDenied)):
+            return Response(response.data, status=response.status_code)
 
 class EmailTypeChoiceViewSet(ModelViewSet):
     serializer_class = EmailTypeChoiceSerializer
     queryset = EmailTypeChoice.objects.all()
     permission_classes = [IsAuthenticated]
+    
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [AddMemberPermission()]
+        else:
+            return [IsAuthenticated()]
 
     def handle_exception(self, exc):
         response = super().handle_exception(exc)
+
         if response.status_code == 401:
             return response
-
-        # If there is a DRF validation error, reformat it
-        if response is not None and isinstance(response.data, dict):
-            errors = {field: messages for field,
-                      messages in response.data.items()}
-            return Response({
-                "code": response.status_code,
-                "message": "Operation failed",
-                "status": "failed",
-                'errors': errors}, status=response.status_code)
-        return response
-
+        # Reformat only known types  validation and permission errors
+        if isinstance(exc, (ValidationError, PermissionDenied)):
+            return Response(response.data, status=response.status_code)
 
 class ContactTypeChoiceViewSet(ModelViewSet):
     serializer_class = ContactTypeChoiceSerializer
     queryset = ContactTypeChoice.objects.all()
     permission_classes = [IsAuthenticated]
-
+    
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [AddMemberPermission()]
+        else:
+            return [IsAuthenticated()]
+        
     def handle_exception(self, exc):
-        response = super().handle_exception(exc)
-        if response.status_code == 401:
-            return response
-
-        # If there is a DRF validation error, reformat it
-        if response is not None and isinstance(response.data, dict):
-            errors = {field: messages for field,
-                      messages in response.data.items()}
-            return Response({
-                "code": response.status_code,
-                "message": "Operation failed",
-                "status": "failed",
-                'errors': errors}, status=response.status_code)
-        return response
-
-
+            response = super().handle_exception(exc)
+            if response.status_code == 401:
+                return response
+            # Reformat only known types  validation and permission errors
+            if isinstance(exc, (ValidationError, PermissionDenied)):
+                return Response(response.data, status=response.status_code)
 class AddressTypeChoiceViewSet(ModelViewSet):
     serializer_class = AddressTypeChoiceSerializer
     queryset = AddressTypeChoice.objects.all()
     permission_classes = [IsAuthenticated]
+    
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [AddMemberPermission()]
+        else:
+            return [IsAuthenticated()]
 
     def handle_exception(self, exc):
         response = super().handle_exception(exc)
         if response.status_code == 401:
             return response
-
-        # If there is a DRF validation error, reformat it
-        if response is not None and isinstance(response.data, dict):
-            errors = {field: messages for field,
-                      messages in response.data.items()}
-            return Response({
-                "code": response.status_code,
-                "message": "Operation failed",
-                "status": "failed",
-                'errors': errors}, status=response.status_code)
-        return response
+        # Reformat only known types  validation and permission errors
+        if isinstance(exc, (ValidationError, PermissionDenied)):
+            return Response(response.data, status=response.status_code)
 
 
 class DocumentTypeChoiceViewSet(ModelViewSet):
     serializer_class = DocumentTypeChoiceSerializer
     queryset = DocumentTypeChoice.objects.all()
     permission_classes = [IsAuthenticated]
+    
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [AddMemberPermission()]
+        else:
+            return [IsAuthenticated()]
 
     def handle_exception(self, exc):
         response = super().handle_exception(exc)
         if response.status_code == 401:
             return response
-
-        # If there is a DRF validation error, reformat it
-        if response is not None and isinstance(response.data, dict):
-            errors = {field: messages for field,
-                      messages in response.data.items()}
-            return Response({
-                "code": response.status_code,
-                "message": "Operation failed",
-                "status": "failed",
-                'errors': errors}, status=response.status_code)
-        return response
+        # Reformat only known types  validation and permission errors
+        if isinstance(exc, (ValidationError, PermissionDenied)):
+            return Response(response.data, status=response.status_code)
 
 
 class SpouseStatusChoiceViewSet(ModelViewSet):
     serializer_class = SpouseStatusChoiceSerializer
     queryset = SpouseStatusChoice.objects.all()
     permission_classes = [IsAuthenticated]
+    
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [AddMemberPermission()]
+        else:
+            return [IsAuthenticated()]
 
     def handle_exception(self, exc):
         response = super().handle_exception(exc)
         if response.status_code == 401:
             return response
+        # Reformat only known types  validation and permission errors
+        if isinstance(exc, (ValidationError, PermissionDenied)):
+            return Response(response.data, status=response.status_code)
 
-        # If there is a DRF validation error, reformat it
-        if response is not None and isinstance(response.data, dict):
-            errors = {field: messages for field,
-                      messages in response.data.items()}
-            
-            return Response({
-                "code": response.status_code,
-                "message": "Operation failed",
-                "status": "failed",
-                'errors': errors}, status=response.status_code)
-        return response
 
 
 class DescendantRelationChoiceViewSet(ModelViewSet):
     serializer_class = DescendantRelationChoiceSerializer
     queryset = DescendantRelationChoice.objects.all()
     permission_classes = [IsAuthenticated]
+    
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [AddMemberPermission()]
+        else:
+            return [IsAuthenticated()]
 
     def handle_exception(self, exc):
         response = super().handle_exception(exc)
         if response.status_code == 401:
             return response
-
-        # If there is a DRF validation error, reformat it
-        if response is not None and isinstance(response.data, dict):
-            errors = {field: messages for field,
-                      messages in response.data.items()}
-            
-            return Response({
-                "code": response.status_code,
-                "message": "Operation failed",
-                "status": "failed",
-                'errors': errors}, status=response.status_code)
-        return response
+        # Reformat only known types  validation and permission errors
+        if isinstance(exc, (ValidationError, PermissionDenied)):
+            return Response(response.data, status=response.status_code)

@@ -761,8 +761,10 @@ class CustomPermissionView(APIView):
                     "code": status.HTTP_201_CREATED,
                     "message": "Operation successful",
                     "status": "success",
-                    "id": permission.id,
-                    "permission_name": name
+                    "data": {
+                        "id": permission.id,
+                        "permission_name": name
+                    }
                 }, status=status.HTTP_201_CREATED)
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
