@@ -28,7 +28,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
 from rest_framework_simplejwt.exceptions import InvalidToken
 from django.utils.datastructures import MultiValueDict
-from .utils.permissions_classes import RegisterUserPermission, GroupViewPermission, GroupCreatePermission, GroupDeletePermission, GroupEditPermission, GroupUserManagementPermission
+from .utils.permissions_classes import RegisterUserPermission, GroupViewPermission, GroupCreatePermission, GroupDeletePermission, GroupEditPermission, GroupUserManagementPermission, CustomPermissionSetPermission
 from activity_log.utils.functions import request_data_activity_log
 from .utils.rate_limiting_classes import LoginRateThrottle
 from django.core.cache import cache
@@ -741,7 +741,7 @@ class UserView(APIView):
 
 
 class CustomPermissionView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, CustomPermissionSetPermission]
 
     def post(self, request):
         try:
