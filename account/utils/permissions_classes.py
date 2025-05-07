@@ -2,7 +2,7 @@ from account.permissions import HasCustomPermission
 
 
 class RegisterUserPermission(HasCustomPermission):
-    required_permission = "register_account"
+    required_permission = "reg"
 
 
 class GroupCreatePermission(HasCustomPermission):
@@ -14,7 +14,7 @@ class GroupEditPermission(HasCustomPermission):
 
 
 class GroupViewPermission(HasCustomPermission):
-    required_permission = "group_view"
+    required_permission = "groups"
 
 
 class GroupDeletePermission(HasCustomPermission):
@@ -23,3 +23,7 @@ class GroupDeletePermission(HasCustomPermission):
 
 class GroupUserManagementPermission(HasCustomPermission):
     required_permission = "group_management"
+
+
+class CustomPermissionSetPermission(HasCustomPermission):
+    required_permission = "/permissions"
