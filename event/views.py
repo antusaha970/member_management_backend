@@ -1,34 +1,42 @@
 
+from .utils.permission_classes import EventManagementPermission
+from member_financial_management.tasks import delete_invoice_cache
+from django.utils.http import urlencode
+from django.core.cache import cache
+from core.utils.pagination import CustomPageNumberPagination
+import pdb
 from django.shortcuts import render
 from rest_framework.views import APIView
 from event import serializers
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Venue,Event,EventTicket,EventMedia,EventFee
-from rest_framework.permissions import IsAdminUser,IsAuthenticated
-from activity_log.tasks import  log_activity_task
+from .models import Venue, Event, EventTicket, EventMedia, EventFee
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from activity_log.tasks import log_activity_task
 from activity_log.utils.functions import request_data_activity_log
 from member_financial_management.utils.functions import generate_unique_invoice_number
 from member.models import Member
 from django.db import transaction
 from member_financial_management.serializers import InvoiceSerializer
 from member_financial_management.models import Invoice, InvoiceItem, InvoiceType
-from promo_code_app.models import PromoCode,AppliedPromoCode
+from promo_code_app.models import PromoCode, AppliedPromoCode
 from datetime import date
 from silk.profiling.profiler import silk_profile
 from django.utils.decorators import method_decorator
+from member_financial_management.utils.permission_classes import MemberFinancialManagementPermission
 import logging
 logger = logging.getLogger("myapp")
-import pdb
-from core.utils.pagination import CustomPageNumberPagination
-from django.core.cache import cache
-from django.utils.http import urlencode
-from member_financial_management.tasks import delete_invoice_cache
-
 # Create your views here.
+
+
 class EventVenueView(APIView):
-    permission_classes = [IsAuthenticated,IsAdminUser]
-    def post(self,request):
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsAuthenticated(), EventManagementPermission()]
+        else:
+            return [IsAuthenticated()]
+
+    def post(self, request):
         """
         Creates a new event venue instance and logs an activity.
         Args:
@@ -40,7 +48,7 @@ class EventVenueView(APIView):
             data = request.data
             serializer = serializers.EventVenueSerializer(data=data)
             if serializer.is_valid():
-                
+
                 venue_instance = serializer.save()
                 cache.delete_pattern("event_venues::*")
                 street_address = serializer.validated_data["street_address"]
@@ -52,18 +60,18 @@ class EventVenueView(APIView):
                     description="Venue created successfully for register a event",
                 )
                 # delete the cache for venues
-                
+
                 return Response({
-                        "code": 201,
-                        "message": "Venue created successfully",
-                        "status": "success",
-                        "data": {
-                            "venue_id": venue_instance.id,
-                            "street_address":street_address,
-                            "city":city
-                            
-                        }
-                        }, status=status.HTTP_201_CREATED)
+                    "code": 201,
+                    "message": "Venue created successfully",
+                    "status": "success",
+                    "data": {
+                        "venue_id": venue_instance.id,
+                        "street_address": street_address,
+                        "city": city
+
+                    }
+                }, status=status.HTTP_201_CREATED)
             else:
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),
@@ -77,15 +85,15 @@ class EventVenueView(APIView):
                     "message": "Invalid request",
                     "errors": serializer.errors,
                 }, status=status.HTTP_400_BAD_REQUEST)
-               
+
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),
-                    verb="Venue creation failed",
-                    severity_level="error",
-                    description="user tried to create a new venue but made an invalid request",
-                )
+                request_data_activity_log(request),
+                verb="Venue creation failed",
+                severity_level="error",
+                description="user tried to create a new venue but made an invalid request",
+            )
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
                 "message": "Error occurred",
@@ -109,10 +117,11 @@ class EventVenueView(APIView):
                 return Response(cached_response, status=200)
             paginator = CustomPageNumberPagination()
             venues = Venue.objects.filter(is_active=True).order_by('id')
-            all_venues = paginator.paginate_queryset(venues, request, view=self)
-            serializer = serializers.EventVenueViewSerializer(all_venues, many=True)
+            all_venues = paginator.paginate_queryset(
+                venues, request, view=self)
+            serializer = serializers.EventVenueViewSerializer(
+                all_venues, many=True)
             data = serializer.data
-            
 
             # Log the activity
             log_activity_task.delay_on_commit(
@@ -150,10 +159,15 @@ class EventVenueView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-            
+
 class EventView(APIView):
-    permission_classes = [IsAuthenticated,IsAdminUser]
-    def post(self,request):
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsAuthenticated(), EventManagementPermission()]
+        else:
+            return [IsAuthenticated()]
+
+    def post(self, request):
         """
         Creates a new event instance and logs an activity.
         Args:
@@ -165,25 +179,25 @@ class EventView(APIView):
             data = request.data
             serializer = serializers.EventSerializer(data=data)
             if serializer.is_valid():
-                event_instance=serializer.save()
+                event_instance = serializer.save()
                 # delete the cache for events
                 cache.delete_pattern("events::*")
-                event_title=serializer.validated_data["title"]
+                event_title = serializer.validated_data["title"]
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),
                     verb="Event created successfully",
                     severity_level="info",
                     description="Event created successfully for register a event",)
                 return Response({
-                        "code": 201,
-                        "message": "Event created successfully",
-                        "status": "success",
-                        "data": {
-                            "event_id": event_instance.id,
-                            "event_title":event_title,
-                            
-                        }
-                        }, status=status.HTTP_201_CREATED)
+                    "code": 201,
+                    "message": "Event created successfully",
+                    "status": "success",
+                    "data": {
+                        "event_id": event_instance.id,
+                        "event_title": event_title,
+
+                    }
+                }, status=status.HTTP_201_CREATED)
             else:
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),
@@ -195,9 +209,8 @@ class EventView(APIView):
                     "status": "failed",
                     "message": "Invalid request",
                     "errors": serializer.errors,
-                }, status=status.HTTP_400_BAD_REQUEST)    
-                
-                
+                }, status=status.HTTP_400_BAD_REQUEST)
+
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -212,7 +225,7 @@ class EventView(APIView):
                 'errors': {
                     'server_error': [str(e)]
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+
     def get(self, request):
         """
         Retrieves a list of all events and logs an activity.
@@ -228,15 +241,16 @@ class EventView(APIView):
                 return Response(cached_response, status=200)
             paginator = CustomPageNumberPagination()
             events = (
-                        Event.objects.filter(is_active=True)
-                        .select_related('venue', 'organizer')
-                        .prefetch_related('event_media')
-                        .order_by('id')
-                    )
-            all_events = paginator.paginate_queryset(events, request, view=self)
+                Event.objects.filter(is_active=True)
+                .select_related('venue', 'organizer')
+                .prefetch_related('event_media')
+                .order_by('id')
+            )
+            all_events = paginator.paginate_queryset(
+                events, request, view=self)
             serializer = serializers.EventViewSerializer(all_events, many=True)
             data = serializer.data
-    
+
             # Log the activity
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
@@ -247,7 +261,7 @@ class EventView(APIView):
                 "code": 200,
                 "message": "Events retrieved successfully",
                 "status": "success",
-                "data": data  
+                "data": data
             })
             cache.set(cache_key, final_response.data, timeout=60*30)
             return final_response
@@ -265,11 +279,16 @@ class EventView(APIView):
                 'errors': {
                     'server_error': [str(e)]
                 }
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)      
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-                 
+
 class EventDetailView(APIView):
-    permission_classes = [IsAuthenticated,IsAdminUser]
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsAuthenticated(), EventManagementPermission()]
+        else:
+            return [IsAuthenticated()]
+
     def get(self, request, event_id):
         """
         Retrieves a specific event by its event_id and logs an activity.
@@ -289,7 +308,7 @@ class EventDetailView(APIView):
                                  .get(pk=event_id)
             serializer = serializers.EventViewSerializer(event)
             log_activity_task.delay_on_commit(
-                
+
                 request_data_activity_log(request),
                 verb="Retrieve event details",
                 severity_level="info",
@@ -316,7 +335,7 @@ class EventDetailView(APIView):
                 "errors": {
                     "event": ["Event not found"]
                 }})
-                
+
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -329,14 +348,19 @@ class EventDetailView(APIView):
                 "message": "Error occurred",
                 "status": "failed",
                 'errors': {
-                    'server_error': [str(e)] 
+                    'server_error': [str(e)]
                 }
             })
-            
-                           
+
+
 class EventTicketView(APIView):
-    permission_classes = [IsAuthenticated,IsAdminUser]
-    def post(self,request):
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsAuthenticated(), EventManagementPermission()]
+        else:
+            return [IsAuthenticated()]
+
+    def post(self, request):
         """
         Creates a new event ticket and logs an activity.
         Args:
@@ -348,23 +372,23 @@ class EventTicketView(APIView):
             data = request.data
             serializer = serializers.EventTicketSerializer(data=data)
             if serializer.is_valid():
-                ticket_instance=serializer.save()
+                ticket_instance = serializer.save()
                 # delete the cache for event tickets
                 cache.delete_pattern("event_tickets::*")
-                ticket_name=serializer.validated_data["ticket_name"]
+                ticket_name = serializer.validated_data["ticket_name"]
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),
                     verb="Event ticket created successfully",
                     severity_level="info",
                     description="Event ticket created successfully for register a event",)
                 return Response({
-                        "code": 201,
-                        "message": "Event ticket created successfully",
-                        "status": "success",
-                        "data": {
-                            "ticket_id": ticket_instance.id,
-                            "ticket_name": ticket_name
-                        }})
+                    "code": 201,
+                    "message": "Event ticket created successfully",
+                    "status": "success",
+                    "data": {
+                        "ticket_id": ticket_instance.id,
+                        "ticket_name": ticket_name
+                    }})
             else:
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),
@@ -391,7 +415,7 @@ class EventTicketView(APIView):
                 'errors': {
                     'server_error': [str(e)]
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+
     def get(self, request):
         """
         Retrieves a list of all event tickets and logs an activity.
@@ -399,20 +423,23 @@ class EventTicketView(APIView):
             Response: The response containing the list of event tickets.
         """
         try:
-            
+
             query_items = sorted(request.query_params.items())
             query_string = urlencode(query_items) if query_items else "default"
             cache_key = f"event_tickets::{query_string}"
             cached_response = cache.get(cache_key)
             if cached_response:
                 return Response(cached_response, status=200)
-            event_ticket = EventTicket.objects.filter(is_active=True).select_related("event").order_by('id')
+            event_ticket = EventTicket.objects.filter(
+                is_active=True).select_related("event").order_by('id')
             paginator = CustomPageNumberPagination()
             # Implement pagination
-            all_event_ticket = paginator.paginate_queryset(event_ticket, request, view=self)
-            serializer = serializers.EventTicketViewSerializer(all_event_ticket, many=True)
+            all_event_ticket = paginator.paginate_queryset(
+                event_ticket, request, view=self)
+            serializer = serializers.EventTicketViewSerializer(
+                all_event_ticket, many=True)
             data = serializer.data
-            
+
             # Log the activity
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
@@ -423,7 +450,7 @@ class EventTicketView(APIView):
                 "code": 200,
                 "message": "Event tickets retrieved successfully",
                 "status": "success",
-                "data": data  
+                "data": data
             })
             cache.set(cache_key, final_response.data, timeout=60 * 30)
             return final_response
@@ -441,12 +468,17 @@ class EventTicketView(APIView):
                 'errors': {
                     'server_error': [str(e)]
                 }
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)      
-        
-        
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 class EventMediaView(APIView):
-    permission_classes = [IsAuthenticated,IsAdminUser]
-    def post(self,request):
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsAuthenticated(), EventManagementPermission()]
+        else:
+            return [IsAuthenticated()]
+
+    def post(self, request):
         """
         Creates a new event media and logs an activity.
         Args:
@@ -458,22 +490,22 @@ class EventMediaView(APIView):
             data = request.data
             serializer = serializers.EventMediaSerializer(data=data)
             if serializer.is_valid():
-                media_instance=serializer.save()
+                media_instance = serializer.save()
                 event_instance = serializer.validated_data["event"]
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),
                     verb="Event media created successfully",
                     severity_level="info",
                     description="Event media created successfully for register a event"
-                    )
+                )
                 return Response({
-                        "code": 201,
-                        "message": "Event media created successfully",
-                        "status": "success",
-                        "data": {
-                            "image_id": media_instance.id,
-                            "event_id": event_instance.id
-                        }
+                    "code": 201,
+                    "message": "Event media created successfully",
+                    "status": "success",
+                    "data": {
+                        "image_id": media_instance.id,
+                        "event_id": event_instance.id
+                    }
                 })
             else:
                 log_activity_task.delay_on_commit(
@@ -500,11 +532,17 @@ class EventMediaView(APIView):
                 "status": "failed",
                 'errors': {
                     'server_error': [str(e)]
-                }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)       
-     
+                }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 class EventFeeView(APIView):
-    permission_classes = [IsAuthenticated,IsAdminUser]   
-    def post(self,request):
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsAuthenticated(), EventManagementPermission()]
+        else:
+            return [IsAuthenticated()]
+
+    def post(self, request):
         """
         Creates a new event fee and logs an activity.
         Args:
@@ -516,7 +554,7 @@ class EventFeeView(APIView):
             data = request.data
             serializer = serializers.EventFeeSerializer(data=data)
             if serializer.is_valid():
-                fee_instance=serializer.save()
+                fee_instance = serializer.save()
                 # delete the cache for event fees
                 cache.delete_pattern("event_fees::*")
                 event_fee = serializer.validated_data["fee"]
@@ -526,14 +564,14 @@ class EventFeeView(APIView):
                     severity_level="info",
                     description="Event fee created successfully for register a event",)
                 return Response({
-                        "code": 201,
-                        "message": "Event fee created successfully",
-                        "status": "success",
-                        "data": {
-                            "fee_id": fee_instance.id,
-                            "event_fee": event_fee,
-                            
-                        }
+                    "code": 201,
+                    "message": "Event fee created successfully",
+                    "status": "success",
+                    "data": {
+                        "fee_id": fee_instance.id,
+                        "event_fee": event_fee,
+
+                    }
                 })
             else:
                 log_activity_task.delay_on_commit(
@@ -561,14 +599,14 @@ class EventFeeView(APIView):
                 'errors': {
                     'server_error': [str(e)]
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-     
+
     def get(self, request):
-         """
-         Retrieves a list of all event fees and logs an activity.
-         Returns:
-             Response: The response containing the list of event fees.
-         """
-         try:
+        """
+        Retrieves a list of all event fees and logs an activity.
+        Returns:
+            Response: The response containing the list of event fees.
+        """
+        try:
             query_items = sorted(request.query_params.items())
             query_string = urlencode(query_items) if query_items else "default"
             cache_key = f"event_fees::{query_string}"
@@ -578,8 +616,10 @@ class EventFeeView(APIView):
             event_fees = EventFee.objects.filter(is_active=True).order_by('id')
             # Implement pagination
             paginator = CustomPageNumberPagination()
-            all_event_fees = paginator.paginate_queryset(event_fees, request, view=self)
-            serializer = serializers.EventFeeViewSerializer(all_event_fees, many=True)
+            all_event_fees = paginator.paginate_queryset(
+                event_fees, request, view=self)
+            serializer = serializers.EventFeeViewSerializer(
+                all_event_fees, many=True)
             data = serializer.data
             # Log the activity
             log_activity_task.delay_on_commit(
@@ -591,18 +631,18 @@ class EventFeeView(APIView):
                 "code": 200,
                 "message": "Event fees retrieved successfully",
                 "status": "success",
-                "data": data  
-            })  
+                "data": data
+            })
             # Cache the data
             cache.set(cache_key, final_response.data, timeout=60 * 30)
-            return final_response 
-         except Exception as e:
+            return final_response
+        except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
                 verb="Event fees retrieve failed",
                 severity_level="error",
-                description="Error occurred while retrieving all event fees") 
+                description="Error occurred while retrieving all event fees")
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
                 "message": "Error occurred",
@@ -610,17 +650,24 @@ class EventFeeView(APIView):
                 'errors': {
                     'server_error': [str(e)]
                 }
-                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-               
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 class EventTicketDetailView(APIView):
-    permission_classes = [IsAuthenticated]
-    def get(self, request,ticket_id):
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsAuthenticated(), EventManagementPermission()]
+        else:
+            return [IsAuthenticated()]
+
+    def get(self, request, ticket_id):
         try:
             cache_key = f"event_ticket_details::{ticket_id}"
             cached_response = cache.get(cache_key)
             if cached_response:
                 return Response(cached_response, status=200)
-            event_ticket = EventTicket.objects.select_related('event').get(pk=ticket_id)
+            event_ticket = EventTicket.objects.select_related(
+                'event').get(pk=ticket_id)
             serializer = serializers.EventTicketViewSerializer(event_ticket)
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
@@ -668,10 +715,15 @@ class EventTicketDetailView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-                
+
+
 class EventTicketBuyView(APIView):
-    permission_classes = [IsAuthenticated]
-    
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsAuthenticated(), MemberFinancialManagementPermission()]
+        else:
+            return [IsAuthenticated()]
+
     def post(self, request):
         """
         Creates an invoice for an event ticket purchase.
@@ -684,7 +736,7 @@ class EventTicketBuyView(APIView):
             data = request.data
             serializer = serializers.EventTicketBuySerializer(data=data)
             if serializer.is_valid():
-                
+
                 member = serializer.validated_data["member_ID"]
                 member = Member.objects.get(member_ID=member)
                 event_ticket = serializer.validated_data["event_ticket"]
@@ -733,10 +785,8 @@ class EventTicketBuyView(APIView):
                     invoice_item = InvoiceItem.objects.create(
                         invoice=invoice
                     )
-                    invoice_item.event_tickets.set([event_ticket.id])    
-                    
-                
-                
+                    invoice_item.event_tickets.set([event_ticket.id])
+
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),
                     verb="Invoice created successfully",
@@ -748,7 +798,7 @@ class EventTicketBuyView(APIView):
                     "code": 200,
                     "message": "Invoice created successfully",
                     "status": "success",
-                    "data": InvoiceSerializer(invoice).data    
+                    "data": InvoiceSerializer(invoice).data
                 }, status=status.HTTP_200_OK)
             else:
                 log_activity_task.delay_on_commit(
@@ -762,7 +812,7 @@ class EventTicketBuyView(APIView):
                     "message": "Invalid request",
                     "errors": serializer.errors,
                 }, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:  
+        except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
@@ -777,11 +827,3 @@ class EventTicketBuyView(APIView):
                 'errors': {
                     'server_error': [str(e)]
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-      
-                
-            
-                            
-        
-                     
-        
-        
