@@ -241,6 +241,7 @@ class GroupModelSerializer(serializers.Serializer):
         instance.permission.set(permissions)
         instance.save()
         return instance
+    
 
 
 class AssignGroupPermissionSerializer(serializers.Serializer):
@@ -268,6 +269,7 @@ class AssignGroupPermissionSerializer(serializers.Serializer):
         instance.save()
         return instance
 
+    
 
 class GroupSerializerForViewAllGroups(serializers.ModelSerializer):
     class Meta:

@@ -836,14 +836,13 @@ class CustomPermissionView(APIView):
 
 class GroupPermissionView(APIView):
     def get_permissions(self):
-        if self.request.method == "PATCH":
-            return [GroupEditPermission()]
-        elif self.request.method == "DELETE":
-            return [GroupDeletePermission()]
-        elif self.request.method == "POST":
+       
+        if self.request.method == "POST":
             return [GroupCreatePermission()]
         elif self.request.method == "GET":
             return [GroupViewPermission()]
+        elif self.request.method =="DELETE":
+            return [GroupDeletePermission()]
         else:
             return [IsAuthenticated()]
 
@@ -934,6 +933,76 @@ class GroupPermissionView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    def delete(self,request):
+        data = request.data
+        group = data.get('group')
+        permission = data.get('permission')
+        try:
+            group_obj = GroupModel.objects.get(id=group)
+            if group_obj:
+                permission_exists = group_obj.permission.filter(id=permission).exists()
+                if permission_exists:
+                    group_obj.permission.remove(permission)
+                else:
+                    return Response({
+                        "code": status.HTTP_400_BAD_REQUEST,
+                        "message": "Operation failed",
+                        "status": "failed",
+                        "data": {
+                            "permission": ["Permission does not exist"]
+                        }
+                    }, status=status.HTTP_400_BAD_REQUEST)
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Deleting group",
+                severity_level="info",
+                description="Deleted a group",
+            )
+            return Response({
+                "code": status.HTTP_200_OK,
+                "message": "Operation successful",
+                "status": "success",
+                "detail": "Permission deleted successfully"
+            }, status=status.HTTP_200_OK)
+            
+        except GroupModel.DoesNotExist:
+            return Response({
+                "code": status.HTTP_400_BAD_REQUEST,
+                "message": "Operation failed",
+                "status": "failed",
+                "data": {
+                    "group": ["Group does not exist"]
+                }
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Error while deleting group",
+                severity_level="warning",
+                description="Error occurred while deleting a group",
+            )
+            return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
+                'errors': {
+                    'server_error': [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+   
+class SpecificGroupPermissionView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get_permissions(self):
+        if self.request.method == "DELETE":
+            return [GroupDeletePermission()]
+        elif self.request.method == "PATCH":
+            return [GroupEditPermission()]
+        else:
+            return [IsAuthenticated()]
+        
     def patch(self, request, group_id):
         """Update a group with required permissions at least one permission"""
         try:
@@ -1021,6 +1090,8 @@ class GroupPermissionView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    
+    
 
 class AssignGroupPermissionView(APIView):
     permission_classes = [IsAuthenticated,
