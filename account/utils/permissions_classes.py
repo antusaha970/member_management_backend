@@ -22,4 +22,4 @@ class GroupDeletePermission(HasCustomPermission):
 
 
 class GroupUserManagementPermission(HasCustomPermission):
-    required_permission = "group_user_management"
+    required_permission = "group_management"

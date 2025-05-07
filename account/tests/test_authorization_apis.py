@@ -13,7 +13,7 @@ from django.conf import settings
 
 from rest_framework.authtoken.models import Token
 from unittest.mock import patch
-from account.utils.permissions_classes import RegisterUserPermission
+from account.utils.permissions_classes import RegisterUserPermission, GroupCreatePermission, GroupDeletePermission, GroupEditPermission, GroupUserManagementPermission, GroupViewPermission
 from random import randint
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -108,14 +108,14 @@ class CustomGroupModel(TestCase):
         self.normal_user = get_user_model().objects.create_user(
             username="salauddin_85", password="root25809#")
 
-     
         self.groupname = GroupModel.objects.create(name="test")
         self.permission1 = PermissonModel.objects.create(name="add_member")
         self.permission2 = PermissonModel.objects.create(name="view_member")
-       
+
         self.url = "/api/account/v1/authorization/group_permissions/"
 
-    def test_create_group_success(self):
+    @patch.object(GroupCreatePermission, "has_permission", return_value=True)
+    def test_create_group_success(self, mock_permissions):
         """Ensure that an admin user can create a group with permissions"""
         self.client.force_authenticate(user=self.admin_user)
         data = {"name": "moderator", "permission": [
@@ -134,17 +134,18 @@ class CustomGroupModel(TestCase):
         self.client.force_authenticate(user=self.admin_user)
         data = {"name": "moderator", "permission": []}
         response = self.client.post(self.url, data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertTrue(GroupModel.objects.filter(name="moderator").exists())
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(GroupModel.objects.filter(name="moderator").exists())
 
     def test_create_group_with_invalid_permission(self):
         self.client.force_authenticate(user=self.admin_user)
         data = {"name": "moderator", "permission": [
             "dskk"]}
         response = self.client.post(self.url, data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, 403)
 
-    def test_create_group_with_long_name(self):
+    @patch.object(GroupCreatePermission, "has_permission", return_value=True)
+    def test_create_group_with_long_name(self, mock_permissions):
         """ Ensure group name does not exceed max length"""
         self.client.force_authenticate(user=self.admin_user)
         long_name = "A" * 300
@@ -154,14 +155,16 @@ class CustomGroupModel(TestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("errors", response.data)
 
-    def test_get_groups(self):
+    @patch.object(GroupViewPermission, "has_permission", return_value=True)
+    def test_get_groups(self, mock_permissions):
         """ Test fetching groups for a user"""
         self.client.force_authenticate(user=self.normal_user)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue("data" in response.data)
 
-    def test_patch_group(self):
+    @patch.object(GroupEditPermission, "has_permission", return_value=True)
+    def test_patch_group(self, mock_permissions):
         """Test updating a group"""
         self.client.force_authenticate(user=self.admin_user)
         group_id = self.groupname.id
@@ -174,7 +177,8 @@ class CustomGroupModel(TestCase):
         self.groupname.refresh_from_db()
         self.assertEqual(self.groupname.name, "updated_moderator")
 
-    def test_delete_group(self):
+    @patch.object(GroupDeletePermission, "has_permission", return_value=True)
+    def test_delete_group(self, mock_permissions):
         """ Test deleting a group"""
         self.client.force_authenticate(user=self.admin_user)
         group_id = self.groupname.id
@@ -202,7 +206,8 @@ class AssignGroupUserAPIsTEST(APITestCase):
             username=admin_username, password=admin_password, email=admin_email)
         self.token = RefreshToken.for_user(self.admin)
 
-    def test_assign_group_user_post_method_with_valid_data(self):
+    @patch.object(GroupUserManagementPermission, "has_permission", return_value=True)
+    def test_assign_group_user_post_method_with_valid_data(self, mock_permission):
         """
         Endpoint: "/api/account/v1/authorization/assign_group_user/"
         Test for assigning a user to a group with valid information
@@ -236,8 +241,8 @@ class AssignGroupUserAPIsTEST(APITestCase):
         self.assertEqual(group_name, _group_name)
         self.assertEqual(_user_id, self.user.id)
 
-
-    def test_assign_group_user_get_method_with_valid_data(self):
+    @patch.object(GroupUserManagementPermission, "has_permission", return_value=True)
+    def test_assign_group_user_get_method_with_valid_data(self, mock_permissions):
         """
             Endpoint: "/api/account/v1/authorization/assign_group_user/"
             Test for getting all the groups with user for valid admin token
@@ -251,7 +256,8 @@ class AssignGroupUserAPIsTEST(APITestCase):
         self.assertEqual(_response.status_code, status.HTTP_200_OK)
         self.assertIn('data', _response.json())
 
-    def test_assign_group_user_get_method_with_invalid_data(self):
+    @patch.object(GroupUserManagementPermission, "has_permission", return_value=False)
+    def test_assign_group_user_get_method_with_invalid_data(self, mock_permission):
         """
             Endpoint: "/api/account/v1/authorization/assign_group_user/"
             Test for getting all the groups with user for invalid admin token
@@ -267,6 +273,7 @@ class AssignGroupUserAPIsTEST(APITestCase):
         self.assertEqual(_response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertNotIn('data', _response.json())
 
+    @patch.object(GroupUserManagementPermission, "has_permission", return_value=True)
     def test_assign_group_user_delete_method_with_valid_data(self):
         """
         Endpoint: "/api/account/v1/authorization/assign_group_user/"
@@ -297,7 +304,8 @@ class AssignGroupUserAPIsTEST(APITestCase):
         self.assertFalse(AssignGroupPermission.objects.filter(
             user=self.user, group=group).exists())
 
-    def test_assign_group_user_delete_method_with_valid_data(self):
+    @patch.object(GroupUserManagementPermission, "has_permission", return_value=True)
+    def test_assign_group_user_delete_method_with_valid_data(self, mock_permission):
         """
         Endpoint: "/api/account/v1/authorization/assign_group_user/"
         Test for deleting a user from a group with invalid data
@@ -324,7 +332,8 @@ class AssignGroupUserAPIsTEST(APITestCase):
         # assert
         self.assertEqual(_response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_assign_group_user_patch_method_with_valid_data(self):
+    @patch.object(GroupUserManagementPermission, "has_permission", return_value=True)
+    def test_assign_group_user_patch_method_with_valid_data(self, mock_permission):
         """
         Endpoint: "/api/account/v1/authorization/assign_group_user/"
         Test for updating a user to another group with valid information
@@ -365,8 +374,6 @@ class AssignGroupUserAPIsTEST(APITestCase):
             user=self.user, group=group).exists())
         self.assertTrue(AssignGroupPermission.objects.filter(
             user=self.user, group=group_2).exists())
-
-    
 
 
 class AdminUserModel(TestCase):

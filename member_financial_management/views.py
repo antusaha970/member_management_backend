@@ -22,11 +22,12 @@ from datetime import datetime
 from member.models import Member
 import pandas as pd
 from django.http import Http404
+from .utils.permission_classes import MemberFinancialManagementPermission
 logger = logging.getLogger("myapp")
 
 
 class PaymentMethodView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
 
     def get(self, request):
         try:
@@ -123,7 +124,7 @@ class PaymentMethodView(APIView):
 
 
 class InvoicePaymentView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
 
     def post(self, request):
         try:
@@ -464,7 +465,7 @@ class InvoicePaymentView(APIView):
 
 
 class IncomeParticularView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
 
     def post(self, request):
         try:
@@ -558,7 +559,7 @@ class IncomeParticularView(APIView):
 
 
 class IncomeReceivedFromView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
 
     def post(self, request):
         try:
@@ -652,7 +653,7 @@ class IncomeReceivedFromView(APIView):
 
 
 class InvoiceShowView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
 
     def get(self, request):
         try:
@@ -794,7 +795,7 @@ class InvoiceShowView(APIView):
 
 
 class InvoiceSpecificView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
 
     def get(self, request, id):
         try:
@@ -1136,7 +1137,7 @@ class InvoiceSpecificView(APIView):
 
 
 class InvoiceCustomDeleteView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
 
     def delete(self, request):
         try:
@@ -1203,7 +1204,7 @@ class InvoiceCustomDeleteView(APIView):
 
 
 class IncomeView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
 
     def get(self, request):
         try:
@@ -1251,7 +1252,7 @@ class IncomeView(APIView):
 
 
 class IncomeSpecificView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
 
     def get(self, request, id):
         try:
@@ -1294,7 +1295,7 @@ class IncomeSpecificView(APIView):
 
 
 class SalesView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
 
     def get(self, request):
         try:
@@ -1348,7 +1349,7 @@ class SalesView(APIView):
 
 
 class SalesSpecificView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
 
     def get(self, request, id):
         try:
@@ -1400,7 +1401,7 @@ class SalesSpecificView(APIView):
 
 
 class TransactionView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
 
     def get(self, request):
         try:
@@ -1454,7 +1455,7 @@ class TransactionView(APIView):
 
 
 class TransactionSpecificView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
 
     def get(self, request, id):
         try:
@@ -1503,7 +1504,7 @@ class TransactionSpecificView(APIView):
 
 
 class PaymentView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
 
     def get(self, request):
         try:
@@ -1557,7 +1558,7 @@ class PaymentView(APIView):
 
 
 class PaymentSpecificView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
 
     def get(self, request, id):
         try:
@@ -1614,7 +1615,7 @@ class PaymentSpecificView(APIView):
 
 
 class DueView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
 
     def get(self, request):
         try:
@@ -1667,7 +1668,7 @@ class DueView(APIView):
 
 
 class DueSpecificView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
 
     def get(self, request, id):
         try:
@@ -1728,7 +1729,7 @@ class DueSpecificView(APIView):
 
 
 class MemberDueView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
 
     def get(self, request):
         try:
@@ -2022,7 +2023,7 @@ class MemberDueView(APIView):
 
 
 class MemberDueSpecificView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
 
     def get(self, request, id):
         try:
@@ -2071,7 +2072,7 @@ class MemberDueSpecificView(APIView):
 
 
 class MemberAccountView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
 
     def get(self, request):
         try:
@@ -2125,7 +2126,7 @@ class MemberAccountView(APIView):
 
 
 class MemberAccountSpecificSpecificView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
 
     def get(self, request, id):
         try:
@@ -2173,7 +2174,7 @@ class MemberAccountSpecificSpecificView(APIView):
 
 
 class MemberAccountRechargeView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
 
     def post(self, request):
         try:
@@ -2231,7 +2232,7 @@ class MemberAccountRechargeView(APIView):
 
 
 class LoungeUploadExcelView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
 
     def post(self, request):
         try:
@@ -2510,6 +2511,7 @@ class LoungeUploadExcelView(APIView):
 
 
 class OthersUploadExcelView(APIView):
+    permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
 
     def post(self, request):
         try:
