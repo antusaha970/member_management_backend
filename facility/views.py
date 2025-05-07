@@ -1,12 +1,13 @@
 
+import pdb
 from django.shortcuts import render
 from rest_framework.views import APIView
 from facility import serializers
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Facility,FacilityUseFee
-from rest_framework.permissions import IsAdminUser,IsAuthenticated
-from activity_log.tasks import  log_activity_task
+from .models import Facility, FacilityUseFee
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from activity_log.tasks import log_activity_task
 from activity_log.utils.functions import request_data_activity_log
 from member_financial_management.utils.functions import generate_unique_invoice_number
 from member.models import Member
@@ -24,14 +25,21 @@ from django.core.cache import cache
 from django.utils.http import urlencode
 from django.db.models import Q
 from .filters import FacilityFilter
+from .utils.permission_classes import FacilityManagementPermission
+from member_financial_management.utils.permission_classes import MemberFinancialManagementPermission
 from member_financial_management.tasks import delete_invoice_cache
 
 
 logger = logging.getLogger("myapp")
-import pdb
+
 
 class FacilityView(APIView):
-    permission_classes = [IsAuthenticated,IsAdminUser]
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsAuthenticated(), FacilityManagementPermission()]
+        else:
+            return [FacilityManagementPermission()]
+
     def post(self, request):
         """
         Creates a new facility instance and logs an activity.
@@ -42,10 +50,10 @@ class FacilityView(APIView):
         """
         try:
             data = request.data
-            serializer = serializers.FacilitySerializer(data = data)
+            serializer = serializers.FacilitySerializer(data=data)
             if serializer.is_valid():
                 facility_instance = serializer.save()
-                #delete the cache for the facility list
+                # delete the cache for the facility list
                 cache.delete_pattern("facilities::*")
                 facility_name = serializer.validated_data["name"]
                 log_activity_task.delay_on_commit(
@@ -88,6 +96,7 @@ class FacilityView(APIView):
                 'errors': {
                     'server_error': [str(e)]
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     def get(self, request):
         try:
             # Build cache key
@@ -102,13 +111,17 @@ class FacilityView(APIView):
                 return Response(cached_response, status=200)
 
             # Filtering using FacilityFilter
-            base_queryset = Facility.objects.filter(is_active=True).order_by("id")
-            filtered_qs = FacilityFilter(query_params, queryset=base_queryset).qs
+            base_queryset = Facility.objects.filter(
+                is_active=True).order_by("id")
+            filtered_qs = FacilityFilter(
+                query_params, queryset=base_queryset).qs
 
             # Pagination
             paginator = CustomPageNumberPagination()
-            paginated_qs = paginator.paginate_queryset(filtered_qs, request, view=self)
-            serializer = serializers.FacilityViewSerializer(paginated_qs, many=True)
+            paginated_qs = paginator.paginate_queryset(
+                filtered_qs, request, view=self)
+            serializer = serializers.FacilityViewSerializer(
+                paginated_qs, many=True)
 
             # Final response
             response_data = {
@@ -119,7 +132,8 @@ class FacilityView(APIView):
             }
             final_response = paginator.get_paginated_response(response_data)
             # Cache the response
-            cache.set(cache_key, final_response.data, timeout=60 * 30)  # 30 minutes
+            cache.set(cache_key, final_response.data,
+                      timeout=60 * 30)  # 30 minutes
 
             # Log the activity
             log_activity_task.delay_on_commit(
@@ -143,10 +157,15 @@ class FacilityView(APIView):
                 "message": "An error occurred while retrieving facilities",
                 "status": "failed"
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-     
-                
+
+
 class FacilityUseFeeView(APIView):
-    permission_classes = [IsAuthenticated,IsAdminUser]
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsAuthenticated(), FacilityManagementPermission()]
+        else:
+            return [FacilityManagementPermission()]
+
     def post(self, request):
         """
         Creates a new facility use fee instance and logs an activity.
@@ -205,7 +224,7 @@ class FacilityUseFeeView(APIView):
                 'errors': {
                     'server_error': [str(e)]
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+
     def get(self, request):
         """
         Retrieves a list of all facility use fees and logs an activity.
@@ -221,11 +240,14 @@ class FacilityUseFeeView(APIView):
             cached_response = cache.get(cache_key)
             if cached_response:
                 return Response(cached_response, status=status.HTTP_200_OK)
-            
-            facility_use_fees = FacilityUseFee.objects.filter(is_active=True).select_related('membership_type', 'facility').order_by('id')
+
+            facility_use_fees = FacilityUseFee.objects.filter(
+                is_active=True).select_related('membership_type', 'facility').order_by('id')
             paginator = CustomPageNumberPagination()
-            paginated_queryset = paginator.paginate_queryset(facility_use_fees, request, view=self)
-            serializer = serializers.FacilityUseFeeViewSerializer(paginated_queryset, many=True)
+            paginated_queryset = paginator.paginate_queryset(
+                facility_use_fees, request, view=self)
+            serializer = serializers.FacilityUseFeeViewSerializer(
+                paginated_queryset, many=True)
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
                 verb="Retrieve all facility use fees",
@@ -235,12 +257,13 @@ class FacilityUseFeeView(APIView):
                 "code": 200,
                 "message": "Facility use fees retrieved successfully",
                 "status": "success",
-                "data": serializer.data  
+                "data": serializer.data
             })
 
-            cache.set(cache_key, final_response.data, timeout=60 * 30)  # 30 minutes
+            cache.set(cache_key, final_response.data,
+                      timeout=60 * 30)  # 30 minutes
             return final_response
-        
+
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -256,13 +279,11 @@ class FacilityUseFeeView(APIView):
                     'server_error': [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-         
-                
+
 
 class FacilityBuyView(APIView):
-    permission_classes = [IsAuthenticated]
-    
-    
+    permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
+
     def post(self, request):
         """
         Creates an invoice for a facility purchase.
@@ -279,14 +300,15 @@ class FacilityBuyView(APIView):
                 member = Member.objects.get(member_ID=member)
                 facility = serializer.validated_data["facility"]
                 promo_code = serializer.validated_data["promo_code"]
-                facility_uses_fee = FacilityUseFee.objects.filter(facility=facility, membership_type=member.membership_type).first()
+                facility_uses_fee = FacilityUseFee.objects.filter(
+                    facility=facility, membership_type=member.membership_type).first()
                 fee = 0
                 if facility_uses_fee:
                     fee = facility_uses_fee.fee
                 else:
                     fee = facility.usages_fee
                 # pdb.set_trace()
-    
+
                 discount = 0
                 total_amount = fee
                 if promo_code is not None:
@@ -330,7 +352,7 @@ class FacilityBuyView(APIView):
                     invoice_item = InvoiceItem.objects.create(
                         invoice=invoice
                     )
-                    invoice_item.facility.set([facility.id])    
+                    invoice_item.facility.set([facility.id])
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),
                     verb="Invoice created successfully",
@@ -342,7 +364,7 @@ class FacilityBuyView(APIView):
                     "code": 200,
                     "message": "Invoice created successfully",
                     "status": "success",
-                    "data": InvoiceSerializer(invoice).data    
+                    "data": InvoiceSerializer(invoice).data
                 }, status=status.HTTP_200_OK)
             else:
                 log_activity_task.delay_on_commit(
@@ -356,7 +378,7 @@ class FacilityBuyView(APIView):
                     "message": "Invalid request",
                     "errors": serializer.errors,
                 }, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:  
+        except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
@@ -371,10 +393,14 @@ class FacilityBuyView(APIView):
                 'errors': {
                     'server_error': [str(e)]
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-            
+
+
 class FacilityDetailView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsAuthenticated(), FacilityManagementPermission()]
+        else:
+            return [FacilityManagementPermission()]
 
     def get(self, request, facility_id):
         try:
@@ -385,12 +411,14 @@ class FacilityDetailView(APIView):
             facility = Facility.objects.prefetch_related(
                 Prefetch(
                     'facility_use_fees',
-                    queryset=FacilityUseFee.objects.select_related('membership_type')
+                    queryset=FacilityUseFee.objects.select_related(
+                        'membership_type')
                 )
             ).get(pk=facility_id)
-            
+
             # Serialize the Facility data
-            facility_serializer = serializers.SpecificFacilityDetailSerializer(facility)
+            facility_serializer = serializers.SpecificFacilityDetailSerializer(
+                facility)
 
             # Log the activity
             log_activity_task.delay_on_commit(
@@ -400,14 +428,15 @@ class FacilityDetailView(APIView):
                 description="User retrieved a facility successfully",
             )
 
-            final_response =  Response({
+            final_response = Response({
                 "code": 200,
                 "message": "Facility retrieved successfully",
                 "status": "success",
                 "data": facility_serializer.data
             }, status=status.HTTP_200_OK)
             # Cache the response
-            cache.set(cache_key, final_response.data, timeout=60 * 30)  # 30 minutes
+            cache.set(cache_key, final_response.data,
+                      timeout=60 * 30)  # 30 minutes
             return final_response
 
         except Facility.DoesNotExist:
@@ -441,6 +470,4 @@ class FacilityDetailView(APIView):
                 "errors": {
                     "server_error": [str(e)]
                 }
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)            
-            
-            
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
