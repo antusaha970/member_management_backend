@@ -25,11 +25,17 @@ import pdb
 from member_financial_management.tasks import delete_invoice_cache
 from member_financial_management.models import Transaction, PaymentMethod, Payment, SaleType, Sale
 from member_financial_management.utils.functions import generate_unique_invoice_number
+from .utils.permission_classes import RestaurantManagementPermission
+from member_financial_management.utils.permission_classes import MemberFinancialManagementPermission
 logger = logging.getLogger("myapp")
 
 
 class RestaurantCuisineCategoryView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [RestaurantManagementPermission()]
+        else:
+            return [IsAuthenticated()]
 
     def post(self, request):
         try:
@@ -142,7 +148,11 @@ class RestaurantCuisineCategoryView(APIView):
 
 
 class RestaurantCategoryView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [RestaurantManagementPermission()]
+        else:
+            return [IsAuthenticated()]
 
     def post(self, request):
         try:
@@ -243,7 +253,11 @@ class RestaurantCategoryView(APIView):
 
 
 class RestaurantView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [RestaurantManagementPermission()]
+        else:
+            return [IsAuthenticated()]
 
     def get(self, request):
         try:
@@ -344,7 +358,11 @@ class RestaurantView(APIView):
 
 
 class RestaurantItemCategoryView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [RestaurantManagementPermission()]
+        else:
+            return [IsAuthenticated()]
 
     def post(self, request):
         try:
@@ -434,7 +452,11 @@ class RestaurantItemCategoryView(APIView):
 
 
 class RestaurantItemView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [RestaurantManagementPermission()]
+        else:
+            return [IsAuthenticated()]
 
     def get(self, request):
         try:
@@ -557,7 +579,11 @@ class RestaurantItemView(APIView):
 
 
 class RestaurantItemMediaView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [RestaurantManagementPermission()]
+        else:
+            return [IsAuthenticated()]
 
     def post(self, request):
         try:
@@ -601,7 +627,7 @@ class RestaurantItemMediaView(APIView):
 
 
 class RestaurantItemBuyView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
 
     def post(self, request):
         try:
@@ -688,7 +714,7 @@ class RestaurantItemBuyView(APIView):
 
 
 class RestaurantUploadExcelView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
 
     def post(self, request):
         try:

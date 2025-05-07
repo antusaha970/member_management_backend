@@ -542,7 +542,7 @@ class MemberListView(APIView):
 
 
 class MemberIdView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated,AddMemberPermission]
 
     def post(self, request):
         try:
@@ -1564,36 +1564,36 @@ class MemberDocumentView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def get(self,request):
-        try:
-            documents = models.Documents.objects.all()
+    # def get(self,request):
+    #     try:
+    #         documents = models.Documents.objects.all()
             
-            paginator = CustomPageNumberPagination()
-            paginated_queryset = paginator.paginate_queryset(
-                documents, request, view=self)
-            serializer = serializers.MemberDocumentViewSerializer(paginated_queryset, many=True)
+    #         paginator = CustomPageNumberPagination()
+    #         paginated_queryset = paginator.paginate_queryset(
+    #             documents, request, view=self)
+    #         serializer = serializers.MemberDocumentViewSerializer(paginated_queryset, many=True)
             
-            # activity log
-            log_request(request, "Member documents retrieved successfully","info","user tried to retrieve member documents and succeeded")
-            return paginator.get_paginated_response({
-                "code": 200,
-                "message": "Member documents retrieved successfully",
-                "status": "success",
-                "data": serializer.data
-            }, status=status.HTTP_200_OK)
+    #         # activity log
+    #         log_request(request, "Member documents retrieved successfully","info","user tried to retrieve member documents and succeeded")
+    #         return paginator.get_paginated_response({
+    #             "code": 200,
+    #             "message": "Member documents retrieved successfully",
+    #             "status": "success",
+    #             "data": serializer.data
+    #         }, status=status.HTTP_200_OK)
             
-        except Exception as e:
-            logger.exception(str(e))
-            # activity log
-            log_request(request, "Member documents retrieved failed","error","user tried to retrieve member documents but made an invalid request")
-            return Response({
-                "code": 500,
-                "status": "failed",
-                "message": "Something went wrong",
-                "errors": {
-                    "server_error": [str(e)]
-                }
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    #     except Exception as e:
+    #         logger.exception(str(e))
+    #         # activity log
+    #         log_request(request, "Member documents retrieved failed","error","user tried to retrieve member documents but made an invalid request")
+    #         return Response({
+    #             "code": 500,
+    #             "status": "failed",
+    #             "message": "Something went wrong",
+    #             "errors": {
+    #                 "server_error": [str(e)]
+    #             }
+    #         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
     def patch(self, request):
         try:
@@ -1707,7 +1707,7 @@ class AddMemberIDview(APIView):
 
 
 class MemberHistoryView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, ViewMemberPermission]
 
     def get(self, request):
         try:
@@ -1777,7 +1777,7 @@ class MemberHistoryView(APIView):
 
 
 class MemberSingleHistoryView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, ViewMemberPermission]
 
     def get(self, request, member_ID):
         try:

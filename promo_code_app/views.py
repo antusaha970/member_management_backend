@@ -9,19 +9,24 @@ from rest_framework.views import APIView
 from promo_code_app import serializers
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import IsAdminUser,IsAuthenticated
-from activity_log.tasks import  log_activity_task
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from activity_log.tasks import log_activity_task
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from activity_log.tasks import log_activity_task
 from activity_log.utils.functions import request_data_activity_log
 import logging
+from .utils.permission_classes import PromoCodeManagementPermission
 logger = logging.getLogger("myapp")
 
 
 class PromoCodeCategoryView(APIView):
-    permission_classes = [IsAuthenticated,IsAdminUser]
-    
-    def post(self,request):
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [PromoCodeManagementPermission(), IsAuthenticated()]
+        else:
+            return [IsAuthenticated()]
+
+    def post(self, request):
         """
         This endpoint allows you to create a new promo codes and logs an activity.
         Args:
@@ -117,8 +122,12 @@ class PromoCodeCategoryView(APIView):
 
 
 class PromoCodeView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
-    
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [PromoCodeManagementPermission(), IsAuthenticated()]
+        else:
+            return [IsAuthenticated()]
+
     def post(self, request):
         """
         This endpoint allows you to create a new promo code and logs an activity.
@@ -215,7 +224,11 @@ class PromoCodeView(APIView):
 
 
 class AppliedPromoCodeView(APIView):
-    permission_classes = [IsAuthenticated]
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [PromoCodeManagementPermission(), IsAuthenticated()]
+        else:
+            return [IsAuthenticated()]
 
     def get(self, request):
         try:
