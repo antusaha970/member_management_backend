@@ -13,7 +13,7 @@ from django.conf import settings
 
 from rest_framework.authtoken.models import Token
 from unittest.mock import patch
-from account.utils.permissions_classes import RegisterUserPermission, GroupCreatePermission, GroupDeletePermission, GroupEditPermission, GroupUserManagementPermission, GroupViewPermission
+from account.utils.permissions_classes import RegisterUserPermission,CustomPermissionSetPermission, GroupCreatePermission, GroupDeletePermission, GroupEditPermission, GroupUserManagementPermission, GroupViewPermission
 from random import randint
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -29,25 +29,26 @@ class CustomPermissionAPITest(TestCase):
         self.permission2 = PermissonModel.objects.create(name="view_member")
         # API endpoint
         self.url = "/api/account/v1/authorization/custom_permission_name/"
-
-    def test_create_permission_success(self):
+        
+    @patch.object(CustomPermissionSetPermission, "has_permission", return_value=True)
+    def test_create_permission_success(self, mock_permissions):
         admin = self.client.force_authenticate(user=self.admin_user)
         # print(admin.is_superuser)
         data = {"name": "add_member_permission"}
         response = self.client.post(self.url, data)
         succes = self.assertEqual(
             response.status_code, status.HTTP_201_CREATED)
-        ids = self.assertIn("id", response.data)
-        name = self.assertIn("permission_name", response.data)
+        ids = self.assertIn("id", response.data['data'])
+        name = self.assertIn("permission_name", response.data['data'])
         self.assertEqual(
-            response.data["permission_name"], "add_member_permission")
-
+            response.data["data"]["permission_name"], "add_member_permission")
     def test_create_permission_unauthenticated(self):
         """Test that unauthenticated users cannot create permissions and check error message"""
         data = {"name": "view_permission"}
         response = self.client.post(self.url, data)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertIn("errors", response.data)
+        self.assertIn("Invalid request", response.data["errors"]['request'])
 
     def test_create_permission_non_admin(self):
         """Test that a normal user (non-admin) cannot create permissions and validate response"""
@@ -56,8 +57,8 @@ class CustomPermissionAPITest(TestCase):
         response = self.client.post(self.url, data)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertIn("errors", response.data)
-
-    def test_create_permission_duplicate_name(self):
+    @patch.object(CustomPermissionSetPermission, "has_permission", return_value=True)
+    def test_create_permission_duplicate_name(self, mock_permissions):
         """Test that duplicate permission names are not allowed"""
         self.client.force_authenticate(user=self.admin_user)
         data = {"name": "add_member"}  # Already exists
@@ -65,8 +66,8 @@ class CustomPermissionAPITest(TestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("errors", response.data)
         self.assertIn("name", response.data["errors"])
-
-    def test_create_permission_empty_name(self):
+    @patch.object(CustomPermissionSetPermission, "has_permission", return_value=True)
+    def test_create_permission_empty_name(self, mock_permissions):
         """Test that an empty permission name is not allowed"""
         self.client.force_authenticate(user=self.admin_user)
         data = {"name": ""}
@@ -75,7 +76,8 @@ class CustomPermissionAPITest(TestCase):
         self.assertIn("errors", response.data)
         self.assertIn("name", response.data["errors"])
 
-    def test_get_all_permissions(self):
+    @patch.object(CustomPermissionSetPermission, "has_permission", return_value=True)
+    def test_get_all_permissions(self, mock_permissions):
         """Test fetching all permissions and check response data structure"""
         self.client.force_authenticate(user=self.admin_user)
         response = self.client.get(self.url)
