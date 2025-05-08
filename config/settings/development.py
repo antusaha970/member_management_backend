@@ -1,8 +1,12 @@
 from .base import *
-
+import os
 # Debug mode ON for development
 DEBUG = True
-
+# Production settings
+SILKY_PYTHON_PROFILER = True
+SILKY_PYTHON_PROFILER_BINARY = True
+SILKY_PYTHON_PROFILER_RESULT_PATH = os.path.join(MEDIA_ROOT, 'silk-profiles')
+os.makedirs(SILKY_PYTHON_PROFILER_RESULT_PATH, exist_ok=True)
 # Allow all hosts
 ALLOWED_HOSTS = ["*"]
 
