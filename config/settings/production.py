@@ -3,11 +3,15 @@ import pdb
 
 # Debug mode OFF for production
 DEBUG = False
+# Production settings
+SILKY_PYTHON_PROFILER = False
+SILKY_PYTHON_PROFILER_BINARY = False
+SILKY_META = False
 
 # Define production hosts
 ALLOWED_HOSTS = ["*"]
 
-# Use PostgreSQL in production
+# # Use PostgreSQL in production
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',

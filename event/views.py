@@ -21,7 +21,6 @@ from member_financial_management.serializers import InvoiceSerializer
 from member_financial_management.models import Invoice, InvoiceItem, InvoiceType
 from promo_code_app.models import PromoCode, AppliedPromoCode
 from datetime import date
-from silk.profiling.profiler import silk_profile
 from django.utils.decorators import method_decorator
 from member_financial_management.utils.permission_classes import MemberFinancialManagementPermission
 import logging
