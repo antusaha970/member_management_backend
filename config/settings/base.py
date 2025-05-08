@@ -237,5 +237,3 @@ DATABASES = {
     }
 }
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # Collected files
-SILKY_PYTHON_PROFILER = True
-SILKY_PYTHON_PROFILER_BINARY = True
