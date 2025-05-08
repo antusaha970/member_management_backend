@@ -3,7 +3,7 @@ from account.permissions import HasCustomPermission
 
 
 class ViewMemberPermission(HasCustomPermission):
-    required_permission = "members/view"
+    required_permission = "/members/view"
 
 
 class DeleteMemberPermission(HasCustomPermission):
@@ -11,7 +11,7 @@ class DeleteMemberPermission(HasCustomPermission):
 
 
 class AddMemberPermission(HasCustomPermission):
-    required_permission = "members/add"
+    required_permission = "/members/add"
 
 
 class UpdateMemberPermission(HasCustomPermission):
