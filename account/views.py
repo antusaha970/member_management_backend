@@ -28,7 +28,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
 from rest_framework_simplejwt.exceptions import InvalidToken
 from django.utils.datastructures import MultiValueDict
-from .utils.permissions_classes import RegisterUserPermission, GroupViewPermission, GroupCreatePermission, GroupDeletePermission, GroupEditPermission, GroupUserManagementPermission, CustomPermissionSetPermission
+from .utils.permissions_classes import RegisterUserPermission, GroupViewPermission, GroupCreatePermission, GroupDeletePermission, GroupEditPermission, GroupUserManagementPermission, CustomPermissionSetPermission, ViewAllUserPermission
 from activity_log.utils.functions import request_data_activity_log
 from .utils.rate_limiting_classes import LoginRateThrottle
 from django.core.cache import cache
@@ -701,11 +701,11 @@ class CustomTokenRefreshView(TokenRefreshView):
 
 
 class UserView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, ViewAllUserPermission]
 
     def get(self, request):
         try:
-            data = get_user_model().objects.all()
+            data = get_user_model().objects.all().order_by("id")
             paginator = CustomPageNumberPagination()
             paginated_queryset = paginator.paginate_queryset(
                 data, request, view=self)
@@ -836,12 +836,12 @@ class CustomPermissionView(APIView):
 
 class GroupPermissionView(APIView):
     def get_permissions(self):
-       
+
         if self.request.method == "POST":
             return [GroupCreatePermission()]
         elif self.request.method == "GET":
             return [GroupViewPermission()]
-        elif self.request.method =="DELETE":
+        elif self.request.method == "DELETE":
             return [GroupDeletePermission()]
         else:
             return [IsAuthenticated()]
@@ -933,14 +933,15 @@ class GroupPermissionView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def delete(self,request):
+    def delete(self, request):
         data = request.data
         group = data.get('group')
         permission = data.get('permission')
         try:
             group_obj = GroupModel.objects.get(id=group)
             if group_obj:
-                permission_exists = group_obj.permission.filter(id=permission).exists()
+                permission_exists = group_obj.permission.filter(
+                    id=permission).exists()
                 if permission_exists:
                     group_obj.permission.remove(permission)
                 else:
@@ -964,7 +965,7 @@ class GroupPermissionView(APIView):
                 "status": "success",
                 "detail": "Permission deleted successfully"
             }, status=status.HTTP_200_OK)
-            
+
         except GroupModel.DoesNotExist:
             return Response({
                 "code": status.HTTP_400_BAD_REQUEST,
@@ -990,11 +991,11 @@ class GroupPermissionView(APIView):
                     'server_error': [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-   
+
+
 class SpecificGroupPermissionView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def get_permissions(self):
         if self.request.method == "DELETE":
             return [GroupDeletePermission()]
@@ -1002,7 +1003,7 @@ class SpecificGroupPermissionView(APIView):
             return [GroupEditPermission()]
         else:
             return [IsAuthenticated()]
-        
+
     def patch(self, request, group_id):
         """Update a group with required permissions at least one permission"""
         try:
@@ -1090,8 +1091,6 @@ class SpecificGroupPermissionView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    
-    
 
 class AssignGroupPermissionView(APIView):
     permission_classes = [IsAuthenticated,

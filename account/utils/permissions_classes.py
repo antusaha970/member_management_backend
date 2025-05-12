@@ -27,3 +27,7 @@ class GroupUserManagementPermission(HasCustomPermission):
 
 class CustomPermissionSetPermission(HasCustomPermission):
     required_permission = "/permissions"
+
+
+class ViewAllUserPermission(HasCustomPermission):
+    required_permission = "/users"
