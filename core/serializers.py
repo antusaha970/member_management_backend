@@ -26,18 +26,28 @@ class MembershipTypeViewSerializer(serializers.ModelSerializer):
     
 class InstituteNameSerializer(serializers.Serializer):
     name = serializers.CharField()
+    code = serializers.CharField()
+    
 
     def validate_name(self, value):
-        is_exist = InstituteName.objects.filter(name=value).exists()
+        value_capitalize = value.title()
+        is_exist = InstituteName.objects.filter(name=value_capitalize).exists()
         if is_exist:
             raise serializers.ValidationError(
                 f'{value} already exists'
             )
-        return value
+        return value_capitalize
+    def validate_code(self, value):
+        value_upper = value.upper()
+        is_exist = InstituteName.objects.filter(code=value_upper).exists()
+        if is_exist:
+            raise serializers.ValidationError(
+                f'{value} already exists'
+            )
+        return value_upper
 
     def create(self, validated_data):
-        name = validated_data.get('name')
-        institute_name = InstituteName.objects.create(name=name)
+        institute_name = InstituteName.objects.create(**validated_data)
         return institute_name
 
 class InstituteNameViewSerializer(serializers.ModelSerializer):

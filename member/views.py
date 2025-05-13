@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-from .models import Member,Email, MembersFinancialBasics,Certificate, MemberHistory, CompanionInformation, Documents
+from .models import Member,Email, MembersFinancialBasics,InstituteName,Certificate, MemberHistory, CompanionInformation, Documents
 from .utils.permission_classes import ViewMemberPermission, AddMemberPermission, UpdateMemberPermission, DeleteMemberPermission
 import logging
 from activity_log.tasks import log_activity_task
@@ -550,7 +550,8 @@ class MemberIdView(APIView):
             serializer = serializers.MemberIdSerializer(data=data)
             if serializer.is_valid():
                 membership_type = serializer.validated_data['membership_type']
-                all_id = generate_member_id(membership_type)
+                institute_code = serializer.validated_data['institute_name']
+                all_id = generate_member_id(membership_type, institute_code)
                 # activity log
                 log_request(request, "Member id view succeeded","info","user tried to view member id and succeeded")
                 return Response({

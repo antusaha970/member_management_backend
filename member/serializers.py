@@ -90,24 +90,39 @@ class MemberSerializer(serializers.Serializer):
                 )
             return value
 
-        is_same_id_exist = Member.objects.filter(member_ID=value).exists()
-        if is_same_id_exist:
-            raise serializers.ValidationError(
-                f'{value} id already exists')
+        # step 1: Validate format
+        if '-' not in value:
+            raise serializers.ValidationError("Member ID must contain '-' followed by institute code (e.g. PM0001-IIT).")
+
+        # Step 2: Split the value into two parts
+        parts = value.split('-')
+
+        # Step 3: Validate format — must have exactly 2 parts and institute code must not be empty
+        if len(parts) != 2 or not parts[1].strip():
+            raise serializers.ValidationError("Invalid Member ID format. Expected format: PREFIX-INSTITUTE_CODE (e.g. PM0001-IIT).")
+
+        # Step 4: Check for existing Member ID
+        if Member.objects.filter(member_ID=value).exists():
+            raise serializers.ValidationError(f"'{value}' ID already exists.")
 
         return value
 
     def validate(self, attrs):
         member_ID = attrs.get("member_ID")
         membership_type = attrs.get("membership_type")
+        institute_name = attrs.get("institute_name")
+        institute_code = member_ID.split('-')[1]
+        print(institute_code,"institute_code")
         if not member_ID.startswith(membership_type):
             raise serializers.ValidationError(
                 {"member_ID": "Invalid member_ID"})
+        if not InstituteName.objects.filter(name = institute_name, code=institute_code).exists():
+            raise serializers.ValidationError(
+                {"institute_name": "Invalid institute name or code"})
 
         return super().validate(attrs)
 
     def create(self, validated_data):
-
         gender_data = validated_data.pop('gender')
         membership_type_data = validated_data.pop('membership_type')
         institute_name_data = validated_data.pop('institute_name')
@@ -248,6 +263,7 @@ class MembersFinancialBasicsSerializer(serializers.Serializer):
 
 class MemberIdSerializer(serializers.Serializer):
     membership_type = serializers.CharField()
+    institute_name = serializers.CharField()
 
     def validate_membership_type(self, value):
         is_type_exist = MembershipType.objects.filter(name=value).exists()
@@ -256,6 +272,13 @@ class MemberIdSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 f"{value} is not a valid membership type")
         return value
+    
+    def validate_institute_name(self, value):
+        is_type_exist = InstituteName.objects.filter(name=value).first()
+        if not is_type_exist:
+            raise serializers.ValidationError(
+                f"{value} is not a valid institute name")
+        return is_type_exist.code
 
 
 class MemberSerializerForViewSingleMember(serializers.ModelSerializer):
