@@ -7,7 +7,6 @@ import pdb
 from unittest.mock import patch
 import random
 from member.utils.permission_classes import AddMemberPermission, UpdateMemberPermission, DeleteMemberPermission, ViewMemberPermission
-# Create a dummy image using PIL
 
 fake = Faker()
 
