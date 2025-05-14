@@ -76,6 +76,7 @@ class InstituteNameFactory(factory.django.DjangoModelFactory):
         model = InstituteName
 
     name = factory.Sequence(lambda n: f"{fake.name()}{n}")
+    code = factory.Sequence(lambda n: f"{fake.name()}{n}")
 
 
 class MembershipStatusChoiceFactory(factory.django.DjangoModelFactory):

@@ -26,7 +26,6 @@ class MembershipTypeView(APIView):
         if serializer.is_valid():
             mem_type = serializer.save()
             name = serializer.validated_data["name"]
-
             return Response({
                 "code": status.HTTP_200_OK,
                 "message": "Membership type created successfully",
@@ -80,18 +79,19 @@ class InstituteNameView(APIView):
         if serializer.is_valid():
             inst_name = serializer.save()
             name = serializer.validated_data["name"]
+            code = serializer.validated_data["code"]
             
-            # return Response(, status=status.HTTP_201_CREATED)
             return Response({
                 "code": status.HTTP_200_OK,
                 "message": "Institute name created successfully",
                 "status": "success",
                 "data": {
                     "name": name,
-                    "id": str(inst_name.id)
-                    }
-                },
-                status=status.HTTP_201_CREATED)
+                    "id": str(inst_name.id),
+                    "code": code
+                }
+            },
+            status=status.HTTP_201_CREATED)
 
         else:
             return Response({

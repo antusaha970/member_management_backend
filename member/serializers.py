@@ -90,24 +90,41 @@ class MemberSerializer(serializers.Serializer):
                 )
             return value
 
-        is_same_id_exist = Member.objects.filter(member_ID=value).exists()
-        if is_same_id_exist:
+        # step 1: Validate format
+        if '-' not in value:
             raise serializers.ValidationError(
-                f'{value} id already exists')
+                "Member ID must contain '-' followed by institute code (e.g. PM0001-IIT).")
+
+        # Step 2: Split the value into two parts
+        parts = value.split('-')
+
+        # Step 3: Validate format — must have exactly 2 parts and institute code must not be empty
+        if len(parts) != 2 or not parts[1].strip():
+            raise serializers.ValidationError(
+                "Invalid Member ID format. Expected format: PREFIX-INSTITUTE_CODE (e.g. PM0001-IIT).")
+
+        # Step 4: Check for existing Member ID
+        if Member.objects.filter(member_ID=value).exists():
+            raise serializers.ValidationError(f"'{value}' ID already exists.")
 
         return value
 
     def validate(self, attrs):
         member_ID = attrs.get("member_ID")
         membership_type = attrs.get("membership_type")
+        institute_name = attrs.get("institute_name")
+        institute_code = member_ID.split('-')[1]
+        print(institute_code, "institute_code")
         if not member_ID.startswith(membership_type):
             raise serializers.ValidationError(
                 {"member_ID": "Invalid member_ID"})
+        if not InstituteName.objects.filter(name=institute_name, code=institute_code).exists():
+            raise serializers.ValidationError(
+                {"member_ID": "Invalid institute name or code"})
 
         return super().validate(attrs)
 
     def create(self, validated_data):
-
         gender_data = validated_data.pop('gender')
         membership_type_data = validated_data.pop('membership_type')
         institute_name_data = validated_data.pop('institute_name')
@@ -248,6 +265,7 @@ class MembersFinancialBasicsSerializer(serializers.Serializer):
 
 class MemberIdSerializer(serializers.Serializer):
     membership_type = serializers.CharField()
+    institute_name = serializers.CharField()
 
     def validate_membership_type(self, value):
         is_type_exist = MembershipType.objects.filter(name=value).exists()
@@ -256,6 +274,14 @@ class MemberIdSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 f"{value} is not a valid membership type")
         return value
+
+    def validate_institute_name(self, value):
+        value = value.title()
+        is_type_exist = InstituteName.objects.filter(name=value).first()
+        if not is_type_exist:
+            raise serializers.ValidationError(
+                f"{value} is not a valid institute name")
+        return is_type_exist.code
 
 
 class MemberSerializerForViewSingleMember(serializers.ModelSerializer):
@@ -285,7 +311,7 @@ class MemberContactNumberSerializer(serializers.Serializer):
         child=ContactDetailSerializer(), required=True)
 
     def validate_member_ID(self, value):
-        
+
         is_exist = Member.objects.filter(member_ID=value).exists()
         if not is_exist:
             raise serializers.ValidationError(
@@ -362,14 +388,14 @@ class MemberContactNumberSerializer(serializers.Serializer):
 
             else:
                 # Create a new contact number if no ID is provided
-                new_contact = ContactNumber.objects.create(member=instance, **item)
+                new_contact = ContactNumber.objects.create(
+                    member=instance, **item)
                 results.append({
                     "status": "created",
                     "contact_number_id": new_contact.id
                 })
 
         return results
-
 
 
 class EmailAddressSerializer(serializers.Serializer):
@@ -386,7 +412,7 @@ class MemberEmailAddressSerializer(serializers.Serializer):
         child=EmailAddressSerializer(), required=True)
 
     def validate_member_ID(self, value):
-        
+
         is_exist = Member.objects.filter(member_ID=value).exists()
         if not is_exist:
             raise serializers.ValidationError(
@@ -462,6 +488,7 @@ class MemberEmailAddressSerializer(serializers.Serializer):
 
         return results
 
+
 class AddressSerializer(serializers.Serializer):
     address_type = serializers.PrimaryKeyRelatedField(
         queryset=AddressTypeChoice.objects.all(), required=False)
@@ -477,7 +504,7 @@ class MemberAddressSerializer(serializers.Serializer):
         child=AddressSerializer(), required=True)
 
     def validate_member_ID(self, value):
-        
+
         is_exist = Member.objects.filter(member_ID=value).exists()
         if not is_exist:
             raise serializers.ValidationError(
@@ -524,7 +551,7 @@ class MemberAddressSerializer(serializers.Serializer):
             address_id = item.get('id', None)
             if address_id:
                 address_obj = all_mem_data.get(address_id)
-                if not address_obj :
+                if not address_obj:
                     raise serializers.ValidationError(
                         f"Address with id {address_id} does not exist for this member."
                     )
@@ -605,23 +632,23 @@ class MemberSpouseSerializer(serializers.Serializer):
             if 'spouse_name' in validated_data and spouse_obj.spouse_name != validated_data.get('spouse_name', spouse_obj.spouse_name):
                 spouse_obj.spouse_name = validated_data['spouse_name']
                 is_update = True
-            
+
             if 'contact_number' in validated_data and spouse_obj.spouse_contact_number != validated_data.get('contact_number', spouse_obj.spouse_contact_number):
                 is_update = True
                 spouse_obj.spouse_contact_number = validated_data['contact_number']
-            
+
             if 'spouse_dob' in validated_data and spouse_obj.spouse_dob != validated_data.get('spouse_dob', spouse_obj.spouse_dob):
                 is_update = True
                 spouse_obj.spouse_dob = validated_data['spouse_dob']
-            
+
             if 'image' in validated_data and spouse_obj.image != validated_data.get('image', spouse_obj.image):
                 is_update = True
                 spouse_obj.image = validated_data['image']
-            
+
             if 'current_status' in validated_data and spouse_obj.current_status != validated_data.get('current_status', spouse_obj.current_status):
                 is_update = True
                 spouse_obj.current_status = validated_data['current_status']
-            
+
             if is_update:
                 spouse_obj.save()
                 return spouse_obj
@@ -711,8 +738,6 @@ class MemberSpecialDaySerializer(serializers.Serializer):
 
         return results
 
-    
-
 
 class MemberCertificateSerializer(serializers.Serializer):
     member_ID = serializers.CharField(max_length=200)
@@ -775,7 +800,7 @@ class MemberDescendantsSerializer(serializers.Serializer):
     id = serializers.IntegerField(required=False)
 
     def validate_member_ID(self, value):
-        
+
         is_exist = Member.objects.filter(member_ID=value).exists()
         if not is_exist:
             raise serializers.ValidationError(
@@ -799,27 +824,29 @@ class MemberDescendantsSerializer(serializers.Serializer):
 
             descendant_obj = instance
             if "descendant_contact_number" in validated_data and descendant_obj.descendant_contact_number != validated_data.get("descendant_contact_number"):
-                descendant_obj.descendant_contact_number = validated_data.get("descendant_contact_number")
+                descendant_obj.descendant_contact_number = validated_data.get(
+                    "descendant_contact_number")
                 is_updated = True
             if "dob" in validated_data and descendant_obj.dob != validated_data.get("dob"):
                 descendant_obj.dob = validated_data.get("dob")
                 is_updated = True
-        
+
             if "image" in validated_data and descendant_obj.image != validated_data.get("image"):
                 descendant_obj.image = validated_data.get("image")
                 is_updated = True
-            
+
             if "relation_type" in validated_data and descendant_obj.relation_type != validated_data.get("relation_type"):
-                descendant_obj.relation_type = validated_data.get("relation_type")
+                descendant_obj.relation_type = validated_data.get(
+                    "relation_type")
                 is_updated = True
             if "name" in validated_data and descendant_obj.name != validated_data.get("name"):
                 descendant_obj.name = validated_data.get("name")
                 is_updated = True
-            
+
             if is_updated:
                 descendant_obj.save()
                 return descendant_obj
-        
+
         return instance
 
 
@@ -838,7 +865,7 @@ class MemberJobSerializer(serializers.Serializer):
         child=MemberJobDataSerializer(), required=True)
 
     def validate_member_ID(self, value):
-        
+
         is_exist = Member.objects.filter(member_ID=value).exists()
         if not is_exist:
             raise serializers.ValidationError(
@@ -877,12 +904,12 @@ class MemberJobSerializer(serializers.Serializer):
             if job_id:
                 # Update an existing job
                 job_obj = all_job_data.get(job_id)
-                print(job_obj,"job obj")
+                print(job_obj, "job obj")
                 if job_obj is None:
                     raise serializers.ValidationError(
                         f"Job with id {job_id} does not exist for this member."
                     )
-                
+
                 # Check if any field actually changed
                 changed = False
 
@@ -922,7 +949,6 @@ class MemberJobSerializer(serializers.Serializer):
         return results
 
 
-
 class MemberEmergencyContactDataSerializer(serializers.Serializer):
     contact_name = serializers.CharField(max_length=100)
     contact_number = serializers.CharField(max_length=20)
@@ -936,7 +962,7 @@ class MemberEmergencyContactSerializer(serializers.Serializer):
         child=MemberEmergencyContactDataSerializer(), required=True)
 
     def validate_member_ID(self, value):
-       
+
         is_exist = Member.objects.filter(member_ID=value).exists()
         if not is_exist:
             raise serializers.ValidationError(
@@ -974,7 +1000,8 @@ class MemberEmergencyContactSerializer(serializers.Serializer):
             emergency_contact_id = item.get('id', None)
             if emergency_contact_id:
                 # Update an existing emergency contact
-                emergency_contact_obj = all_em_con_data.get(emergency_contact_id)
+                emergency_contact_obj = all_em_con_data.get(
+                    emergency_contact_id)
                 if emergency_contact_obj is None:
                     raise serializers.ValidationError(
                         f"Emergency contact with id {emergency_contact_id} does not exist for this member."
@@ -1015,7 +1042,6 @@ class MemberEmergencyContactSerializer(serializers.Serializer):
                 })
 
         return results
-
 
 
 class MemberCompanionInformationSerializer(serializers.Serializer):
@@ -1197,9 +1223,9 @@ class MemberSpecialDaysViewSerializer(serializers.ModelSerializer):
         model = SpecialDay
         exclude = ["member"]
         depth = 1
-        
+
+
 class MemberDocumentViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Documents
         fields = "__all__"
-        

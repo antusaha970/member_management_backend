@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-from .models import Member,Email, MembersFinancialBasics,Certificate, MemberHistory, CompanionInformation, Documents
+from .models import Member, Email, MembersFinancialBasics, InstituteName, Certificate, MemberHistory, CompanionInformation, Documents
 from .utils.permission_classes import ViewMemberPermission, AddMemberPermission, UpdateMemberPermission, DeleteMemberPermission
 import logging
 from activity_log.tasks import log_activity_task
@@ -34,7 +34,6 @@ from .tasks import delete_members_cache
 logger = logging.getLogger("myapp")
 
 
-
 class MemberView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -59,7 +58,8 @@ class MemberView(APIView):
                 with transaction.atomic():
                     member = member_serializer.save()
                     # activity log
-                    log_request(request, "Member create", "info", "A new member has been created by the user")
+                    log_request(request, "Member create", "info",
+                                "A new member has been created by the user")
                     MemberHistory.objects.create(start_date=timezone.now(
                     ), stored_member_id=member.member_ID, member=member)
                     # cache delete
@@ -75,7 +75,8 @@ class MemberView(APIView):
             else:
                 # Merge errors from both serializers
                 # activity log
-                log_request(request, "Member creation failed", "info", "user tried to create a member but made an invalid request")
+                log_request(request, "Member creation failed", "info",
+                            "user tried to create a member but made an invalid request")
                 merged_errors = {**member_serializer.errors}
                 return Response({
                     "code": 400,
@@ -86,7 +87,8 @@ class MemberView(APIView):
         except Exception as server_error:
             logger.exception(str(server_error))
             # activity log
-            log_request(request, "Member creation failed", "info", "user tried to create a member but made an invalid request")
+            log_request(request, "Member creation failed", "info",
+                        "user tried to create a member but made an invalid request")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -98,7 +100,8 @@ class MemberView(APIView):
 
     def patch(self, request, member_id):
         try:
-            member = Member.objects.select_related("membership_type","gender","marital_status","institute_name","membership_status").get(member_ID=member_id)
+            member = Member.objects.select_related(
+                "membership_type", "gender", "marital_status", "institute_name", "membership_status").get(member_ID=member_id)
             data = request.data
             member_serializer = serializers.MemberSerializer(member, data=data)
             is_member_serializer_valid = member_serializer.is_valid()
@@ -106,7 +109,8 @@ class MemberView(APIView):
                 with transaction.atomic():
                     member = member_serializer.save()
                     # activity log
-                    log_request(request, "Member update success", "info", "user updated a member successfully")
+                    log_request(request, "Member update success",
+                                "info", "user updated a member successfully")
                     # cache delete
                     delete_members_cache.delay()
 
@@ -122,7 +126,8 @@ class MemberView(APIView):
                 # Merge errors from both serializers
                 merged_errors = {**member_serializer.errors}
                 # activity log
-                log_request(request, "Member update failed", "info", "user tried to update member but made an invalid request")
+                log_request(request, "Member update failed", "info",
+                            "user tried to update member but made an invalid request")
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -131,7 +136,8 @@ class MemberView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Member.DoesNotExist:
             # activity log
-            log_request(request, "Member update failed", "info", "user tried to update member but made an invalid request")
+            log_request(request, "Member update failed", "info",
+                        "user tried to update member but made an invalid request")
             return Response({
                 "code": 404,
                 "status": "failed",
@@ -142,7 +148,8 @@ class MemberView(APIView):
             }, status=status.HTTP_404_NOT_FOUND)
         except Exception as server_error:
             # activity log
-            log_request(request, "Member update failed", "info", "user tried to update member but made an invalid request")
+            log_request(request, "Member update failed", "info",
+                        "user tried to update member but made an invalid request")
             logger.exception(str(server_error))
             return Response({
                 "code": 500,
@@ -154,12 +161,14 @@ class MemberView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def delete(self, request, member_id):
-        
+
         try:
-            member = Member.objects.only("id", "member_ID", "status").get(member_ID=member_id)
+            member = Member.objects.only(
+                "id", "member_ID", "status").get(member_ID=member_id)
             if member.status == 2:
                 # activity log
-                log_request(request, "Member delete failed", "info", "user tried to delete member but made an invalid request")
+                log_request(request, "Member delete failed", "info",
+                            "user tried to delete member but made an invalid request")
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -182,7 +191,8 @@ class MemberView(APIView):
                 delete_member_model_dependencies.delay_on_commit(member.id)
 
                 # activity log
-                log_request(request, "Member delete success", "info", "user tried to delete a member and succeeded")
+                log_request(request, "Member delete success", "info",
+                            "user tried to delete a member and succeeded")
                 # cache delete
                 delete_members_cache.delay()
                 return Response({
@@ -196,7 +206,8 @@ class MemberView(APIView):
 
         except Member.DoesNotExist:
             # activity log
-            log_request(request, "Member delete failed", "error", "user tried to delete member but made an invalid request")
+            log_request(request, "Member delete failed", "error",
+                        "user tried to delete member but made an invalid request")
             return Response({
                 "code": 404,
                 "status": "failed",
@@ -209,7 +220,8 @@ class MemberView(APIView):
         except Exception as server_error:
             logger.exception(str(server_error))
             # activity log
-            log_request(request, "Member delete failed", "error", "user tried to delete member but made an invalid request")
+            log_request(request, "Member delete failed", "error",
+                        "user tried to delete member but made an invalid request")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -219,16 +231,13 @@ class MemberView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
     def get(self, request, member_id):
         try:
-            query_items = sorted(request.query_params.items())
-            query_string = urlencode(query_items) if query_items else "default"
-            cache_key = f"specific_member_list::{query_string}"
+            cache_key = f"specific_member::{member_id}"
             cached_response = cache.get(cache_key)
             if cached_response:
                 return Response(cached_response, status=200)
-            
+
             member = Member.objects.select_related(
                 'marital_status', 'membership_status', 'institute_name',
                 'membership_type', 'gender'
@@ -240,8 +249,9 @@ class MemberView(APIView):
 
             # check if member status is deleted or not
             if member.status == 2:
-                
-                log_request(request, "Member view failed", "warning", "user tried to view a member but made an invalid request")
+
+                log_request(request, "Member view failed", "warning",
+                            "user tried to view a member but made an invalid request")
                 return Response({
                     "code": 204,
                     "status": "failed",
@@ -250,7 +260,7 @@ class MemberView(APIView):
                         'member_ID': [f"{member_id} member has been deleted"]
                     }
                 }, status=status.HTTP_204_NO_CONTENT)
-           
+
             contact_numbers = member.contact_numbers
             emails = member.emails
             addresses = member.addresses
@@ -308,7 +318,8 @@ class MemberView(APIView):
                 'special_days': special_days_serializer.data,
             }
             # activity log
-            log_request(request, "Member view successfully", "info", "user tried to view a member and succeeded")
+            log_request(request, "Member view successfully", "info",
+                        "user tried to view a member and succeeded")
             final_response = Response({
                 "code": 200,
                 "status": "success",
@@ -318,10 +329,11 @@ class MemberView(APIView):
             # cache response
             cache.set(cache_key, final_response.data, 60*30)
             return final_response
-            
+
         except Member.DoesNotExist:
             # activity log
-            log_request(request, "Member view failed", "error", "user tried to view a member but made an invalid request")
+            log_request(request, "Member view failed", "error",
+                        "user tried to view a member but made an invalid request")
             return Response({
                 "code": 404,
                 "status": "failed",
@@ -333,7 +345,8 @@ class MemberView(APIView):
         except Exception as server_error:
             logger.exception(str(server_error))
             # activity log
-            log_request(request, "Member view failed", "error", "user tried to view a member but made an invalid request")
+            log_request(request, "Member view failed", "error",
+                        "user tried to view a member but made an invalid request")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -452,7 +465,7 @@ class MemberListView(APIView):
             cached_response = cache.get(cache_key)
             if cached_response:
                 return Response(cached_response, status=200)
-            
+
             # Get all members
             queryset = Member.objects.filter(
                 status=0, is_active=True).select_related("membership_type", "institute_name", "membership_status", "marital_status", "gender").order_by("id")
@@ -462,7 +475,8 @@ class MemberListView(APIView):
                 filterset = MemberFilter(request.GET, queryset=queryset)
                 if not filterset.is_valid():
                     # activity log
-                    log_request(request, "Member list view failed","error","Invalid filters when viewing member list")
+                    log_request(request, "Member list view failed",
+                                "error", "Invalid filters when viewing member list")
                     return Response({
                         "code": 400,
                         "status": "failed",
@@ -473,9 +487,10 @@ class MemberListView(APIView):
                 # Check if "download_excel" is in query params
             if request.GET.get("download_excel"):
                 return self.export_to_excel(queryset)
-            
+
             paginator = CustomPageNumberPagination()
-            paginated_queryset = paginator.paginate_queryset(queryset, request, view=self)
+            paginated_queryset = paginator.paginate_queryset(
+                queryset, request, view=self)
 
             if paginated_queryset is None:
                 paginated_queryset = queryset
@@ -483,7 +498,8 @@ class MemberListView(APIView):
             serializer = serializers.MemberSerializer(
                 paginated_queryset, many=True)
             # activity log
-            log_request(request, "Member list view success","info","user viewed member list")
+            log_request(request, "Member list view success",
+                        "info", "user viewed member list")
             final_response = paginator.get_paginated_response({
                 "code": 200,
                 "status": "success",
@@ -496,7 +512,8 @@ class MemberListView(APIView):
         except Exception as server_error:
             logger.exception(str(server_error))
             # activity log
-            log_request(request, "Member list view failed","error","user tried to view member list. But made an invalid request")
+            log_request(request, "Member list view failed", "error",
+                        "user tried to view member list. But made an invalid request")
             return Response({
                 'code': 500,
                 'status': "failed",
@@ -542,7 +559,7 @@ class MemberListView(APIView):
 
 
 class MemberIdView(APIView):
-    permission_classes = [IsAuthenticated,AddMemberPermission]
+    permission_classes = [IsAuthenticated, AddMemberPermission]
 
     def post(self, request):
         try:
@@ -550,9 +567,11 @@ class MemberIdView(APIView):
             serializer = serializers.MemberIdSerializer(data=data)
             if serializer.is_valid():
                 membership_type = serializer.validated_data['membership_type']
-                all_id = generate_member_id(membership_type)
+                institute_code = serializer.validated_data['institute_name']
+                all_id = generate_member_id(membership_type, institute_code)
                 # activity log
-                log_request(request, "Member id view succeeded","info","user tried to view member id and succeeded")
+                log_request(request, "Member id view succeeded", "info",
+                            "user tried to view member id and succeeded")
                 return Response({
                     "code": 200,
                     "status": "success",
@@ -560,9 +579,10 @@ class MemberIdView(APIView):
                     "data": all_id
                 }, status=status.HTTP_200_OK)
             else:
-                
+
                 # activity log
-                log_request(request, "Member id view failed","error","user tried to view member id but made an invalid request")
+                log_request(request, "Member id view failed", "error",
+                            "user tried to view member id but made an invalid request")
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -572,7 +592,8 @@ class MemberIdView(APIView):
         except Exception as server_error:
             logger.exception(str(server_error))
             # activity log
-            log_request(request, "Member id view failed","error","user tried to view member id but made an invalid request")
+            log_request(request, "Member id view failed", "error",
+                        "user tried to view member id but made an invalid request")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -601,10 +622,11 @@ class MemberContactNumberView(APIView):
             if serializer.is_valid():
                 with transaction.atomic():
                     instance = serializer.save()
-                
+
                 # activity log
-                log_request(request, "Member contact number added successfully","info","user tried to add member contact number and succeeded")
-                
+                log_request(request, "Member contact number added successfully",
+                            "info", "user tried to add member contact number and succeeded")
+
                 return Response({
                     "code": 201,
                     "message": "Member contact number has been created successfully",
@@ -613,7 +635,8 @@ class MemberContactNumberView(APIView):
                 }, status=status.HTTP_201_CREATED)
             else:
                 # activity log
-                log_request(request, "Member contact number added failed","error","user tried to add member contact number but made an invalid request")
+                log_request(request, "Member contact number added failed", "error",
+                            "user tried to add member contact number but made an invalid request")
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -623,7 +646,8 @@ class MemberContactNumberView(APIView):
         except Exception as e:
             logger.exception(str(e))
             # activity log
-            log_request(request, "Member contact number added failed","error","user tried to add member contact number but made an invalid request")
+            log_request(request, "Member contact number added failed", "error",
+                        "user tried to add member contact number but made an invalid request")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -643,8 +667,9 @@ class MemberContactNumberView(APIView):
                 with transaction.atomic():
                     instance = serializer.save(instance=member)
                 # activity log
-                log_request(request, "Member contact number updated successfully","info","user tried to update member contact number and succeeded")
-                
+                log_request(request, "Member contact number updated successfully",
+                            "info", "user tried to update member contact number and succeeded")
+
                 return Response({
                     "code": 200,
                     "message": "Member contact number has been updated successfully",
@@ -653,17 +678,19 @@ class MemberContactNumberView(APIView):
                 }, status=status.HTTP_200_OK)
             else:
                 # activity log
-                log_request(request, "Member contact number updated failed","error","user tried to update member contact number but made an invalid request")
+                log_request(request, "Member contact number updated failed", "error",
+                            "user tried to update member contact number but made an invalid request")
                 return Response({
                     "code": 400,
                     "status": "failed",
                     "message": "Invalid request",
                     "errors": serializer.errors,
                 }, status=status.HTTP_400_BAD_REQUEST)
-        
+
         except models.Member.DoesNotExist:
             # activity log
-            log_request(request, "Member contact number updated failed","error","user tried to update member contact number but made an invalid request")
+            log_request(request, "Member contact number updated failed", "error",
+                        "user tried to update member contact number but made an invalid request")
             return Response({
                 "code": 404,
                 "status": "failed",
@@ -675,7 +702,8 @@ class MemberContactNumberView(APIView):
         except Exception as e:
             logger.exception(str(e))
             # activity log
-            log_request(request, "Member contact number updated failed","error","user tried to update member contact number but made an invalid request")
+            log_request(request, "Member contact number updated failed", "error",
+                        "user tried to update member contact number but made an invalid request")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -704,10 +732,11 @@ class MemberEmailAddressView(APIView):
             if serializer.is_valid():
                 with transaction.atomic():
                     instance = serializer.save()
-                
+
                 # activity log
-                log_request(request, "Member email address added successfully","info","user tried to add member email address and succeeded")
-                
+                log_request(request, "Member email address added successfully",
+                            "info", "user tried to add member email address and succeeded")
+
                 return Response({
                     "code": 201,
                     "message": "Member Email address has been created successfully",
@@ -716,7 +745,8 @@ class MemberEmailAddressView(APIView):
                 }, status=status.HTTP_201_CREATED)
             else:
                 # activity log
-                log_request(request, "Member email address added failed","error","user tried to add member email address but made an invalid request")
+                log_request(request, "Member email address added failed", "error",
+                            "user tried to add member email address but made an invalid request")
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -726,7 +756,8 @@ class MemberEmailAddressView(APIView):
         except Exception as e:
             logger.exception(str(e))
             # activity log
-            log_request(request, "Member email address added failed","error","user tried to add member email address but made an invalid request")
+            log_request(request, "Member email address added failed", "error",
+                        "user tried to add member email address but made an invalid request")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -738,13 +769,13 @@ class MemberEmailAddressView(APIView):
 
     def patch(self, request, member_ID):
         try:
-            
+
             member = Member.objects.prefetch_related(
-                    Prefetch(
-                        'emails',
-                        queryset=Email.objects.select_related('email_type')  
-                    )
-                ).get(member_ID=member_ID)
+                Prefetch(
+                    'emails',
+                    queryset=Email.objects.select_related('email_type')
+                )
+            ).get(member_ID=member_ID)
             data = request.data
             serializer = serializers.MemberEmailAddressSerializer(
                 member, data=data)
@@ -752,8 +783,9 @@ class MemberEmailAddressView(APIView):
                 with transaction.atomic():
                     instance = serializer.save(instance=member)
                 # activity log
-                log_request(request, "Member email address updated successfully","info","user tried to update member email address and succeeded")
-                
+                log_request(request, "Member email address updated successfully",
+                            "info", "user tried to update member email address and succeeded")
+
                 return Response({
                     "code": 200,
                     "message": "Member Email address has been updated successfully",
@@ -761,9 +793,10 @@ class MemberEmailAddressView(APIView):
                     "data": instance
                 }, status=status.HTTP_200_OK)
             else:
-                
+
                 # activity log
-                log_request(request, "Member email address updated failed","error","user tried to update member email address but made an invalid request")
+                log_request(request, "Member email address updated failed", "error",
+                            "user tried to update member email address but made an invalid request")
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -772,7 +805,8 @@ class MemberEmailAddressView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except models.Member.DoesNotExist:
             # activity log
-            log_request(request, "Member email address updated failed","error","user tried to update member email address but made an invalid request")
+            log_request(request, "Member email address updated failed", "error",
+                        "user tried to update member email address but made an invalid request")
             return Response({
                 "code": 404,
                 "status": "failed",
@@ -781,11 +815,12 @@ class MemberEmailAddressView(APIView):
                     "member": ["Member does not exist"]
                 }
             }, status=status.HTTP_404_NOT_FOUND)
-        
+
         except Exception as e:
             logger.exception(str(e))
             # activity log
-            log_request(request, "Member email address updated failed","error","user tried to update member email address but made an invalid request")
+            log_request(request, "Member email address updated failed", "error",
+                        "user tried to update member email address but made an invalid request")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -814,9 +849,10 @@ class MemberAddressView(APIView):
             if serializer.is_valid():
                 with transaction.atomic():
                     instance = serializer.save()
-                
+
                 # activity log
-                log_request(request, "Member address added successfully","info","user tried to add member address and succeeded")
+                log_request(request, "Member address added successfully",
+                            "info", "user tried to add member address and succeeded")
                 return Response({
                     "code": 201,
                     "message": "Member address has been created successfully",
@@ -825,7 +861,8 @@ class MemberAddressView(APIView):
                 }, status=status.HTTP_201_CREATED)
             else:
                 # activity log
-                log_request(request, "Member address added failed","error","user tried to add member address but made an invalid request")
+                log_request(request, "Member address added failed", "error",
+                            "user tried to add member address but made an invalid request")
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -834,9 +871,10 @@ class MemberAddressView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
-            
+
             # activity log
-            log_request(request, "Member address added failed","error","user tried to add member address but made an invalid request")
+            log_request(request, "Member address added failed", "error",
+                        "user tried to add member address but made an invalid request")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -854,9 +892,10 @@ class MemberAddressView(APIView):
             if serializer.is_valid():
                 with transaction.atomic():
                     instance = serializer.save()
-                
+
                 # activity log
-                log_request(request, "Member address updated successfully","info","user tried to update member address and succeeded")
+                log_request(request, "Member address updated successfully",
+                            "info", "user tried to update member address and succeeded")
                 return Response({
                     "code": 200,
                     "message": "Member address has been updated successfully",
@@ -864,20 +903,22 @@ class MemberAddressView(APIView):
                     "data": instance
                 }, status=status.HTTP_200_OK)
             else:
-                
+
                 # activity log
-                log_request(request, "Member address updated failed","error","user tried to update member address but made an invalid request")
+                log_request(request, "Member address updated failed", "error",
+                            "user tried to update member address but made an invalid request")
                 return Response({
                     "code": 400,
                     "status": "failed",
                     "message": "Invalid request",
                     "errors": serializer.errors,
                 }, status=status.HTTP_400_BAD_REQUEST)
-        
+
         except models.Member.DoesNotExist:
-            
+
             # activity log
-            log_request(request, "Member address updated failed","error","user tried to update member address but made an invalid request")
+            log_request(request, "Member address updated failed", "error",
+                        "user tried to update member address but made an invalid request")
             return Response({
                 "code": 404,
                 "status": "failed",
@@ -888,9 +929,10 @@ class MemberAddressView(APIView):
             }, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             logger.exception(str(e))
-            
+
             # activity log
-            log_request(request, "Member address updated failed","error","user tried to update member address but made an invalid request")
+            log_request(request, "Member address updated failed", "error",
+                        "user tried to update member address but made an invalid request")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -919,10 +961,11 @@ class MemberSpouseView(APIView):
             if serializer.is_valid():
                 with transaction.atomic():
                     instance = serializer.save()
-                
+
                 # activity log
-                log_request(request, "Member spouse added successfully","info","user tried to add member spouse and succeeded")
-                
+                log_request(request, "Member spouse added successfully",
+                            "info", "user tried to add member spouse and succeeded")
+
                 return Response({
                     "code": 201,
                     "message": "Member address has been created successfully",
@@ -932,9 +975,10 @@ class MemberSpouseView(APIView):
                     }
                 }, status=status.HTTP_201_CREATED)
             else:
-                
+
                 # activity log
-                log_request(request, "Member spouse added failed","error","user tried to add member spouse but made an invalid request")
+                log_request(request, "Member spouse added failed", "error",
+                            "user tried to add member spouse but made an invalid request")
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -943,9 +987,10 @@ class MemberSpouseView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
-            
+
             # activity log
-            log_request(request, "Member spouse added failed","error","user tried to add member spouse but made an invalid request")
+            log_request(request, "Member spouse added failed", "error",
+                        "user tried to add member spouse but made an invalid request")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -964,9 +1009,10 @@ class MemberSpouseView(APIView):
                 try:
                     instance = models.Spouse.objects.get(pk=id)
                 except models.Spouse.DoesNotExist:
-                    
+
                     # activity log
-                    log_request(request, "Member spouse updated failed","error","user tried to update member spouse but made an invalid request")
+                    log_request(request, "Member spouse updated failed", "error",
+                                "user tried to update member spouse but made an invalid request")
                     return Response({
                         "code": 404,
                         "status": "failed",
@@ -976,7 +1022,8 @@ class MemberSpouseView(APIView):
                         }
                     }, status=status.HTTP_404_NOT_FOUND)
             if instance:
-                serializer = serializers.MemberSpouseSerializer(instance, data=data)    
+                serializer = serializers.MemberSpouseSerializer(
+                    instance, data=data)
             else:
                 serializer = serializers.MemberSpouseSerializer(data=data)
 
@@ -984,9 +1031,10 @@ class MemberSpouseView(APIView):
                 with transaction.atomic():
                     if instance is not None:
                         instance = serializer.save(instance=instance)
-                        
+
                         # activity log
-                        log_request(request, "Member spouse updated successfully","info","user tried to update member spouse and succeeded")
+                        log_request(request, "Member spouse updated successfully",
+                                    "info", "user tried to update member spouse and succeeded")
                         return Response({
                             "code": 200,
                             "message": "Member Spouse has been updated successfully",
@@ -997,9 +1045,10 @@ class MemberSpouseView(APIView):
                         }, status=status.HTTP_200_OK)
                     else:
                         instance = serializer.save()
-                        
+
                         # activity log
-                        log_request(request, "Member spouse updated successfully","info","user tried to update member spouse and succeeded")
+                        log_request(request, "Member spouse updated successfully",
+                                    "info", "user tried to update member spouse and succeeded")
                         return Response({
                             "code": 201,
                             "message": "Member spouse has been created successfully",
@@ -1009,9 +1058,10 @@ class MemberSpouseView(APIView):
                             }
                         }, status=status.HTTP_201_CREATED)
             else:
-                
+
                 # activity log
-                log_request(request, "Member spouse updated failed","error","user tried to update member spouse but made an invalid request")
+                log_request(request, "Member spouse updated failed", "error",
+                            "user tried to update member spouse but made an invalid request")
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -1020,9 +1070,10 @@ class MemberSpouseView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
-            
+
             # activity log
-            log_request(request, "Member spouse updated failed","error","user tried to update member spouse but made an invalid request")
+            log_request(request, "Member spouse updated failed", "error",
+                        "user tried to update member spouse but made an invalid request")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -1051,10 +1102,11 @@ class MemberDescendsView(APIView):
             if serializer.is_valid():
                 with transaction.atomic():
                     instance = serializer.save()
-                
+
                 # activity log
-                log_request(request, "Member descendants added successfully","info","user tried to add member descendants and succeeded")
-                
+                log_request(request, "Member descendants added successfully",
+                            "info", "user tried to add member descendants and succeeded")
+
                 return Response({
                     "code": 201,
                     "message": "Member Descendant has been created successfully",
@@ -1064,9 +1116,10 @@ class MemberDescendsView(APIView):
                     }
                 }, status=status.HTTP_201_CREATED)
             else:
-                
+
                 # activity log
-                log_request(request, "Member descendants added failed","error","user tried to add member descendants but made an invalid request")
+                log_request(request, "Member descendants added failed", "error",
+                            "user tried to add member descendants but made an invalid request")
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -1075,9 +1128,10 @@ class MemberDescendsView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
-            
+
             # activity log
-            log_request(request, "Member descendants added failed","error","user tried to add member descendants but made an invalid request")
+            log_request(request, "Member descendants added failed", "error",
+                        "user tried to add member descendants but made an invalid request")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -1088,7 +1142,7 @@ class MemberDescendsView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def patch(self, request):
-            
+
         try:
             data = request.data
             id = data.get('id')
@@ -1098,9 +1152,10 @@ class MemberDescendsView(APIView):
                 try:
                     instance = models.Descendant.objects.get(pk=id)
                 except models.Descendant.DoesNotExist:
-                    
+
                     # activity log
-                    log_request(request, "Member descendants updated failed","error","user tried to update member descendants but made an invalid request")
+                    log_request(request, "Member descendants updated failed", "error",
+                                "user tried to update member descendants but made an invalid request")
                     return Response({
                         "code": 404,
                         "status": "failed",
@@ -1111,7 +1166,8 @@ class MemberDescendsView(APIView):
                     }, status=status.HTTP_404_NOT_FOUND)
 
             if instance:
-                serializer = serializers.MemberDescendantsSerializer(instance, data=data)
+                serializer = serializers.MemberDescendantsSerializer(
+                    instance, data=data)
             else:
                 serializer = serializers.MemberDescendantsSerializer(data=data)
 
@@ -1119,10 +1175,11 @@ class MemberDescendsView(APIView):
                 with transaction.atomic():
                     if instance is not None:
                         instance = serializer.save(instance=instance)
-                        
+
                         # activity log
-                        log_request(request, "Member descendants updated successfully","info","user tried to update member descendants and succeeded")
-                        
+                        log_request(request, "Member descendants updated successfully",
+                                    "info", "user tried to update member descendants and succeeded")
+
                         return Response({
                             "code": 200,
                             "message": "Member Descendant has been updated successfully",
@@ -1133,10 +1190,11 @@ class MemberDescendsView(APIView):
                         }, status=status.HTTP_200_OK)
                     else:
                         instance = serializer.save()
-                        
+
                         # activity log
-                        log_request(request, "Member descendants created successfully","info","user tried to create member descendants and succeeded")
-                        
+                        log_request(request, "Member descendants created successfully",
+                                    "info", "user tried to create member descendants and succeeded")
+
                         return Response({
                             "code": 201,
                             "message": "Member Descendant has been created successfully",
@@ -1146,9 +1204,10 @@ class MemberDescendsView(APIView):
                             }
                         }, status=status.HTTP_201_CREATED)
             else:
-                
+
                 # activity log
-                log_request(request, "Member descendants updated failed","error","user tried to update member descendants but made an invalid request")
+                log_request(request, "Member descendants updated failed", "error",
+                            "user tried to update member descendants but made an invalid request")
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -1158,9 +1217,10 @@ class MemberDescendsView(APIView):
 
         except Exception as e:
             logger.exception(str(e))
-            
+
             # activity log
-            log_request(request, "Member descendants updated failed","error","user tried to update member descendants but made an invalid request")
+            log_request(request, "Member descendants updated failed", "error",
+                        "user tried to update member descendants but made an invalid request")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -1189,10 +1249,11 @@ class MemberJobView(APIView):
             if serializer.is_valid():
                 with transaction.atomic():
                     instance = serializer.save()
-                
+
                 # activity log
-                log_request(request, "Member job created successfully","info","user tried to create member job and succeeded")
-                
+                log_request(request, "Member job created successfully",
+                            "info", "user tried to create member job and succeeded")
+
                 return Response({
                     "code": 201,
                     "message": "Member job has been created successfully",
@@ -1200,9 +1261,10 @@ class MemberJobView(APIView):
                     "data": instance
                 }, status=status.HTTP_201_CREATED)
             else:
-                
+
                 # activity log
-                log_request(request, "Member job created failed","error","user tried to create member job but made an invalid request")
+                log_request(request, "Member job created failed", "error",
+                            "user tried to create member job but made an invalid request")
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -1211,9 +1273,10 @@ class MemberJobView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
-            
+
             # activity log
-            log_request(request, "Member job created failed","error","user tried to create member job but made an invalid request")
+            log_request(request, "Member job created failed", "error",
+                        "user tried to create member job but made an invalid request")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -1225,16 +1288,17 @@ class MemberJobView(APIView):
 
     def patch(self, request, member_ID):
         try:
-            member = models.Member.objects.get(member_ID = member_ID)
+            member = models.Member.objects.get(member_ID=member_ID)
             data = request.data
             serializer = serializers.MemberJobSerializer(member, data=data)
             if serializer.is_valid():
                 with transaction.atomic():
                     instance = serializer.save(instance=member)
-                
+
                 # activity log
-                log_request(request, "Member job updated successfully","info","user tried to update member job and succeeded")
-                
+                log_request(request, "Member job updated successfully",
+                            "info", "user tried to update member job and succeeded")
+
                 return Response({
                     "code": 200,
                     "message": "Member job has been updated successfully",
@@ -1242,9 +1306,10 @@ class MemberJobView(APIView):
                     "data": instance
                 }, status=status.HTTP_200_OK)
             else:
-                
+
                 # activity log
-                log_request(request, "Member job updated failed","error","user tried to update member job but made an invalid request")
+                log_request(request, "Member job updated failed", "error",
+                            "user tried to update member job but made an invalid request")
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -1252,9 +1317,10 @@ class MemberJobView(APIView):
                     "errors": serializer.errors,
                 }, status=status.HTTP_400_BAD_REQUEST)
         except models.Member.DoesNotExist:
-            
+
             # activity log
-            log_request(request, "Member job updated failed","error","user tried to update member job but made an invalid request")
+            log_request(request, "Member job updated failed", "error",
+                        "user tried to update member job but made an invalid request")
             return Response({
                 "code": 404,
                 "status": "failed",
@@ -1263,12 +1329,13 @@ class MemberJobView(APIView):
                     "member": ["Member does not exist"]
                 }
             }, status=status.HTTP_404_NOT_FOUND)
-            
+
         except Exception as e:
             logger.exception(str(e))
-            
+
             # activity log
-            log_request(request, "Member job updated failed","error","user tried to update member job but made an invalid request")
+            log_request(request, "Member job updated failed", "error",
+                        "user tried to update member job but made an invalid request")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -1300,7 +1367,8 @@ class MemberEmergencyContactView(APIView):
                     instance = serializer.save()
 
                 # activity log
-                log_request(request, "Member emergency contact created successfully","info","user tried to create member emergency contact and succeeded")
+                log_request(request, "Member emergency contact created successfully",
+                            "info", "user tried to create member emergency contact and succeeded")
                 return Response({
                     "code": 201,
                     "message": "Member Emergency contact has been created successfully",
@@ -1308,9 +1376,10 @@ class MemberEmergencyContactView(APIView):
                     "data": instance
                 }, status=status.HTTP_201_CREATED)
             else:
-            
+
                 # activity log
-                log_request(request, "Member emergency contact created failed","error","user tried to create member emergency contact but made an invalid request")
+                log_request(request, "Member emergency contact created failed", "error",
+                            "user tried to create member emergency contact but made an invalid request")
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -1319,9 +1388,10 @@ class MemberEmergencyContactView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
-            
+
             # activity log
-            log_request(request, "Member emergency contact created failed","error","user tried to create member emergency contact but made an invalid request")
+            log_request(request, "Member emergency contact created failed", "error",
+                        "user tried to create member emergency contact but made an invalid request")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -1337,14 +1407,16 @@ class MemberEmergencyContactView(APIView):
             print(member)
 
             data = request.data
-            serializer = serializers.MemberEmergencyContactSerializer(member,data=data)
+            serializer = serializers.MemberEmergencyContactSerializer(
+                member, data=data)
             if serializer.is_valid():
                 with transaction.atomic():
                     instance = serializer.save(instance=member)
-                
+
                 # activity log
-                log_request(request, "Member emergency contact updated successfully","info","user tried to update an emergency contact and succeeded")
-                
+                log_request(request, "Member emergency contact updated successfully",
+                            "info", "user tried to update an emergency contact and succeeded")
+
                 return Response({
                     "code": 200,
                     "message": "Member Emergency contact has been updated successfully",
@@ -1352,9 +1424,10 @@ class MemberEmergencyContactView(APIView):
                     "data": instance
                 }, status=status.HTTP_200_OK)
             else:
-               
+
                 # activity log
-                log_request(request, "Member emergency contact updated failed","error","user tried to update an emergency contact but made an invalid request")
+                log_request(request, "Member emergency contact updated failed", "error",
+                            "user tried to update an emergency contact but made an invalid request")
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -1362,9 +1435,10 @@ class MemberEmergencyContactView(APIView):
                     "errors": serializer.errors,
                 }, status=status.HTTP_400_BAD_REQUEST)
         except models.Member.DoesNotExist:
-            
+
             # activity log
-            log_request(request, "Member emergency contact updated failed","error","user tried to update an emergency contact but made an invalid request")
+            log_request(request, "Member emergency contact updated failed", "error",
+                        "user tried to update an emergency contact but made an invalid request")
             return Response({
                 "code": 404,
                 "status": "failed",
@@ -1375,9 +1449,10 @@ class MemberEmergencyContactView(APIView):
             }, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             logger.exception(str(e))
-            
+
             # activity log
-            log_request(request, "Member emergency contact updated failed","error","user tried to update an emergency contact but made an invalid request")
+            log_request(request, "Member emergency contact updated failed", "error",
+                        "user tried to update an emergency contact but made an invalid request")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -1407,10 +1482,11 @@ class MemberCompanionView(APIView):
             if serializer.is_valid():
                 with transaction.atomic():
                     instance = serializer.save()
-                
+
                 # activity log
-                log_request(request, "Member companion created successfully","info","user tried to create member companion and succeeded")
-                
+                log_request(request, "Member companion created successfully",
+                            "info", "user tried to create member companion and succeeded")
+
                 return Response({
                     "code": 201,
                     "message": "Member Companion has been created successfully",
@@ -1420,9 +1496,10 @@ class MemberCompanionView(APIView):
                     }
                 }, status=status.HTTP_201_CREATED)
             else:
-                
+
                 # activity log
-                log_request(request, "Member companion created failed","error","user tried to create member companion but made an invalid request")
+                log_request(request, "Member companion created failed", "error",
+                            "user tried to create member companion but made an invalid request")
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -1431,9 +1508,10 @@ class MemberCompanionView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
-            
+
             # activity log
-            log_request(request, "Member companion created failed","error","user tried to create member companion but made an invalid request")
+            log_request(request, "Member companion created failed", "error",
+                        "user tried to create member companion but made an invalid request")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -1460,10 +1538,11 @@ class MemberCompanionView(APIView):
                 with transaction.atomic():
                     if instance is not None:
                         instance = serializer.save()
-                        
+
                         # activity log
-                        log_request(request, "Member companion updated successfully","info","user tried to update member companion and succeeded")
-                        
+                        log_request(request, "Member companion updated successfully",
+                                    "info", "user tried to update member companion and succeeded")
+
                         return Response({
                             "code": 200,
                             "message": "Member companion has been updated successfully",
@@ -1474,9 +1553,10 @@ class MemberCompanionView(APIView):
                         }, status=status.HTTP_200_OK)
                     else:
                         instance = serializer.save()
-                        
+
                         # activity log
-                        log_request(request, "Member companion created successfully","info","user tried to create member companion and succeeded")
+                        log_request(request, "Member companion created successfully",
+                                    "info", "user tried to create member companion and succeeded")
                         return Response({
                             "code": 201,
                             "message": "Member companion has been created successfully",
@@ -1486,9 +1566,10 @@ class MemberCompanionView(APIView):
                             }
                         }, status=status.HTTP_201_CREATED)
             else:
-                
+
                 # activity log
-                log_request(request, "Member companion updated failed","error","user tried to update member companion but made an invalid request")
+                log_request(request, "Member companion updated failed", "error",
+                            "user tried to update member companion but made an invalid request")
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -1497,9 +1578,10 @@ class MemberCompanionView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
-            
+
             # activity log
-            log_request(request, "Member companion updated failed","error","user tried to update member companion but made an invalid request")
+            log_request(request, "Member companion updated failed", "error",
+                        "user tried to update member companion but made an invalid request")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -1529,10 +1611,11 @@ class MemberDocumentView(APIView):
             if serializer.is_valid():
                 with transaction.atomic():
                     instance = serializer.save()
-                
+
                 # activity log
-                log_request(request, "Member documents created successfully","info","user tried to create member documents and succeeded")
-                
+                log_request(request, "Member documents created successfully",
+                            "info", "user tried to create member documents and succeeded")
+
                 return Response({
                     "code": 201,
                     "message": "Member documents has been added successfully",
@@ -1542,9 +1625,10 @@ class MemberDocumentView(APIView):
                     }
                 }, status=status.HTTP_201_CREATED)
             else:
-                
+
                 # activity log
-                log_request(request, "Member documents created failed","error","user tried to create member documents but made an invalid request")
+                log_request(request, "Member documents created failed", "error",
+                            "user tried to create member documents but made an invalid request")
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -1554,7 +1638,8 @@ class MemberDocumentView(APIView):
         except Exception as e:
             logger.exception(str(e))
             # activity log
-            log_request(request, "Member documents created failed","error","user tried to create member documents but made an invalid request")
+            log_request(request, "Member documents created failed", "error",
+                        "user tried to create member documents but made an invalid request")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -1567,12 +1652,12 @@ class MemberDocumentView(APIView):
     # def get(self,request):
     #     try:
     #         documents = models.Documents.objects.all()
-            
+
     #         paginator = CustomPageNumberPagination()
     #         paginated_queryset = paginator.paginate_queryset(
     #             documents, request, view=self)
     #         serializer = serializers.MemberDocumentViewSerializer(paginated_queryset, many=True)
-            
+
     #         # activity log
     #         log_request(request, "Member documents retrieved successfully","info","user tried to retrieve member documents and succeeded")
     #         return paginator.get_paginated_response({
@@ -1581,7 +1666,7 @@ class MemberDocumentView(APIView):
     #             "status": "success",
     #             "data": serializer.data
     #         }, status=status.HTTP_200_OK)
-            
+
     #     except Exception as e:
     #         logger.exception(str(e))
     #         # activity log
@@ -1594,7 +1679,7 @@ class MemberDocumentView(APIView):
     #                 "server_error": [str(e)]
     #             }
     #         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+
     def patch(self, request):
         try:
             data = request.data
@@ -1612,9 +1697,10 @@ class MemberDocumentView(APIView):
                 with transaction.atomic():
                     if instance is not None:
                         instance = serializer.save(instance=instance)
-                        
+
                         # activity log
-                        log_request(request, "Member documents updated successfully","info","user tried to update member documents and succeeded")
+                        log_request(request, "Member documents updated successfully",
+                                    "info", "user tried to update member documents and succeeded")
                         return Response({
                             "code": 200,
                             "message": "Member Documents has been updated successfully",
@@ -1626,7 +1712,8 @@ class MemberDocumentView(APIView):
                     else:
                         instance = serializer.save()
                         # activity log
-                        log_request(request, "Member documents created successfully","info","user tried to create member documents and succeeded")
+                        log_request(request, "Member documents created successfully",
+                                    "info", "user tried to create member documents and succeeded")
                         return Response({
                             "code": 201,
                             "message": "Member Documents has been created successfully",
@@ -1636,9 +1723,10 @@ class MemberDocumentView(APIView):
                             }
                         }, status=status.HTTP_201_CREATED)
             else:
-                
+
                 # activity log
-                log_request(request, "Member documents updated failed","error","user tried to update member documents but made an invalid request")
+                log_request(request, "Member documents updated failed", "error",
+                            "user tried to update member documents but made an invalid request")
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -1648,7 +1736,8 @@ class MemberDocumentView(APIView):
         except Exception as e:
             logger.exception(str(e))
             # activity log
-            log_request(request, "Member documents updated failed","error","user tried to update member documents but made an invalid request")
+            log_request(request, "Member documents updated failed", "error",
+                        "user tried to update member documents but made an invalid request")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -1677,14 +1766,16 @@ class AddMemberIDview(APIView):
             if serializer.is_valid():
                 with transaction.atomic():
                     instance = serializer.save()
-                
+
                 # activity log
-                log_request(request, "New member id created","info","A user has successfully created a new Member ID.")
+                log_request(request, "New member id created", "info",
+                            "A user has successfully created a new Member ID.")
                 return Response({"code": 201, "status": "success", "message": "New Id has been created"}, status=status.HTTP_201_CREATED)
             else:
-                
+
                 # activity log
-                log_request(request, "New member id creation failed","error","A user tried to create a new Member ID but made an invalid request")
+                log_request(request, "New member id creation failed", "error",
+                            "A user tried to create a new Member ID but made an invalid request")
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -1693,9 +1784,10 @@ class AddMemberIDview(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
-            
+
             # activity log
-            log_request(request, "New member id creation failed","error","A user tried to create a new Member ID but made an invalid request")
+            log_request(request, "New member id creation failed", "error",
+                        "A user tried to create a new Member ID but made an invalid request")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -1719,7 +1811,7 @@ class MemberHistoryView(APIView):
             cached_response = cache.get(cache_key)
             if cached_response:
                 return Response(cached_response, status=200)
-            
+
             history = MemberHistory.objects.all()
 
             # Now get the values
@@ -1747,10 +1839,11 @@ class MemberHistoryView(APIView):
                 history, request, view=self)
             serializer = serializers.MemberHistorySerializer(
                 paginated_queryset, many=True)
-            
+
             # activity log
-            log_request(request, "Viewing all members history","info","A user has successfully viewing all members history.")
-            
+            log_request(request, "Viewing all members history", "info",
+                        "A user has successfully viewing all members history.")
+
             final_response = paginator.get_paginated_response({
                 "code": 200,
                 "status": "success",
@@ -1764,7 +1857,8 @@ class MemberHistoryView(APIView):
         except Exception as e:
             logger.exception(str(e))
             # activity log
-            log_request(request, "Viewing all members history failed","error","A user tried to view all members history but made an invalid request")
+            log_request(request, "Viewing all members history failed", "error",
+                        "A user tried to view all members history but made an invalid request")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -1775,39 +1869,39 @@ class MemberHistoryView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-
 class MemberSingleHistoryView(APIView):
     permission_classes = [IsAuthenticated, ViewMemberPermission]
 
     def get(self, request, member_ID):
         try:
-            query_items = sorted(request.query_params.items())
-            query_string = urlencode(query_items) if query_items else "default"
-            cache_key = f"specific_member_history::{query_string}"
+            cache_key = f"specific_member_history::{member_ID}"
             cached_response = cache.get(cache_key)
             if cached_response:
                 return Response(cached_response, status=200)
-            member_history = MemberHistory.objects.filter(stored_member_id=member_ID)
+            member_history = MemberHistory.objects.filter(
+                stored_member_id=member_ID)
             serializer = serializers.MemberHistorySerializer(
                 member_history, many=True)
-            
+
             # activity log
-            log_request(request, "Viewing single member history","info","A user has successfully viewing single member history.")
-            
+            log_request(request, "Viewing single member history", "info",
+                        "A user has successfully viewing single member history.")
+
             final_response = Response({
                 'code': 200,
                 'status': 'success',
                 "message": "viewing member history",
                 "data": serializer.data
             }, status=status.HTTP_200_OK)
-            
+
             # Cache the response
             cache.set(cache_key, final_response.data, 60*30)
             return final_response
         except MemberHistory.DoesNotExist:
-            
+
             # activity log
-            log_request(request, "Viewing single member history failed","error","A user tried to view single member history but made an invalid request.")
+            log_request(request, "Viewing single member history failed", "error",
+                        "A user tried to view single member history but made an invalid request.")
             return Response({
                 "code": 404,
                 "status": "failed",
@@ -1818,9 +1912,10 @@ class MemberSingleHistoryView(APIView):
             }, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             logger.exception(str(e))
-            
+
             # activity log
-            log_request(request, "Viewing single member history failed","error","A user tried to view single member history but made an invalid request.")
+            log_request(request, "Viewing single member history failed", "error",
+                        "A user tried to view single member history but made an invalid request.")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -1849,7 +1944,8 @@ class MemberSpecialDayView(APIView):
             if serializer.is_valid():
                 instances = serializer.save()
                 # activity log
-                log_request(request, "Creating new member special days","info","A user has successfully created new member special days.")
+                log_request(request, "Creating new member special days", "info",
+                            "A user has successfully created new member special days.")
 
                 return Response({
                     "code": 201,
@@ -1859,9 +1955,10 @@ class MemberSpecialDayView(APIView):
                 }, status=status.HTTP_201_CREATED)
 
             else:
-                
+
                 # activity log
-                log_request(request, "Creating new member special days failed","error","A user tried to create new member special days but made an invalid request")
+                log_request(request, "Creating new member special days failed", "error",
+                            "A user tried to create new member special days but made an invalid request")
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -1871,7 +1968,8 @@ class MemberSpecialDayView(APIView):
         except Exception as e:
             logger.exception(str(e))
             # activity log
-            log_request(request, "Creating new member special days failed","error","A user tried to create new member special days but made an invalid request")
+            log_request(request, "Creating new member special days failed", "error",
+                        "A user tried to create new member special days but made an invalid request")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -1891,9 +1989,10 @@ class MemberSpecialDayView(APIView):
             if serializer.is_valid():
                 with transaction.atomic():
                     instance = serializer.save(instance=member)
-                
+
                 # activity log
-                log_request(request, "Updating member special days","info","A user has successfully updated member special days.")
+                log_request(request, "Updating member special days", "info",
+                            "A user has successfully updated member special days.")
                 return Response({
                     "code": 200,
                     "message": "Member special day has been updated successfully",
@@ -1902,7 +2001,8 @@ class MemberSpecialDayView(APIView):
                 }, status=status.HTTP_200_OK)
             else:
                 # activity log
-                log_request(request, "Updating member special days failed","error","A user tried to update member special days but made an invalid request")
+                log_request(request, "Updating member special days failed", "error",
+                            "A user tried to update member special days but made an invalid request")
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -1911,7 +2011,8 @@ class MemberSpecialDayView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except models.Member.DoesNotExist:
             # activity log
-            log_request(request, "Updating member special days failed","error","A user tried to update member special days but made an invalid request")
+            log_request(request, "Updating member special days failed", "error",
+                        "A user tried to update member special days but made an invalid request")
             return Response({
                 "code": 404,
                 "status": "failed",
@@ -1923,7 +2024,8 @@ class MemberSpecialDayView(APIView):
         except Exception as e:
             logger.exception(str(e))
             # activity log
-            log_request(request, "Updating member special days failed","error","A user tried to update member special days but made an invalid request")
+            log_request(request, "Updating member special days failed", "error",
+                        "A user tried to update member special days but made an invalid request")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -1953,9 +2055,10 @@ class MemberCertificateView(APIView):
 
             if serializer.is_valid():
                 instance = serializer.save()
-                
+
                 # activity log
-                log_request(request, "Creating new member certificates","info","A user has successfully created new member certificates.")
+                log_request(request, "Creating new member certificates", "info",
+                            "A user has successfully created new member certificates.")
 
                 return Response({
                     "code": 201,
@@ -1965,9 +2068,10 @@ class MemberCertificateView(APIView):
                 }, status=status.HTTP_201_CREATED)
 
             else:
-                
+
                 # activity log
-                log_request(request, "Creating new member certificates failed","error","A user tried to create new member certificates but made an invalid request")
+                log_request(request, "Creating new member certificates failed", "error",
+                            "A user tried to create new member certificates but made an invalid request")
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -1976,9 +2080,10 @@ class MemberCertificateView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
-            
+
             # activity log
-            log_request(request, "Creating new member certificates failed","error","A user tried to create new member certificates but made an invalid request")
+            log_request(request, "Creating new member certificates failed", "error",
+                        "A user tried to create new member certificates but made an invalid request")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -1993,7 +2098,8 @@ class MemberCertificateView(APIView):
             data = request.data
             id = data.get('id')
             if id:
-                instance = Certificate.objects.select_related('member').get(pk=id)
+                instance = Certificate.objects.select_related(
+                    'member').get(pk=id)
 
                 serializer = serializers.MemberCertificateSerializer(
                     instance, data=data)
@@ -2006,8 +2112,9 @@ class MemberCertificateView(APIView):
                     if instance is not None:
                         instance = serializer.save(instance=instance)
                         # activity log
-                        log_request(request, "Updating member certificates","info","A user has successfully updated member certificates.")
-                        
+                        log_request(request, "Updating member certificates", "info",
+                                    "A user has successfully updated member certificates.")
+
                         return Response({
                             "code": 200,
                             "message": "Member Certificate has been updated successfully",
@@ -2019,7 +2126,8 @@ class MemberCertificateView(APIView):
                     else:
                         instance = serializer.save()
                         # activity log
-                        log_request(request, "Creating new member certificates","info","A user has successfully created new member certificates.")
+                        log_request(request, "Creating new member certificates", "info",
+                                    "A user has successfully created new member certificates.")
                         return Response({
                             "code": 201,
                             "message": "Member Certificate has been created successfully",
@@ -2030,7 +2138,8 @@ class MemberCertificateView(APIView):
                         }, status=status.HTTP_201_CREATED)
             else:
                 # activity log
-                log_request(request, "Updating member certificates failed","error","A user tried to update member certificates but made an invalid request")
+                log_request(request, "Updating member certificates failed", "error",
+                            "A user tried to update member certificates but made an invalid request")
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -2039,9 +2148,10 @@ class MemberCertificateView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
-            
+
             # activity log
-            log_request(request, "Updating member certificates failed","error","A user tried to update member certificates but made an invalid request")
+            log_request(request, "Updating member certificates failed", "error",
+                        "A user tried to update member certificates but made an invalid request")
             return Response({
                 "code": 500,
                 "status": "failed",
