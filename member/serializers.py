@@ -274,6 +274,7 @@ class MemberIdSerializer(serializers.Serializer):
         return value
     
     def validate_institute_name(self, value):
+        value = value.title()
         is_type_exist = InstituteName.objects.filter(name=value).first()
         if not is_type_exist:
             raise serializers.ValidationError(

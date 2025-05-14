@@ -27,7 +27,7 @@ class TestMemberCreateAndUpdateEndpoints(APITestCase):
         marital_status = MaritalStatusChoiceFactory.create_batch(3)
         image = generate_test_image()
         cls.member_create_request_body = {
-            "member_ID": f"{member_ship_type[0].name}0001",
+            "member_ID": f"{member_ship_type[0].name}0001-{institute[0].code}",
             "first_name": faker.first_name(),
             "gender": gender[0].name,
             "date_of_birth": faker.date_of_birth(minimum_age=18, maximum_age=90).strftime('%Y-%m-%d'),
@@ -95,13 +95,14 @@ class TestMemberCreateAndUpdateEndpoints(APITestCase):
         # arrange
         member = MemberFactory()
         member_ship_type = MembershipTypeFactory()
+        institute_name = InstituteNameFactory()
         _data = {**vars(member)}
         _data.pop("_django_cleanup_original_cache")
         _data.pop("_state")
-        _data["member_ID"] = f"{member_ship_type.name}0001"
+        _data["member_ID"] = f"{member_ship_type.name}0001-{institute_name.code}"
         _data["membership_type"] = member_ship_type.name
         _data["gender"] = GenderFactory().name
-        _data["institute_name"] = InstituteNameFactory().name
+        _data["institute_name"] = institute_name.name
         _data["membership_status"] = MembershipStatusChoiceFactory().name
         _data["marital_status"] = MaritalStatusChoiceFactory().name
         # act
@@ -125,7 +126,7 @@ class TestMemberCreateAndUpdateEndpoints(APITestCase):
         _data = {**vars(member)}
         _data.pop("_django_cleanup_original_cache")
         _data.pop("_state")
-        _data["member_ID"] = "SMTP0001"
+        _data["member_ID"] = "SMTP0001-001"
         _data["membership_type"] = member_ship_type.name
         _data["gender"] = GenderFactory().name
         _data["institute_name"] = InstituteNameFactory().name
