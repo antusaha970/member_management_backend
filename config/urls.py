@@ -18,6 +18,7 @@ urlpatterns = [
     path('api/product/', include('product.urls')),
     path('api/facility/', include('facility.urls')),
     path('api/promo_code/', include('promo_code_app.urls')),
+    path('api/mails/', include('mails.urls')),
 
     path('api-auth/', include('rest_framework.urls')),
     path('silk/', include('silk.urls', namespace='silk')),
