@@ -42,6 +42,17 @@ class SMTPConfigurationSerializer(serializers.Serializer):
             provider=provider, username=username, password=password, user=user)
         return obj
 
+    def update(self, instance, validated_data):
+        provider = validated_data.get("provider")
+        username = validated_data.get("username")
+        password = validated_data.get("password")
+        instance.provider = provider
+        instance.username = username
+        instance.password = password
+        instance.save(update_fields=["provider", "username", "password"])
+
+        return instance
+
 
 class EmailComposeSerializer(serializers.Serializer):
     subject = serializers.CharField(max_length=255)

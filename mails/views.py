@@ -7,6 +7,8 @@ from activity_log.tasks import log_activity_task
 from activity_log.utils.functions import request_data_activity_log
 from rest_framework import status
 from .models import SMTPConfiguration, Email_Compose
+from django.shortcuts import get_object_or_404
+from django.http import Http404
 
 
 logger = logging.getLogger("myapp")
@@ -74,6 +76,53 @@ class SetMailConfigurationAPIView(APIView):
                 "data": serializer.data
             }, status=200)
 
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="",
+                severity_level="info",
+                description="User tried to create a mail configuration but faced an error",
+            )
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def put(self, request, id):
+        try:
+            user = request.user
+            instance = get_object_or_404(SMTPConfiguration, pk=id, user=user)
+            serializer = serializers.SMTPConfigurationSerializer(
+                data=request.data)
+            if serializer.is_valid():
+                instance = serializer.update(
+                    instance, serializer.validated_data)
+                return Response({
+                    "code": 200,
+                    "status": "success",
+                    "message": "Mail configuration updated successfully",
+                    "data": {
+                        "id": instance.id,
+                    }
+                })
+            else:
+                return Response({
+                    "code": 400,
+                    "status": "Bad request",
+                    "message": "Bad request",
+                    "errors": serializer.errors
+                }, status=400)
+        except Http404:
+            return Response({
+                "code": 404,
+                "status": "Not found",
+                "message": "Mail configuration not found",
+            }, status=404)
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
