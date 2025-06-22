@@ -20,7 +20,16 @@ class SetMailConfigurationAPIView(APIView):
             serializer = serializers.SMTPConfigurationSerializer(
                 data=request.data)
             if serializer.is_valid():
-                return Response("Ok")
+                user = request.user
+                instance = serializer.save(user=user)
+                return Response({
+                    "code": 201,
+                    "status": "success",
+                    "message": "Mail configuration created successfully",
+                    "data": {
+                        "id": instance.id,
+                    }
+                }, status=201)
             else:
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),

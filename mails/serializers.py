@@ -36,7 +36,8 @@ class SMTPConfigurationSerializer(serializers.Serializer):
         provider = validated_data.get("provider")
         username = validated_data.get("username")
         password = validated_data.get("password")
+        user = validated_data.pop('user')
 
         obj = SMTPConfiguration.objects.create(
-            provider=provider, username=username, password=password)
+            provider=provider, username=username, password=password, user=user)
         return obj
