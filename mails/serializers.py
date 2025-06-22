@@ -49,13 +49,27 @@ class EmailGroupSerializer(serializers.Serializer):
 
     def validate_name(self, value):
         name = value.strip().lower().replace(" ", "_")
-        if EmailGroup.objects.filter(name=name).exists():
+        # Exclude current instance if it exists
+        queryset = EmailGroup.objects.filter(name=name)
+        if self.instance:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
             raise serializers.ValidationError(f"Email group with name '{name}' already exists.")
+        
         return name
+
 
     def create(self, validated_data):
         obj = EmailGroup.objects.create(**validated_data)
         return obj
+    def update(self, instance, validated_data):
+        instance.name = validated_data.get('name', instance.name)
+        instance.description = validated_data.get('description', instance.description)
+        instance.user = validated_data.get('user', instance.user)
+        instance.save()
+        return instance
+    
+    
 class EmailGroupViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmailGroup

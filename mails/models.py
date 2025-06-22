@@ -99,7 +99,6 @@ class EmailGroup(MailBaseModel):
 
 class EmailList(MailBaseModel):
     email = models.EmailField(max_length=255, unique=True)
-    full_name = models.CharField(max_length=255, default='', blank=True)
     is_subscribed = models.BooleanField(default=True)
     # relations
     group = models.ForeignKey(
