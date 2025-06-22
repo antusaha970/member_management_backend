@@ -40,3 +40,24 @@ class SMTPConfigurationSerializer(serializers.Serializer):
         obj = SMTPConfiguration.objects.create(
             provider=provider, username=username, password=password)
         return obj
+
+
+class EmailGroupSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=255)
+    description = serializers.CharField(max_length=500, required=False)
+    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+
+    def validate_name(self, value):
+        name = value.strip().lower().replace(" ", "_")
+        if EmailGroup.objects.filter(name=name).exists():
+            raise serializers.ValidationError(f"Email group with name '{name}' already exists.")
+        return name
+
+    def create(self, validated_data):
+        obj = EmailGroup.objects.create(**validated_data)
+        return obj
+class EmailGroupViewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EmailGroup
+        fields = ['id', 'name', 'description', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']

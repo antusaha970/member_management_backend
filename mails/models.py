@@ -88,7 +88,8 @@ class Outbox(MailBaseModel):
 
 class EmailGroup(MailBaseModel):
     name = models.CharField(max_length=255, unique=True)
-    description = models.TextField(default='', blank=True)
+    description = models.CharField(max_length=500, default='', blank=True)
+    # relations
     user = models.ForeignKey(
         User, related_name="user_email_groups", on_delete=models.CASCADE)
 
@@ -100,6 +101,7 @@ class EmailList(MailBaseModel):
     email = models.EmailField(max_length=255, unique=True)
     full_name = models.CharField(max_length=255, default='', blank=True)
     is_subscribed = models.BooleanField(default=True)
+    # relations
     group = models.ForeignKey(
         EmailGroup, related_name="group_email_lists", on_delete=models.CASCADE)
 
