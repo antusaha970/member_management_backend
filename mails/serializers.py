@@ -41,3 +41,24 @@ class SMTPConfigurationSerializer(serializers.Serializer):
         obj = SMTPConfiguration.objects.create(
             provider=provider, username=username, password=password, user=user)
         return obj
+
+
+class EmailComposeSerializer(serializers.Serializer):
+    subject = serializers.CharField(max_length=255)
+    body = serializers.CharField()
+    configurations = serializers.PrimaryKeyRelatedField(
+        queryset=SMTPConfiguration.objects.all())
+    attachments = serializers.ListField(
+        child=serializers.FileField(), required=False, write_only=True)
+
+    def create(self, validated_data):
+        attachments = validated_data.pop('attachments', [])
+        user = validated_data.pop('user')
+
+        instance = Email_Compose.objects.create(**validated_data, user=user)
+
+        for attachment in attachments:
+            EmailAttachment.objects.create(
+                email_compose=instance, file=attachment)
+
+        return instance
