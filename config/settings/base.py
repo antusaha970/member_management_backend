@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'member_financial_management',
     'facility',
     'promo_code_app',
+    'mails',
 ]
 
 # Middleware
