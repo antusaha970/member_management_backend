@@ -32,7 +32,7 @@ INSTALLED_APPS = [
     'django_cleanup',
     'django_celery_results',
     'django_filters',
-    'django_celery_beat',
+    'django_celery_beat',   
     'silk',
     # Custom apps
     'account',

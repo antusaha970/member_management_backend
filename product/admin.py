@@ -24,7 +24,10 @@ models = apps.get_app_config(app_name).get_models()
 
 for model in models:
     if model != ProductMedia:
+        class DynamicAdmin(admin.ModelAdmin):
+            list_display = [field.name for field in model._meta.fields]
         try:
-            admin.site.register(model)
+            admin.site.register(model, DynamicAdmin)
         except admin.sites.AlreadyRegistered:
             pass
+
