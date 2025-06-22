@@ -84,3 +84,25 @@ class Outbox(MailBaseModel):
 
     def __str__(self):
         return self.email_address
+   
+class EmailGroup(MailBaseModel):
+    name = models.CharField(max_length=255, unique=True)
+    description = models.TextField(default='', blank=True)
+    user = models.ForeignKey(User, related_name="user_email_groups", on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.name
+class EmailList(MailBaseModel):
+    email = models.EmailField(max_length=255, unique=True)
+    full_name = models.CharField(max_length=255, default='', blank=True)
+    is_subscribed = models.BooleanField(default=True)
+    group = models.ForeignKey(EmailGroup, related_name="group_email_lists", on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.email
+    
+class SingleEmail(MailBaseModel):
+    email = models.EmailField(max_length=255, unique=True)
+
+    def __str__(self):
+        return self.email
