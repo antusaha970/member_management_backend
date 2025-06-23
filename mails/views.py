@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from . import serializers
-from .models import EmailGroup, SMTPConfiguration
+from .models import EmailGroup, SMTPConfiguration,EmailList
 from rest_framework.response import Response
 import logging
 from activity_log.tasks import log_activity_task
@@ -11,6 +11,7 @@ from .models import SMTPConfiguration, Email_Compose
 from django.shortcuts import get_object_or_404
 from django.http import Http404
 from mails.utils.permission_classes import BulkEmailManagementPermission
+from activity_log.utils.functions import log_request
 
 from django.core.cache import cache
 from django.utils.http import urlencode
@@ -309,6 +310,54 @@ class EmailGroupView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
+class EmailGroupDetailView(APIView):
+    permission_classes = [IsAuthenticated, BulkEmailManagementPermission]
+
+    def get(self, request, group_id):
+        try:
+            email_group = EmailGroup.objects.get(id=group_id)
+            serializer = serializers.EmailGroupViewSerializer(email_group)
+            # activity log
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Retrieve specific Email Group",
+                severity_level="info",
+                description=f"User fetched email group with id {group_id} successfully",
+            )
+            return Response({
+                "code": 200,
+                "status": "success",
+                "message": "Email group retrieved successfully",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except EmailGroup.DoesNotExist:
+            return Response({
+                "code": 404,
+                "status": "failed",
+                "message": "Email group not found",
+                "errors": {
+                    "group": ["Email group not found"]
+                }
+
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Retrieve Email Group",
+                severity_level="errors",
+                description=f"User tried to retrieve specific email group  but faced an error",
+            )
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
     def patch(self, request, group_id):
         try:
             email_group = EmailGroup.objects.get(id=group_id)
@@ -423,45 +472,67 @@ class EmailGroupView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
-class EmailGroupDetailView(APIView):
+class EmailListView(APIView):
     permission_classes = [IsAuthenticated, BulkEmailManagementPermission]
-
-    def get(self, request, group_id):
+    
+    def post(self, request):
         try:
-            email_group = EmailGroup.objects.get(id=group_id)
-            serializer = serializers.EmailGroupViewSerializer(email_group)
+            serializer = serializers.EmailListSerializer(data=request.data)
+            if serializer.is_valid():
+                objs = serializer.save()
+                print(objs)
+                group = serializer.validated_data['group']
+                # activity log
+                log_request(request, "Create Email List", "info", "User created email list successfully")
+                return Response({
+                    "code": 201,
+                    "status": "success",
+                    "message": "Email list created successfully",
+                    "data": {
+                        # "id": obj.count(),
+                        "group": group.id,
+                    }
+                }, status=status.HTTP_201_CREATED)
+            else:
+                # activity log
+                log_request(request, "Create Email List", "info", "User tried to create email list but faced an error")
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Bad request",
+                    "errors": serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
             # activity log
-            log_activity_task.delay_on_commit(
-                request_data_activity_log(request),
-                verb="Retrieve specific Email Group",
-                severity_level="info",
-                description=f"User fetched email group with id {group_id} successfully",
-            )
+            log_request(request, "Create Email List", "errors", "User tried to create email list but faced an error")
+           
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+    def get(self, request):
+        try:
+            email_lists = EmailList.objects.all()
+            serializer = serializers.EmailListViewSerializer(
+                email_lists, many=True)
+            # activity log
+            log_request(request, "Retrieve Email Lists", "info", "User fetched email lists successfully")
             return Response({
                 "code": 200,
                 "status": "success",
-                "message": "Email group retrieved successfully",
+                "message": "Email lists retrieved successfully",
                 "data": serializer.data
             }, status=status.HTTP_200_OK)
-        except EmailGroup.DoesNotExist:
-            return Response({
-                "code": 404,
-                "status": "failed",
-                "message": "Email group not found",
-                "errors": {
-                    "group": ["Email group not found"]
-                }
-
-            }, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             logger.exception(str(e))
-            log_activity_task.delay_on_commit(
-                request_data_activity_log(request),
-                verb="Retrieve Email Group",
-                severity_level="errors",
-                description=f"User tried to retrieve specific email group  but faced an error",
-            )
+            # activity log
+            log_request(request, "Retrieve Email Lists", "errors", "User tried to fetch email lists but faced an error")
             return Response({
                 "code": 500,
                 "status": "failed",

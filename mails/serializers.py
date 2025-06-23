@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import *
+from collections import Counter
 
 
 class SMTPConfigurationSerializer(serializers.Serializer):
@@ -110,3 +111,54 @@ class EmailGroupViewSerializer(serializers.ModelSerializer):
         model = EmailGroup
         fields = ['id', 'name', 'description', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+class EmailListSerializer(serializers.Serializer):
+    email = serializers.ListField(
+        child=serializers.EmailField(),
+        allow_empty=False
+    )
+    is_subscribed = serializers.BooleanField(default=True)
+    group = serializers.PrimaryKeyRelatedField(queryset=EmailGroup.objects.all())
+
+    def validate_email(self, value):
+        """
+        Remove duplicates from input email list (case-insensitive),
+        and exclude emails that already exist in the database.
+        """
+        normalized_emails = {email.strip().lower() for email in value}
+
+        if not normalized_emails:
+            return []
+        existing_emails = set(
+            EmailList.objects.filter(email__in=normalized_emails)
+            .values_list('email', flat=True)
+        )
+        return list(normalized_emails - existing_emails)
+            
+
+    def create(self, validated_data):
+        emails = validated_data.pop('email')
+        group = validated_data.get('group', None)
+        is_subscribed = validated_data.get('is_subscribed', True)
+
+        email_objs = [
+            EmailList(email=email, is_subscribed=is_subscribed, group=group)
+            for email in emails
+        ]
+        objs = EmailList.objects.bulk_create(email_objs)
+        return objs
+
+    
+    def update(self, instance, validated_data):
+        instance.email = validated_data.get('email', instance.email)
+        instance.is_subscribed = validated_data.get(
+            'is_subscribed', instance.is_subscribed)
+        instance.group = validated_data.get('group', instance.group)
+        instance.save()
+        return instance
+    
+class EmailListViewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EmailList
+        fields = ['id', 'email', 'is_subscribed', 'group']
+        read_only_fields = ['id']
