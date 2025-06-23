@@ -145,6 +145,41 @@ class SetMailConfigurationAPIView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    def delete(self, request, id):
+        try:
+            user = request.user
+            instance = get_object_or_404(SMTPConfiguration, user=user, pk=id)
+            with transaction.atomic():
+                instance.delete()
+            return Response({
+                "code": 204,
+                "status": "success",
+                "message": "Mail configuration deleted successfully",
+            }, status=204)
+
+        except Http404:
+            return Response({
+                "code": 404,
+                "status": "Not found",
+                "message": "Mail configuration not found",
+            }, status=404)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Update",
+                severity_level="info",
+                description="User tried to update an mail Composes but faced an error",
+            )
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class EmailComposeView(APIView):
     permission_classes = [IsAuthenticated]
