@@ -72,7 +72,7 @@ class SetMailConfigurationAPIView(APIView):
         try:
             user = request.user
             configs = SMTPConfiguration.objects.filter(user=user)
-            serializer = serializers.SMTPConfigurationSerializer(
+            serializer = serializers.SMTPConfigurationSerializerForView(
                 configs, many=True)
             return Response({
                 "code": 200,

@@ -54,6 +54,12 @@ class SMTPConfigurationSerializer(serializers.Serializer):
         return instance
 
 
+class SMTPConfigurationSerializerForView(serializers.ModelSerializer):
+    class Meta:
+        model = SMTPConfiguration
+        fields = "__all__"
+
+
 class EmailComposeSerializer(serializers.Serializer):
     subject = serializers.CharField(max_length=255)
     body = serializers.CharField()
