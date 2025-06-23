@@ -73,3 +73,40 @@ class EmailComposeSerializer(serializers.Serializer):
                 email_compose=instance, file=attachment)
 
         return instance
+
+
+class EmailGroupSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=255)
+    description = serializers.CharField(max_length=500, required=False)
+    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+
+    def validate_name(self, value):
+        name = value.strip().lower().replace(" ", "_")
+        # Exclude current instance if it exists
+        queryset = EmailGroup.objects.filter(name=name)
+        if self.instance:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise serializers.ValidationError(
+                f"Email group with name '{name}' already exists.")
+
+        return name
+
+    def create(self, validated_data):
+        obj = EmailGroup.objects.create(**validated_data)
+        return obj
+
+    def update(self, instance, validated_data):
+        instance.name = validated_data.get('name', instance.name)
+        instance.description = validated_data.get(
+            'description', instance.description)
+        instance.user = validated_data.get('user', instance.user)
+        instance.save()
+        return instance
+
+
+class EmailGroupViewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EmailGroup
+        fields = ['id', 'name', 'description', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
