@@ -7,7 +7,7 @@ import logging
 from activity_log.tasks import log_activity_task
 from activity_log.utils.functions import request_data_activity_log
 from rest_framework import status
-from .models import SMTPConfiguration, Email_Compose
+from .models import SMTPConfiguration, Email_Compose, EmailAttachment
 from django.shortcuts import get_object_or_404
 from django.http import Http404
 from mails.utils.permission_classes import BulkEmailManagementPermission
@@ -16,6 +16,7 @@ from activity_log.utils.functions import log_request
 from django.core.cache import cache
 from django.utils.http import urlencode
 from core.utils.pagination import CustomPageNumberPagination
+from django.db import transaction
 logger = logging.getLogger("myapp")
 
 
@@ -145,6 +146,41 @@ class SetMailConfigurationAPIView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    def delete(self, request, id):
+        try:
+            user = request.user
+            instance = get_object_or_404(SMTPConfiguration, user=user, pk=id)
+            with transaction.atomic():
+                instance.delete()
+            return Response({
+                "code": 204,
+                "status": "success",
+                "message": "Mail configuration deleted successfully",
+            }, status=204)
+
+        except Http404:
+            return Response({
+                "code": 404,
+                "status": "Not found",
+                "message": "Mail configuration not found",
+            }, status=404)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Update",
+                severity_level="info",
+                description="User tried to update an mail Composes but faced an error",
+            )
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class EmailComposeView(APIView):
     permission_classes = [IsAuthenticated]
@@ -191,7 +227,7 @@ class EmailComposeView(APIView):
         try:
             user = request.user
             composes = Email_Compose.objects.filter(user=user)
-            serializer = serializers.EmailComposeSerializer(
+            serializer = serializers.EmailComposeViewSerializer(
                 composes, many=True)
             return Response({
                 "code": 200,
@@ -207,6 +243,92 @@ class EmailComposeView(APIView):
                 verb="View",
                 severity_level="info",
                 description="User tried to view all mail Composes but faced an error",
+            )
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def patch(self, request, id):
+        try:
+            user = request.user
+            instance = get_object_or_404(Email_Compose, pk=id, user=user)
+            serializer = serializers.EmailComposeUpdateSerializer(
+                data=request.data)
+            if serializer.is_valid():
+                update_instance = serializer.update(
+                    instance, serializer.validated_data)
+                return Response({
+                    "code": 200,
+                    "status": "success",
+                    "message": "Mail Compose updated successfully",
+                    "data": {
+                        "id": update_instance.id,
+                    }
+                }, status=200)
+            else:
+                return Response({
+                    "code": 400,
+                    "status": "Bad request",
+                    "message": "Bad request",
+                    "errors": serializer.errors
+                }, status=400)
+
+        except Http404:
+            return Response({
+                "code": 404,
+                "status": "Not found",
+                "message": "Mail Compose not found",
+            }, status=404
+            )
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Update",
+                severity_level="info",
+                description="User tried to update an mail Composes but faced an error",
+            )
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def delete(self, request, id):
+        try:
+            user = request.user
+            instance = get_object_or_404(Email_Compose, pk=id, user=user)
+            with transaction.atomic():
+                attachments = EmailAttachment.objects.filter(
+                    email_compose=instance)
+                attachments.delete()
+                instance.delete()
+            return Response({
+                "code": 204,
+                "status": "success",
+                "message": "Mail Compose deleted successfully"
+            }, status=204)
+        except Http404:
+            return Response({
+                "code": 404,
+                "status": "Not found",
+                "message": "Mail Compose not found",
+            }, status=404)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Update",
+                severity_level="info",
+                description="User tried to update an mail Composes but faced an error",
             )
             return Response({
                 "code": 500,

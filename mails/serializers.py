@@ -162,3 +162,46 @@ class EmailListViewSerializer(serializers.ModelSerializer):
         model = EmailList
         fields = ['id', 'email', 'is_subscribed', 'group']
         read_only_fields = ['id']
+
+class EmailAttachmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EmailAttachment
+        fields = ['file']
+
+
+class EmailComposeViewSerializer(serializers.ModelSerializer):
+    attachments = EmailAttachmentSerializer(
+        source='emailattachment_set', many=True, read_only=True)
+
+    class Meta:
+        model = Email_Compose
+        fields = ['id', 'subject', 'body', 'configurations', 'attachments']
+
+
+class EmailComposeUpdateSerializer(serializers.Serializer):
+    subject = serializers.CharField(max_length=255, required=False)
+    body = serializers.CharField(required=False)
+    configurations = serializers.PrimaryKeyRelatedField(
+        queryset=SMTPConfiguration.objects.all(), required=False)
+    attachments = serializers.ListField(
+        child=serializers.FileField(), required=False, write_only=True)
+
+    def update(self, instance, validated_data):
+        if 'subject' in validated_data:
+            instance.subject = validated_data['subject']
+
+        if 'body' in validated_data:
+            instance.body = validated_data['body']
+
+        if 'configurations' in validated_data:
+            instance.configurations = validated_data['configurations']
+
+        attachments = validated_data.get('attachments')
+        if attachments:
+            instance.emailattachment_set.all().delete()
+            for file in attachments:
+                EmailAttachment.objects.create(
+                    email_compose=instance, file=file)
+
+        instance.save()
+        return instance
