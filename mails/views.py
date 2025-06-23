@@ -190,7 +190,7 @@ class EmailComposeView(APIView):
         try:
             user = request.user
             composes = Email_Compose.objects.filter(user=user)
-            serializer = serializers.EmailComposeSerializer(
+            serializer = serializers.EmailComposeViewSerializer(
                 composes, many=True)
             return Response({
                 "code": 200,

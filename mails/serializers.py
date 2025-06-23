@@ -110,3 +110,18 @@ class EmailGroupViewSerializer(serializers.ModelSerializer):
         model = EmailGroup
         fields = ['id', 'name', 'description', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class EmailAttachmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EmailAttachment
+        fields = ['file']
+
+
+class EmailComposeViewSerializer(serializers.ModelSerializer):
+    attachments = EmailAttachmentSerializer(
+        source='emailattachment_set', many=True, read_only=True)
+
+    class Meta:
+        model = Email_Compose
+        fields = ['id', 'subject', 'body', 'configurations', 'attachments']
