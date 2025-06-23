@@ -12,12 +12,13 @@ from django.shortcuts import get_object_or_404
 from django.http import Http404
 from mails.utils.permission_classes import BulkEmailManagementPermission
 from activity_log.utils.functions import log_request
-
+from .filters import EmailListFilter
 from django.core.cache import cache
 from django.utils.http import urlencode
 from core.utils.pagination import CustomPageNumberPagination
 from django.db import transaction
 logger = logging.getLogger("myapp")
+
 
 
 class SetMailConfigurationAPIView(APIView):
@@ -637,23 +638,39 @@ class EmailListView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            
     def get(self, request):
         try:
-            email_lists = EmailList.objects.all()
-            serializer = serializers.EmailListViewSerializer(
-                email_lists, many=True)
-            # activity log
-            log_request(request, "Retrieve Email Lists", "info", "User fetched email lists successfully")
-            return Response({
+            query_params = request.query_params
+            query_items = sorted(query_params.items())
+            query_string = urlencode(query_items) if query_items else "default"
+            cache_key = f"email_lists::{query_string}"
+
+            cached_response = cache.get(cache_key)
+            if cached_response:
+                print(f"Cache hit for key: {cache_key}")
+                return Response(cached_response, status=200)
+
+            email_lists = EmailList.objects.all().order_by('id')
+            paginator = CustomPageNumberPagination()
+            filtered_qs = EmailListFilter(query_params, queryset=email_lists).qs
+            paginated_qs = paginator.paginate_queryset(filtered_qs, request, view=self)
+            serializer = serializers.EmailListViewSerializer(paginated_qs, many=True)
+
+            response_data = {
                 "code": 200,
                 "status": "success",
                 "message": "Email lists retrieved successfully",
                 "data": serializer.data
-            }, status=status.HTTP_200_OK)
+            }
+
+            # Cache for 2 minutes
+            cache.set(cache_key, response_data, 60 * 2)
+            log_request(request, "Retrieve Email Lists", "info", "User fetched email lists successfully")
+
+            return paginator.get_paginated_response(response_data, status=200)
+
         except Exception as e:
             logger.exception(str(e))
-            # activity log
             log_request(request, "Retrieve Email Lists", "errors", "User tried to fetch email lists but faced an error")
             return Response({
                 "code": 500,
@@ -663,3 +680,4 @@ class EmailListView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+       
