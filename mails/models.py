@@ -113,3 +113,24 @@ class SingleEmail(MailBaseModel):
 
     def __str__(self):
         return self.email
+
+class EmailSend(models.Model):
+    schedule_date = models.DateTimeField(default=None, blank=True)
+    notes = models.TextField(blank=True, default="")
+    # ForeignKey relations
+    email_compose = models.ForeignKey(
+        'EmailCompose', on_delete=models.CASCADE, related_name='email_compose_sends')
+    group = models.ForeignKey(
+        'EmailGroup', on_delete=models.CASCADE, related_name='email_group_sends', default=None, blank=True
+    )
+    single_email = models.ForeignKey(
+        'SingleEmail', on_delete=models.CASCADE, related_name='email_single_sends', default=None, blank=True
+    )
+    
+    def save(self, *args, **kwargs):
+        if bool(self.group) == bool(self.single_email):
+            raise ValueError("Assign either group or single_email, not both or none.")
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"EmailSend object {self.pk}"

@@ -265,7 +265,8 @@ class EmailComposeDetailView(APIView):
     def patch(self, request, id):
         try:
             user = request.user
-            instance = get_object_or_404(Email_Compose, pk=id, user=user)
+            # instance = get_object_or_404(Email_Compose, pk=id, user=user)
+            instance = Email_Compose.objects.get(pk=id, user=user)
             serializer = serializers.EmailComposeUpdateSerializer(
                 data=request.data)
             if serializer.is_valid():
@@ -287,13 +288,21 @@ class EmailComposeDetailView(APIView):
                     "errors": serializer.errors
                 }, status=400)
 
-        except Http404:
+        # except Http404:
+        #     return Response({
+        #         "code": 404,
+        #         "status": "Not found",
+        #         "message": "Mail Compose not found",
+        #     }, status=404)
+        except Email_Compose.DoesNotExist:
             return Response({
                 "code": 404,
                 "status": "Not found",
                 "message": "Mail Compose not found",
-            }, status=404
-            )
+                "errors": {
+                    "id": ["Mail Compose not found for the given id"]
+                }
+            }, status=404)
         except Exception as e:
             logger.exception(str(e))
             log_activity_task.delay_on_commit(
@@ -314,7 +323,8 @@ class EmailComposeDetailView(APIView):
     def delete(self, request, id):
         try:
             user = request.user
-            instance = get_object_or_404(Email_Compose, pk=id, user=user)
+            # instance = get_object_or_404(Email_Compose, pk=id, user=user)
+            instance = Email_Compose.objects.get(pk=id, user=user)
             with transaction.atomic():
                 attachments = EmailAttachment.objects.filter(
                     email_compose=instance)
@@ -325,11 +335,20 @@ class EmailComposeDetailView(APIView):
                 "status": "success",
                 "message": "Mail Compose deleted successfully"
             }, status=204)
-        except Http404:
+        # except Http404:
+        #     return Response({
+        #         "code": 404,
+        #         "status": "Not found",
+        #         "message": "Mail Compose not found",
+        #     }, status=404)
+        except Email_Compose.DoesNotExist:
             return Response({
                 "code": 404,
                 "status": "Not found",
                 "message": "Mail Compose not found",
+                "errors": {
+                    "id": ["Mail Compose not found for the given id"]
+                }
             }, status=404)
         except Exception as e:
             logger.exception(str(e))
@@ -532,7 +551,7 @@ class EmailGroupDetailView(APIView):
             serializer = serializers.EmailGroupSerializer(
                 email_group, data=request.data, partial=True)
             if serializer.is_valid():
-                obj = serializer.save()
+                obj = serializer.update(email_group, serializer.validated_data)
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),
                     verb="Update Email Group",
@@ -788,7 +807,7 @@ class EmailListDetailView(APIView):
             serializer = serializers.EmailListSingleSerializer(
                 email_list, data=request.data, partial=True)
             if serializer.is_valid():
-                obj = serializer.save()
+                obj = serializer.update(email_list, serializer.validated_data)
                 log_request(request, "Update Email List", "info",
                             "User updated email list successfully")
                 # Clear cache for email lists
@@ -1014,3 +1033,4 @@ class SingleEmailView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+

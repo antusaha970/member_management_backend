@@ -80,7 +80,7 @@ class EmailComposeSerializer(serializers.Serializer):
                 email_compose=instance, file=attachment)
 
         return instance
-
+    
 
 class EmailGroupSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255)
@@ -108,7 +108,7 @@ class EmailGroupSerializer(serializers.Serializer):
         instance.description = validated_data.get(
             'description', instance.description)
         instance.user = validated_data.get('user', instance.user)
-        instance.save()
+        instance.save(update_fields=['name', 'description', 'user'])
         return instance
 
 
@@ -165,7 +165,7 @@ class EmailListSingleSerializer(serializers.Serializer):
         instance.is_subscribed = validated_data.get(
             'is_subscribed', instance.is_subscribed)
         instance.group = validated_data.get('group', instance.group)
-        instance.save()
+        instance.save(update_fields=['email', 'is_subscribed', 'group'])
         return instance
     
     
