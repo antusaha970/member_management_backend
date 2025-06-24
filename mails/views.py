@@ -1,4 +1,4 @@
-from .tasks import delete_email_list_cache
+from .tasks import delete_email_list_cache, bulk_email_send_task
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 
@@ -20,6 +20,8 @@ from django.utils.http import urlencode
 from core.utils.pagination import CustomPageNumberPagination
 from django.db import transaction
 logger = logging.getLogger("myapp")
+import pdb
+
 
 
 class SetMailConfigurationAPIView(APIView):
@@ -104,7 +106,7 @@ class SetMailConfigurationAPIView(APIView):
     def put(self, request, id):
         try:
             user = request.user
-            instance = get_object_or_404(SMTPConfiguration, pk=id, user=user)
+            instance = SMTPConfiguration.objects.get(pk=id, user=user)
             serializer = serializers.SMTPConfigurationSerializer(
                 data=request.data)
             if serializer.is_valid():
@@ -125,11 +127,14 @@ class SetMailConfigurationAPIView(APIView):
                     "message": "Bad request",
                     "errors": serializer.errors
                 }, status=400)
-        except Http404:
+        except SMTPConfiguration.DoesNotExist:
             return Response({
                 "code": 404,
                 "status": "Not found",
                 "message": "Mail configuration not found",
+                "errors": {
+                    "id": ["Mail configuration not found for the given id"]
+                }
             }, status=404)
         except Exception as e:
             logger.exception(str(e))
@@ -151,7 +156,7 @@ class SetMailConfigurationAPIView(APIView):
     def delete(self, request, id):
         try:
             user = request.user
-            instance = get_object_or_404(SMTPConfiguration, user=user, pk=id)
+            instance = SMTPConfiguration.objects.get(pk=id, user=user)
             with transaction.atomic():
                 instance.delete()
             return Response({
@@ -160,11 +165,14 @@ class SetMailConfigurationAPIView(APIView):
                 "message": "Mail configuration deleted successfully",
             }, status=204)
 
-        except Http404:
+        except SMTPConfiguration.DoesNotExist:
             return Response({
                 "code": 404,
                 "status": "Not found",
                 "message": "Mail configuration not found",
+                "errors": {
+                    "id": ["Mail configuration not found for the given id"]
+                }
             }, status=404)
         except Exception as e:
             logger.exception(str(e))
@@ -265,7 +273,6 @@ class EmailComposeDetailView(APIView):
     def patch(self, request, id):
         try:
             user = request.user
-            # instance = get_object_or_404(Email_Compose, pk=id, user=user)
             instance = Email_Compose.objects.get(pk=id, user=user)
             serializer = serializers.EmailComposeUpdateSerializer(
                 data=request.data)
@@ -287,13 +294,6 @@ class EmailComposeDetailView(APIView):
                     "message": "Bad request",
                     "errors": serializer.errors
                 }, status=400)
-
-        # except Http404:
-        #     return Response({
-        #         "code": 404,
-        #         "status": "Not found",
-        #         "message": "Mail Compose not found",
-        #     }, status=404)
         except Email_Compose.DoesNotExist:
             return Response({
                 "code": 404,
@@ -1034,3 +1034,56 @@ class SingleEmailView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class EmailSendView(APIView):
+    permission_classes = [IsAuthenticated, BulkEmailManagementPermission]
+
+    def post(self, request):
+        try:
+            serializer = serializers.EmailSendSerializer(data=request.data)
+            if serializer.is_valid():
+                obj = serializer.save()
+                email_compose = serializer.validated_data['email_compose']
+                group  = serializer.validated_data.get("group", None)
+                single_email = serializer.validated_data.get("single_email", None)
+                if single_email is None and group is not None:
+                    bulk_email_send_task.delay_on_commit(
+                        email_compose_id=email_compose.id,
+                        email_addresses=list(group.group_email_lists.values_list('email', flat=True))
+                    )
+                elif group is None and single_email is not None:
+                    bulk_email_send_task.delay_on_commit(
+                        email_compose_id=email_compose.id,
+                        email_addresses=[single_email.email]
+                    )
+                
+                # activity log
+                log_request(request, "Create Email Send", "info", "User created email send successfully")
+                return Response({
+                    "code": 201,
+                    "status": "success",
+                    "message": "Email send created successfully",
+                    "data": {
+                        "id": obj.id,
+                        "email_compose": obj.email_compose.id,
+                        
+                    }
+                }, status=status.HTTP_201_CREATED)
+            else:
+                log_request(request, "Create Email Send", "errors", f"User tried to create email send but faced an error: {serializer.errors}")
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Bad request",
+                    "errors": serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
+            log_request(request, "Create Email Send", "errors", f"User tried to create email send but faced an error")
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -81,6 +81,34 @@ class EmailComposeSerializer(serializers.Serializer):
 
         return instance
     
+class EmailSendSerializer(serializers.Serializer):
+    schedule_date = serializers.DateTimeField(required=False)
+    notes = serializers.CharField(max_length=500, required=False)
+    email_compose = serializers.PrimaryKeyRelatedField(queryset=Email_Compose.objects.all())
+    group = serializers.PrimaryKeyRelatedField(queryset=EmailGroup.objects.all(), required=False)
+    single_email = serializers.PrimaryKeyRelatedField(queryset=SingleEmail.objects.all(), required=False)
+
+    def validate(self, attrs):
+        if not attrs.get('group') and not attrs.get('single_email'):
+            raise serializers.ValidationError(
+                "Either 'group' or 'single_email' must be provided.")
+
+        if attrs.get('group') and attrs.get('single_email'):
+            raise serializers.ValidationError(
+                "Only one of 'group' or 'single_email' can be provided.")
+
+        email_compose = attrs.get("email_compose")
+        if not email_compose.configurations:
+            raise serializers.ValidationError("This email compose has no email_configuration")
+
+        if not  email_compose.configurations.provider =='gmail':
+            raise serializers.ValidationError("This email compose configuration provider not gmail.Currently not accepting any other provider.")
+        
+        return attrs
+    
+    def create(self, validated_data):
+        objects = EmailSend.objects.create(**validated_data)
+        return objects
 
 class EmailGroupSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255)
