@@ -613,6 +613,8 @@ class EmailListView(APIView):
                 group = serializer.validated_data['group']
                 # activity log
                 log_request(request, "Create Email List", "info", "User created email list successfully")
+                # Clear cache for email lists
+                delete_email_list_cache.delay()
                 return Response({
                     "code": 201,
                     "status": "success",
@@ -670,7 +672,7 @@ class EmailListView(APIView):
             }
 
             # Cache for 2 minutes
-            cache.set(cache_key, response_data, 60 * 2)
+            cache.set(cache_key, response_data, 60 * 30)
             log_request(request, "Retrieve Email Lists", "info", "User fetched email lists successfully")
 
             return paginator.get_paginated_response(response_data, status=200)
@@ -727,11 +729,13 @@ class EmailListDetailView(APIView):
     def patch(self, request, id):
         try:
             email_list = EmailList.objects.get(id=id)
-            serializer = serializers.EmailListSerializer(
+            serializer = serializers.EmailListSingleSerializer(
                 email_list, data=request.data, partial=True)
             if serializer.is_valid():
                 obj = serializer.save()
                 log_request(request, "Update Email List", "info", "User updated email list successfully")
+                # Clear cache for email lists
+                delete_email_list_cache.delay()
                 return Response({
                     "code": 200,
                     "status": "success",
@@ -776,6 +780,8 @@ class EmailListDetailView(APIView):
             email_list = EmailList.objects.get(id=id)
             email_list.delete()
             log_request(request, "Delete Email List", "info", "User deleted email list successfully")
+            # Clear cache for email lists
+            delete_email_list_cache.delay()
             return Response({
                 "code": 204,
                 "status": "success",

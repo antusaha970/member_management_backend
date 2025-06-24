@@ -153,6 +153,13 @@ class EmailListSerializer(serializers.Serializer):
         objs = EmailList.objects.bulk_create(email_objs)
         return objs
 
+    
+
+class EmailListSingleSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    is_subscribed = serializers.BooleanField()
+    group = serializers.PrimaryKeyRelatedField(queryset=EmailGroup.objects.all())
+
     def update(self, instance, validated_data):
         instance.email = validated_data.get('email', instance.email)
         instance.is_subscribed = validated_data.get(
@@ -160,13 +167,7 @@ class EmailListSerializer(serializers.Serializer):
         instance.group = validated_data.get('group', instance.group)
         instance.save()
         return instance
-
-class EmailListSingleSerializer(serializers.Serializer):
-    id = serializers.PrimaryKeyRelatedField(queryset = EmailList.objects.all() )
-    email = serializers.EmailField(required=False)
-    is_subscribed = serializers.BooleanField(required=False)
-    group = serializers.PrimaryKeyRelatedField(queryset=EmailGroup.objects.all(),required=False)
-
+    
     
 # class EmailListUpdateSerializer(serializers.Serializer):
 #     data = serializers.ListSerializer(child = EmailListSingleSerializer(),required=True)
