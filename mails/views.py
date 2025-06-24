@@ -4,17 +4,12 @@ from rest_framework.permissions import IsAuthenticated
 
 from member.models import Email
 from . import serializers
-<<<<<<< HEAD
-from .models import EmailGroup, SMTPConfiguration,EmailList, SingleEmail
-=======
-from .models import EmailGroup, SMTPConfiguration, EmailList
->>>>>>> 17dc9b50a76bd924747096edfaa7020261b4ea30
+from .models import EmailGroup, SMTPConfiguration,EmailList, SingleEmail, Email_Compose, EmailAttachment
 from rest_framework.response import Response
 import logging
 from activity_log.tasks import log_activity_task
 from activity_log.utils.functions import request_data_activity_log
 from rest_framework import status
-from .models import SMTPConfiguration, Email_Compose, EmailAttachment
 from django.shortcuts import get_object_or_404
 from django.http import Http404
 from mails.utils.permission_classes import BulkEmailManagementPermission
