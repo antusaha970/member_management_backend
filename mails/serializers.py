@@ -169,30 +169,38 @@ class EmailListSingleSerializer(serializers.Serializer):
         return instance
     
     
-# class EmailListUpdateSerializer(serializers.Serializer):
-#     data = serializers.ListSerializer(child = EmailListSingleSerializer(),required=True)
-    
-    
-#     def update(self, instance, validated_data):
-#         data = validated_data.get("data")
-#         ids =[]
-#         for single in data:
-#             ids.append(single.id)
-#         obj = EmailList.objects.in_bulk(ids)
-#         for 
-#         instance.email = validated_data.get('email', instance.email)
-#         instance.is_subscribed = validated_data.get(
-#             'is_subscribed', instance.is_subscribed)
-#         instance.group = validated_data.get('group', instance.group)
-#         instance.save()
-#         return instance
-
 class EmailListViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmailList
         fields = ['id', 'email', 'is_subscribed', 'group']
         read_only_fields = ['id']
 
+class SingleEmailSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    
+    def validate_email(self,value):
+        email = value.strip().lower()
+        queryset = SingleEmail.objects.filter(email=email)
+        if self.instance:
+            # Exclude current instance if it exists
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+                raise serializers.ValidationError(f" {email} Email already exists")
+        return email
+    
+    def create(self, validated_data):
+        email = validated_data.get('email')
+        obj = SingleEmail.objects.create(email=email)
+        return obj
+    def update(self, instance, validated_data):
+        instance.email = validated_data.get('email', instance.email)
+        instance.save()
+        return instance
+class SingleEmailViewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SingleEmail
+        fields = ['id', 'email']
+        read_only_fields = ['id']
 class EmailAttachmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmailAttachment
