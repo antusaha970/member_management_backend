@@ -16,6 +16,6 @@ urlpatterns = [
          name="email_list_view"),
     path("v1/email/lists/<int:id>/", views.EmailListDetailView.as_view(),
          name="email_list_detail_view"),
-    path("v1/email/composes/<int:id>/", views.EmailComposeView.as_view(),
-         name="mail_compose_update_view")
+    path("v1/email/composes/<int:id>/", views.EmailComposeDetailView.as_view(),
+         name="mail_compose_detail_view")
 ]

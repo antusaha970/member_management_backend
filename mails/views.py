@@ -1,7 +1,8 @@
+from .tasks import delete_email_list_cache
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from . import serializers
-from .models import EmailGroup, SMTPConfiguration,EmailList
+from .models import EmailGroup, SMTPConfiguration, EmailList
 from rest_framework.response import Response
 import logging
 from activity_log.tasks import log_activity_task
@@ -18,7 +19,6 @@ from django.utils.http import urlencode
 from core.utils.pagination import CustomPageNumberPagination
 from django.db import transaction
 logger = logging.getLogger("myapp")
-from .tasks import delete_email_list_cache
 
 
 class SetMailConfigurationAPIView(APIView):
@@ -227,15 +227,18 @@ class EmailComposeView(APIView):
     def get(self, request):
         try:
             user = request.user
-            composes = Email_Compose.objects.filter(user=user)
+            paginator = CustomPageNumberPagination()
+            composes = Email_Compose.objects.filter(user=user).order_by('id')
+            paginated_qs = paginator.paginate_queryset(
+                composes, request, view=self)
             serializer = serializers.EmailComposeViewSerializer(
-                composes, many=True)
-            return Response({
+                paginated_qs, many=True)
+            return paginator.get_paginated_response({
                 "code": 200,
                 "status": "success",
                 "message": "Mail Composes retrieved successfully",
                 "data": serializer.data
-            })
+            }, status=200)
 
         except Exception as e:
             logger.exception(str(e))
@@ -253,6 +256,10 @@ class EmailComposeView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class EmailComposeDetailView(APIView):
+    permission_classes = [IsAuthenticated]
 
     def patch(self, request, id):
         try:
@@ -330,6 +337,41 @@ class EmailComposeView(APIView):
                 verb="Update",
                 severity_level="info",
                 description="User tried to update an mail Composes but faced an error",
+            )
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def get(self, request, id):
+        try:
+            user = request.user
+            composes = get_object_or_404(Email_Compose, pk=id, user=user)
+            serializer = serializers.EmailComposeViewSerializer(
+                composes)
+            return Response({
+                "code": 200,
+                "status": "success",
+                "message": "Mail Compose retrieved successfully",
+                "data": serializer.data
+            }, status=200)
+        except Http404:
+            return Response({
+                "code": 404,
+                "status": "Not found",
+                "message": "Mail Compose not found"
+            }, status=404)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="View",
+                severity_level="info",
+                description="User tried to view a mail Compose but faced an error",
             )
             return Response({
                 "code": 500,
@@ -482,7 +524,7 @@ class EmailGroupDetailView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+
     def patch(self, request, group_id):
         try:
             email_group = EmailGroup.objects.get(id=group_id)
@@ -601,9 +643,10 @@ class EmailGroupDetailView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 class EmailListView(APIView):
     permission_classes = [IsAuthenticated, BulkEmailManagementPermission]
-    
+
     def post(self, request):
         try:
             serializer = serializers.EmailListSerializer(data=request.data)
@@ -612,7 +655,8 @@ class EmailListView(APIView):
                 print(objs)
                 group = serializer.validated_data['group']
                 # activity log
-                log_request(request, "Create Email List", "info", "User created email list successfully")
+                log_request(request, "Create Email List", "info",
+                            "User created email list successfully")
                 # Clear cache for email lists
                 delete_email_list_cache.delay()
                 return Response({
@@ -626,7 +670,8 @@ class EmailListView(APIView):
                 }, status=status.HTTP_201_CREATED)
             else:
                 # activity log
-                log_request(request, "Create Email List", "info", "User tried to create email list but faced an error")
+                log_request(request, "Create Email List", "info",
+                            "User tried to create email list but faced an error")
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -636,8 +681,9 @@ class EmailListView(APIView):
         except Exception as e:
             logger.exception(str(e))
             # activity log
-            log_request(request, "Create Email List", "errors", "User tried to create email list but faced an error")
-           
+            log_request(request, "Create Email List", "errors",
+                        "User tried to create email list but faced an error")
+
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -646,6 +692,7 @@ class EmailListView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     def get(self, request):
         try:
             query_params = request.query_params
@@ -660,9 +707,12 @@ class EmailListView(APIView):
 
             email_lists = EmailList.objects.all().order_by('id')
             paginator = CustomPageNumberPagination()
-            filtered_qs = EmailListFilter(query_params, queryset=email_lists).qs
-            paginated_qs = paginator.paginate_queryset(filtered_qs, request, view=self)
-            serializer = serializers.EmailListViewSerializer(paginated_qs, many=True)
+            filtered_qs = EmailListFilter(
+                query_params, queryset=email_lists).qs
+            paginated_qs = paginator.paginate_queryset(
+                filtered_qs, request, view=self)
+            serializer = serializers.EmailListViewSerializer(
+                paginated_qs, many=True)
 
             response_data = {
                 "code": 200,
@@ -673,13 +723,15 @@ class EmailListView(APIView):
 
             # Cache for 2 minutes
             cache.set(cache_key, response_data, 60 * 30)
-            log_request(request, "Retrieve Email Lists", "info", "User fetched email lists successfully")
+            log_request(request, "Retrieve Email Lists", "info",
+                        "User fetched email lists successfully")
 
             return paginator.get_paginated_response(response_data, status=200)
 
         except Exception as e:
             logger.exception(str(e))
-            log_request(request, "Retrieve Email Lists", "errors", "User tried to fetch email lists but faced an error")
+            log_request(request, "Retrieve Email Lists", "errors",
+                        "User tried to fetch email lists but faced an error")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -689,7 +741,7 @@ class EmailListView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-       
+
 class EmailListDetailView(APIView):
     permission_classes = [IsAuthenticated, BulkEmailManagementPermission]
 
@@ -697,7 +749,8 @@ class EmailListDetailView(APIView):
         try:
             email_list = EmailList.objects.get(id=id)
             serializer = serializers.EmailListViewSerializer(email_list)
-            log_request(request, "Retrieve Email List", "info", "User retrieved email list successfully")
+            log_request(request, "Retrieve Email List", "info",
+                        "User retrieved email list successfully")
             return Response({
                 "code": 200,
                 "status": "success",
@@ -705,7 +758,8 @@ class EmailListDetailView(APIView):
                 "data": serializer.data
             }, status=status.HTTP_200_OK)
         except EmailList.DoesNotExist:
-            log_request(request, "Retrieve Email List", "errors", "User tried to fetch email list but it does not exist")
+            log_request(request, "Retrieve Email List", "errors",
+                        "User tried to fetch email list but it does not exist")
             return Response({
                 "code": 404,
                 "status": "failed",
@@ -716,7 +770,8 @@ class EmailListDetailView(APIView):
             }, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             logger.exception(str(e))
-            log_request(request, "Retrieve Email List", "errors", "User tried to fetch email list but faced an error")
+            log_request(request, "Retrieve Email List", "errors",
+                        "User tried to fetch email list but faced an error")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -725,7 +780,7 @@ class EmailListDetailView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+
     def patch(self, request, id):
         try:
             email_list = EmailList.objects.get(id=id)
@@ -733,7 +788,8 @@ class EmailListDetailView(APIView):
                 email_list, data=request.data, partial=True)
             if serializer.is_valid():
                 obj = serializer.save()
-                log_request(request, "Update Email List", "info", "User updated email list successfully")
+                log_request(request, "Update Email List", "info",
+                            "User updated email list successfully")
                 # Clear cache for email lists
                 delete_email_list_cache.delay()
                 return Response({
@@ -746,7 +802,8 @@ class EmailListDetailView(APIView):
                     }
                 }, status=status.HTTP_200_OK)
             else:
-                log_request(request, "Update Email List", "errors", f"User tried to update email list but faced an error: {serializer.errors}")
+                log_request(request, "Update Email List", "errors",
+                            f"User tried to update email list but faced an error: {serializer.errors}")
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -754,7 +811,8 @@ class EmailListDetailView(APIView):
                     "errors": serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
         except EmailList.DoesNotExist:
-            log_request(request, "Update Email List", "errors", f"User tried to update email list but it does not exist")
+            log_request(request, "Update Email List", "errors",
+                        f"User tried to update email list but it does not exist")
             return Response({
                 "code": 404,
                 "status": "failed",
@@ -765,7 +823,8 @@ class EmailListDetailView(APIView):
             }, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             logger.exception(str(e))
-            log_request(request, "Update Email List", "errors", "User tried to update email list but faced an error")
+            log_request(request, "Update Email List", "errors",
+                        "User tried to update email list but faced an error")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -774,12 +833,13 @@ class EmailListDetailView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+
     def delete(self, request, id):
         try:
             email_list = EmailList.objects.get(id=id)
             email_list.delete()
-            log_request(request, "Delete Email List", "info", "User deleted email list successfully")
+            log_request(request, "Delete Email List", "info",
+                        "User deleted email list successfully")
             # Clear cache for email lists
             delete_email_list_cache.delay()
             return Response({
@@ -788,7 +848,8 @@ class EmailListDetailView(APIView):
                 "message": "Email list deleted successfully"
             }, status=status.HTTP_204_NO_CONTENT)
         except EmailList.DoesNotExist:
-            log_request(request, "Delete Email List", "errors", "User tried to delete email list but it does not exist")
+            log_request(request, "Delete Email List", "errors",
+                        "User tried to delete email list but it does not exist")
             return Response({
                 "code": 404,
                 "status": "failed",
@@ -799,7 +860,8 @@ class EmailListDetailView(APIView):
             }, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             logger.exception(str(e))
-            log_request(request, "Delete Email List", "errors", "User tried to delete email list but faced an error")
+            log_request(request, "Delete Email List", "errors",
+                        "User tried to delete email list but faced an error")
             return Response({
                 "code": 500,
                 "status": "failed",
