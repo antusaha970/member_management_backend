@@ -18,7 +18,7 @@ from django.utils.http import urlencode
 from core.utils.pagination import CustomPageNumberPagination
 from django.db import transaction
 logger = logging.getLogger("myapp")
-
+from .tasks import delete_email_list_cache
 
 
 class SetMailConfigurationAPIView(APIView):
@@ -357,6 +357,8 @@ class EmailGroupView(APIView):
                     severity_level="info",
                     description="User created an email group successfully",
                 )
+                # Clear cache for email lists
+                delete_email_list_cache.delay()
                 return Response({
                     "code": 201,
                     "status": "success",
@@ -494,6 +496,8 @@ class EmailGroupDetailView(APIView):
                     severity_level="info",
                     description=f"User updated email group successfully",
                 )
+                # Clear cache for email lists
+                delete_email_list_cache.delay()
                 return Response({
                     "code": 200,
                     "status": "success",
@@ -558,6 +562,8 @@ class EmailGroupDetailView(APIView):
                 severity_level="info",
                 description=f"User deleted email group with id {group_id} successfully",
             )
+            # remove cache for email lists
+            delete_email_list_cache.delay()
             return Response({
                 "code": 204,
                 "status": "success",
@@ -680,4 +686,119 @@ class EmailListView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
        
+class EmailListDetailView(APIView):
+    permission_classes = [IsAuthenticated, BulkEmailManagementPermission]
+
+    def get(self, request, id):
+        try:
+            email_list = EmailList.objects.get(id=id)
+            serializer = serializers.EmailListViewSerializer(email_list)
+            log_request(request, "Retrieve Email List", "info", "User retrieved email list successfully")
+            return Response({
+                "code": 200,
+                "status": "success",
+                "message": "Email list retrieved successfully",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except EmailList.DoesNotExist:
+            log_request(request, "Retrieve Email List", "errors", "User tried to fetch email list but it does not exist")
+            return Response({
+                "code": 404,
+                "status": "failed",
+                "message": "Email list not found",
+                "errors": {
+                    "id": ["Email list not found for the given id"]
+                }
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.exception(str(e))
+            log_request(request, "Retrieve Email List", "errors", "User tried to fetch email list but faced an error")
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def patch(self, request, id):
+        try:
+            email_list = EmailList.objects.get(id=id)
+            serializer = serializers.EmailListSerializer(
+                email_list, data=request.data, partial=True)
+            if serializer.is_valid():
+                obj = serializer.save()
+                log_request(request, "Update Email List", "info", "User updated email list successfully")
+                return Response({
+                    "code": 200,
+                    "status": "success",
+                    "message": "Email list updated successfully",
+                    "data": {
+                        "id": obj.id,
+                        "email": obj.email
+                    }
+                }, status=status.HTTP_200_OK)
+            else:
+                log_request(request, "Update Email List", "errors", f"User tried to update email list but faced an error: {serializer.errors}")
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Bad request",
+                    "errors": serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except EmailList.DoesNotExist:
+            log_request(request, "Update Email List", "errors", f"User tried to update email list but it does not exist")
+            return Response({
+                "code": 404,
+                "status": "failed",
+                "message": "Email list not found",
+                "errors": {
+                    "id": ["Email list not found for the given id"]
+                }
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.exception(str(e))
+            log_request(request, "Update Email List", "errors", "User tried to update email list but faced an error")
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def delete(self, request, id):
+        try:
+            email_list = EmailList.objects.get(id=id)
+            email_list.delete()
+            log_request(request, "Delete Email List", "info", "User deleted email list successfully")
+            return Response({
+                "code": 204,
+                "status": "success",
+                "message": "Email list deleted successfully"
+            }, status=status.HTTP_204_NO_CONTENT)
+        except EmailList.DoesNotExist:
+            log_request(request, "Delete Email List", "errors", "User tried to delete email list but it does not exist")
+            return Response({
+                "code": 404,
+                "status": "failed",
+                "message": "Email list not found",
+                "errors": {
+                    "id": ["Email list not found for the given id"]
+                }
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.exception(str(e))
+            log_request(request, "Delete Email List", "errors", "User tried to delete email list but faced an error")
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

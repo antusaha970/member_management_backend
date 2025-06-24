@@ -141,7 +141,6 @@ class EmailListSerializer(serializers.Serializer):
         )
         return list(normalized_emails - existing_emails)
             
-
     def create(self, validated_data):
         emails = validated_data.pop('email')
         group = validated_data.get('group', None)
@@ -154,7 +153,6 @@ class EmailListSerializer(serializers.Serializer):
         objs = EmailList.objects.bulk_create(email_objs)
         return objs
 
-    
     def update(self, instance, validated_data):
         instance.email = validated_data.get('email', instance.email)
         instance.is_subscribed = validated_data.get(
@@ -162,7 +160,32 @@ class EmailListSerializer(serializers.Serializer):
         instance.group = validated_data.get('group', instance.group)
         instance.save()
         return instance
+
+class EmailListSingleSerializer(serializers.Serializer):
+    id = serializers.PrimaryKeyRelatedField(queryset = EmailList.objects.all() )
+    email = serializers.EmailField(required=False)
+    is_subscribed = serializers.BooleanField(required=False)
+    group = serializers.PrimaryKeyRelatedField(queryset=EmailGroup.objects.all(),required=False)
+
     
+# class EmailListUpdateSerializer(serializers.Serializer):
+#     data = serializers.ListSerializer(child = EmailListSingleSerializer(),required=True)
+    
+    
+#     def update(self, instance, validated_data):
+#         data = validated_data.get("data")
+#         ids =[]
+#         for single in data:
+#             ids.append(single.id)
+#         obj = EmailList.objects.in_bulk(ids)
+#         for 
+#         instance.email = validated_data.get('email', instance.email)
+#         instance.is_subscribed = validated_data.get(
+#             'is_subscribed', instance.is_subscribed)
+#         instance.group = validated_data.get('group', instance.group)
+#         instance.save()
+#         return instance
+
 class EmailListViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmailList
