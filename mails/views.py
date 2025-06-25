@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from member.models import Email
 from . import serializers
-from .models import EmailGroup, SMTPConfiguration, EmailList, SingleEmail, EmailCompose,Outbox
+from .models import EmailGroup, SMTPConfiguration, EmailList, SingleEmail, EmailCompose, EmailAttachment
 from rest_framework.response import Response
 import logging
 from activity_log.tasks import log_activity_task
@@ -333,12 +333,7 @@ class EmailComposeDetailView(APIView):
                 "status": "success",
                 "message": "Mail Compose deleted successfully"
             }, status=204)
-        # except Http404:
-        #     return Response({
-        #         "code": 404,
-        #         "status": "Not found",
-        #         "message": "Mail Compose not found",
-        #     }, status=404)
+        
         except EmailCompose.DoesNotExist:
             return Response({
                 "code": 404,
