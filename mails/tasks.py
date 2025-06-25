@@ -6,7 +6,9 @@ from mails.models import EmailCompose, Outbox
 from django.db import transaction
 from django.template import Template, Context
 from django.core.mail import EmailMultiAlternatives
-from member.models import Member
+from member.models import Member, Email
+from django.template.loader import render_to_string
+from django.conf import settings
 import logging
 logger = logging.getLogger("myapp")
 
@@ -76,3 +78,48 @@ def bulk_email_send_task(email_compose_id, email_addresses):
     except Exception as general_error:
         logger.critical(f"Bulk email task failed: {general_error}")
         return {"error": str(general_error)}
+
+
+@shared_task
+def send_monthly_member_emails():
+    members = Member.objects.filter(is_active=True)
+    try:
+        for member in members:
+            is_primary_email_exist = Email.objects.filter(
+                member=member, is_primary=True).exists()
+            to_email = None
+            if is_primary_email_exist:
+                email_entry = Email.objects.get(
+                    member=member, is_primary=True)
+                to_email = email_entry.email
+            else:
+                is_email_exist = Email.objects.filter(
+                    member=member).exists()
+                if is_email_exist:
+                    email_entry = Email.objects.filter(
+                        member=member).first()
+                to_email = email_entry.email
+            if to_email:
+                html_message = render_to_string('mails/member_mail_template.html', {
+                    'member_ID': member.member_ID,
+                    'first_name': member.first_name,
+                    'last_name': member.last_name,
+                    'date_of_birth': member.date_of_birth,
+                    'batch_number': member.batch_number,
+                    'anniversary_date': member.anniversary_date,
+                    'blood_group': member.blood_group,
+                    'nationality': member.nationality,
+                })
+                msg = EmailMultiAlternatives(
+                    subject="Your Monthly Member Update",
+                    body="This is your monthly profile update.",
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    to=[to_email]
+                )
+                msg.attach_alternative(html_message, "text/html")
+                msg.send()
+
+    except Exception as e:
+        print(e)
+        print("Something went wrong!! ", str(e))
+        return False

@@ -32,7 +32,7 @@ INSTALLED_APPS = [
     'django_cleanup',
     'django_celery_results',
     'django_filters',
-    'django_celery_beat',   
+    'django_celery_beat',
     'silk',
     # Custom apps
     'account',
@@ -220,7 +220,7 @@ EMAIL_USE_TLS = True
 EMAIL_PORT = 587
 EMAIL_HOST_USER = env("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")
-
+DEFAULT_FROM_EMAIL = env("EMAIL_HOST_USER")
 
 if 'test' in sys.argv:
     # Disable throttling in tests
