@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from member.models import Email
 from . import serializers
-from .models import EmailGroup, SMTPConfiguration, EmailList, SingleEmail, EmailCompose, EmailAttachment
+from .models import EmailGroup, SMTPConfiguration, EmailList, SingleEmail, EmailCompose, EmailAttachment, Outbox
 from rest_framework.response import Response
 import logging
 from activity_log.tasks import log_activity_task
