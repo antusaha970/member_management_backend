@@ -113,7 +113,7 @@ class EmailSendSerializer(serializers.Serializer):
         return attrs
 
     def create(self, validated_data):
-        objects = EmailSend.objects.create(**validated_data)
+        objects = EmailSendRecord.objects.create(**validated_data)
         return objects
 
 
