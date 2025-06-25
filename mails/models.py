@@ -79,9 +79,11 @@ STATUS_CHOICES = [
 class Outbox(MailBaseModel):
     email_address = models.EmailField(max_length=255)
     status = models.CharField(max_length=50, choices=STATUS_CHOICES)
-    email_compose = models.ForeignKey(EmailCompose, on_delete=models.CASCADE)
+    email_compose = models.ForeignKey(
+        EmailCompose, on_delete=models.CASCADE, null=True, blank=True)
     failed_reason = models.CharField(
         max_length=255, blank=True, null=True, default=None)
+    is_from_template = models.BooleanField(default=False)
 
     def __str__(self):
         return self.email_address

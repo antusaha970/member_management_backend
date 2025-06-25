@@ -333,7 +333,7 @@ class EmailComposeDetailView(APIView):
                 "status": "success",
                 "message": "Mail Compose deleted successfully"
             }, status=204)
-        
+
         except EmailCompose.DoesNotExist:
             return Response({
                 "code": 404,
@@ -1103,8 +1103,9 @@ class EmailSendView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 class OutboxView(APIView):
-    permission_classes = [IsAuthenticated, BulkEmailManagementPermission]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         try:
@@ -1130,6 +1131,7 @@ class OutboxView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class EmailOutboxDetailView(APIView):
     permission_classes = [IsAuthenticated, BulkEmailManagementPermission]

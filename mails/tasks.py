@@ -1,4 +1,6 @@
 
+from django.template import Context, Template
+from django.core.mail import get_connection, EmailMultiAlternatives
 import pdb
 from celery import shared_task
 from django.core.cache import cache
@@ -44,7 +46,7 @@ def delete_email_list_cache():
 
 #             for user_email in email_addresses:
 #                 try:
-                    
+
 #                     email = EmailMultiAlternatives(
 #                         subject=email_compose_obj.subject,
 #                         body=rendered_html,
@@ -82,9 +84,6 @@ def delete_email_list_cache():
 #         return {"error": str(general_error)}
 
 
-from django.core.mail import get_connection, EmailMultiAlternatives
-from django.template import Context, Template
-
 @shared_task
 def bulk_email_send_task(email_compose_id, email_addresses):
     """
@@ -96,10 +95,11 @@ def bulk_email_send_task(email_compose_id, email_addresses):
         email_host_user = email_compose_obj.configurations.username
         email_host_password = email_compose_obj.configurations.password
         if not email_host_user or not email_host_password:
-            raise ValueError("Email username or password is missing in configuration.")
+            raise ValueError(
+                "Email username or password is missing in configuration.")
 
         connection = get_connection(
-            host='smtp.gmail.com', 
+            host='smtp.gmail.com',
             port=587,
             username=email_host_user,
             password=email_host_password,
@@ -135,7 +135,8 @@ def bulk_email_send_task(email_compose_id, email_addresses):
                     success_emails.append(user_email)
 
                 except Exception as send_error:
-                    logger.error(f"Email send failed for {user_email}: {send_error}")
+                    logger.error(
+                        f"Email send failed for {user_email}: {send_error}")
                     Outbox.objects.create(
                         email_compose=email_compose_obj,
                         status="failed",
@@ -158,42 +159,44 @@ def bulk_email_send_task(email_compose_id, email_addresses):
 def send_monthly_member_emails():
     members = Member.objects.filter(is_active=True)
     try:
+        outbox_list = []
         for member in members:
-            is_primary_email_exist = Email.objects.filter(
-                member=member, is_primary=True).exists()
-            to_email = None
-            if is_primary_email_exist:
-                email_entry = Email.objects.get(
-                    member=member, is_primary=True)
-                to_email = email_entry.email
-            else:
-                is_email_exist = Email.objects.filter(
-                    member=member).exists()
-                if is_email_exist:
-                    email_entry = Email.objects.filter(
-                        member=member).first()
-                to_email = email_entry.email
-            if to_email:
-                html_message = render_to_string('mails/member_mail_template.html', {
-                    'member_ID': member.member_ID,
-                    'first_name': member.first_name,
-                    'last_name': member.last_name,
-                    'date_of_birth': member.date_of_birth,
-                    'batch_number': member.batch_number,
-                    'anniversary_date': member.anniversary_date,
-                    'blood_group': member.blood_group,
-                    'nationality': member.nationality,
-                })
-                msg = EmailMultiAlternatives(
-                    subject="Your Monthly Member Update",
-                    body="This is your monthly profile update.",
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    to=[to_email]
-                )
-                msg.attach_alternative(html_message, "text/html")
-                msg.send()
+            try:
+                email_list = Email.objects.filter(
+                    member=member).order_by("-is_primary").first()
+                to_email = email_list.email if email_list else None
+                if to_email:
+                    html_message = render_to_string('mails/member_mail_template.html', {
+                        'member_ID': member.member_ID,
+                        'first_name': member.first_name,
+                        'last_name': member.last_name,
+                        'date_of_birth': member.date_of_birth,
+                        'batch_number': member.batch_number,
+                        'anniversary_date': member.anniversary_date,
+                        'blood_group': member.blood_group,
+                        'nationality': member.nationality,
+                    })
+                    msg = EmailMultiAlternatives(
+                        subject="Your Monthly Member Update",
+                        body="This is your monthly profile update.",
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        to=[to_email]
+                    )
+                    msg.attach_alternative(html_message, "text/html")
+                    msg.send()
+                    outbox_list.append(Outbox(email_address=to_email,
+                                              status="success",
+                                              is_from_template=True))
+            except Exception as e:
+                outbox_list.append(Outbox(email_address=to_email,
+                                          status="failed",
+                                          failed_reason=str(e),
+                                          is_from_template=True))
 
+        for i in range(0, len(outbox_list), 100):
+            Outbox.objects.bulk_create(outbox_list[i:i+100])
+        return {"status": True, "description": "All mail has been sent"}
     except Exception as e:
         print(e)
         print("Something went wrong!! ", str(e))
-        return False
+        return {"status": False, "description": "Something went wrong while sending mail", "error": str(e)}
