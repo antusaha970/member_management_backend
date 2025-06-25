@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from member.models import Email
 from . import serializers
-from .models import EmailGroup, SMTPConfiguration, EmailList, SingleEmail, EmailCompose, EmailAttachment
+from .models import EmailGroup, SMTPConfiguration, EmailList, SingleEmail, EmailCompose,Outbox
 from rest_framework.response import Response
 import logging
 from activity_log.tasks import log_activity_task
@@ -1099,6 +1099,73 @@ class EmailSendView(APIView):
             logger.exception(str(e))
             log_request(request, "Create Email Send", "errors",
                         f"User tried to create email send but faced an error")
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class OutboxView(APIView):
+    permission_classes = [IsAuthenticated, BulkEmailManagementPermission]
+
+    def get(self, request):
+        try:
+            outbox = Outbox.objects.all()
+            serializer = serializers.OutboxViewSerializer(outbox, many=True)
+            log_request(request, "Retrieve Outbox", "info",
+                        "User fetched outbox successfully")
+            return Response({
+                "code": 200,
+                "status": "success",
+                "message": "Outbox retrieved successfully",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.exception(str(e))
+            log_request(request, "Retrieve Outbox", "errors",
+                        "User tried to fetch outbox but faced an error")
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class EmailOutboxDetailView(APIView):
+    permission_classes = [IsAuthenticated, BulkEmailManagementPermission]
+
+    def get(self, request, id):
+        try:
+            outbox = Outbox.objects.get(id=id)
+            serializer = serializers.OutboxViewSerializer(outbox)
+            log_request(request, "Retrieve Outbox Detail", "info",
+                        "User fetched outbox detail successfully")
+            return Response({
+                "code": 200,
+                "status": "success",
+                "message": "Outbox detail retrieved successfully",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        except Outbox.DoesNotExist:
+            log_request(request, "Retrieve Outbox Detail", "errors",
+                        f"User tried to fetch outbox detail but it does not exist")
+            return Response({
+                "code": 404,
+                "status": "failed",
+                "message": "Outbox not found",
+                "errors": {
+                    "id": ["Outbox not found for the given id"]
+                }
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.exception(str(e))
+            log_request(request, "Retrieve Outbox Detail", "errors",
+                        f"User tried to fetch outbox detail but faced an error")
             return Response({
                 "code": 500,
                 "status": "failed",

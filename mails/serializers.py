@@ -286,3 +286,9 @@ class EmailComposeUpdateSerializer(serializers.Serializer):
 
         instance.save()
         return instance
+
+class OutboxViewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Outbox
+        fields = ['id', 'email_address', 'status', 'failed_reason', 'email_compose', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']

@@ -26,4 +26,7 @@ urlpatterns = [
     path("v1/email/individual_emails/<int:id>/", views.SingleEmailView.as_view(), name="individual_email_detail_view"),
     # Send Email Action (Bulk or Single)
     path("v1/emails/send/", views.EmailSendView.as_view(), name="email_send"),
+    # Email Outbox
+    path("v1/email/outboxes/", views.OutboxView.as_view(), name="email_outbox_list_view"),
+    path("v1/email/outboxes/<int:id>/", views.EmailOutboxDetailView.as_view(), name="email_outbox_detail_view"),
 ]
