@@ -1,16 +1,14 @@
 
+import pdb
 from celery import shared_task
 from django.core.cache import cache
-from mails.models import Email_Compose,Outbox
+from mails.models import EmailCompose, Outbox
 from django.db import transaction
 from django.template import Template, Context
 from django.core.mail import EmailMultiAlternatives
 from member.models import Member
 import logging
 logger = logging.getLogger("myapp")
-import pdb ; 
-
-
 
 
 @shared_task
@@ -21,16 +19,16 @@ def delete_email_list_cache():
     except Exception as e:
         logger.error(f"Error deleting email list cache: {e}")
         return {"error": str(e)}
-    
-@shared_task   
+
+
+@shared_task
 def bulk_email_send_task(email_compose_id, email_addresses):
-    
     """
     Sends bulk emails using the composed template.
     Logs failed attempts per email.
     """
     try:
-        email_compose_obj = Email_Compose.objects.get(id=email_compose_id)
+        email_compose_obj = EmailCompose.objects.get(id=email_compose_id)
 
         # Prepare email template
         context = Context({"test": "test", "member": "test"})
@@ -60,7 +58,8 @@ def bulk_email_send_task(email_compose_id, email_addresses):
                     success_emails.append(user_email)
 
                 except Exception as send_error:
-                    logger.error(f"Email send failed for {user_email}: {send_error}")
+                    logger.error(
+                        f"Email send failed for {user_email}: {send_error}")
                     Outbox.objects.create(
                         email_compose=email_compose_obj,
                         status="failed",

@@ -46,7 +46,7 @@ class SMTPConfiguration(MailBaseModel):
         return self.username
 
 
-class Email_Compose(MailBaseModel):
+class EmailCompose(MailBaseModel):
     subject = models.CharField(max_length=255)
     body = models.TextField()
     configurations = models.ForeignKey(
@@ -62,7 +62,8 @@ class Email_Compose(MailBaseModel):
 
 class EmailAttachment(MailBaseModel):
     file = models.FileField(upload_to="attachmentsFiles/")
-    email_compose = models.ForeignKey(Email_Compose, on_delete=models.CASCADE)
+    email_compose = models.ForeignKey(
+        EmailCompose, on_delete=models.CASCADE, related_name="email_compose_attachments")
 
     def __str__(self):
         return self.email_compose.subject
@@ -78,7 +79,7 @@ STATUS_CHOICES = [
 class Outbox(MailBaseModel):
     email_address = models.EmailField(max_length=255)
     status = models.CharField(max_length=50, choices=STATUS_CHOICES)
-    email_compose = models.ForeignKey(Email_Compose, on_delete=models.CASCADE)
+    email_compose = models.ForeignKey(EmailCompose, on_delete=models.CASCADE)
     failed_reason = models.CharField(
         max_length=255, blank=True, null=True, default=None)
 
@@ -114,24 +115,25 @@ class SingleEmail(MailBaseModel):
     def __str__(self):
         return self.email
 
-class EmailSend(models.Model):
+
+class EmailSendRecord(models.Model):
     schedule_date = models.DateTimeField(null=True, blank=True)
     notes = models.TextField(blank=True, default="")
     # ForeignKey relations
     email_compose = models.ForeignKey(
-        'Email_Compose', on_delete=models.CASCADE, related_name='email_compose_sends')
+        EmailCompose, on_delete=models.CASCADE, related_name='email_compose_sends')
     group = models.ForeignKey(
-        'EmailGroup', on_delete=models.CASCADE, related_name='email_group_sends',null=True, blank=True
+        EmailGroup, on_delete=models.CASCADE, related_name='email_group_sends', null=True, blank=True
     )
     single_email = models.ForeignKey(
-        'SingleEmail', on_delete=models.CASCADE, related_name='email_single_sends',null=True, blank=True
+        SingleEmail, on_delete=models.CASCADE, related_name='email_single_sends', null=True, blank=True
     )
-    
+
     def save(self, *args, **kwargs):
         if bool(self.group) == bool(self.single_email):
-            raise ValueError("Assign either group or single_email, not both or none.")
+            raise ValueError(
+                "Assign either group or single_email, not both or none.")
         super().save(*args, **kwargs)
-
 
     def __str__(self):
         return f"EmailSend object {self.pk}"
