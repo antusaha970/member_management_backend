@@ -73,20 +73,24 @@ class EmailComposeSerializer(serializers.Serializer):
         attachments = validated_data.pop('attachments', [])
         user = validated_data.pop('user')
 
-        instance = Email_Compose.objects.create(**validated_data, user=user)
+        instance = EmailCompose.objects.create(**validated_data, user=user)
 
         for attachment in attachments:
             EmailAttachment.objects.create(
                 email_compose=instance, file=attachment)
 
         return instance
-    
+
+
 class EmailSendSerializer(serializers.Serializer):
     schedule_date = serializers.DateTimeField(required=False)
     notes = serializers.CharField(max_length=500, required=False)
-    email_compose = serializers.PrimaryKeyRelatedField(queryset=Email_Compose.objects.all())
-    group = serializers.PrimaryKeyRelatedField(queryset=EmailGroup.objects.all(), required=False)
-    single_email = serializers.PrimaryKeyRelatedField(queryset=SingleEmail.objects.all(), required=False)
+    email_compose = serializers.PrimaryKeyRelatedField(
+        queryset=EmailCompose.objects.all())
+    group = serializers.PrimaryKeyRelatedField(
+        queryset=EmailGroup.objects.all(), required=False)
+    single_email = serializers.PrimaryKeyRelatedField(
+        queryset=SingleEmail.objects.all(), required=False)
 
     def validate(self, attrs):
         if not attrs.get('group') and not attrs.get('single_email'):
@@ -99,16 +103,19 @@ class EmailSendSerializer(serializers.Serializer):
 
         email_compose = attrs.get("email_compose")
         if not email_compose.configurations:
-            raise serializers.ValidationError("This email compose has no email_configuration")
+            raise serializers.ValidationError(
+                "This email compose has no email_configuration")
 
-        if not  email_compose.configurations.provider =='gmail':
-            raise serializers.ValidationError("This email compose configuration provider not gmail.Currently not accepting any other provider.")
-        
+        if not email_compose.configurations.provider == 'gmail':
+            raise serializers.ValidationError(
+                "This email compose configuration provider not gmail.Currently not accepting any other provider.")
+
         return attrs
-    
+
     def create(self, validated_data):
         objects = EmailSend.objects.create(**validated_data)
         return objects
+
 
 class EmailGroupSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255)
@@ -146,13 +153,15 @@ class EmailGroupViewSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'description', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
 
+
 class EmailListSerializer(serializers.Serializer):
     email = serializers.ListField(
         child=serializers.EmailField(),
         allow_empty=False
     )
     is_subscribed = serializers.BooleanField(default=True)
-    group = serializers.PrimaryKeyRelatedField(queryset=EmailGroup.objects.all())
+    group = serializers.PrimaryKeyRelatedField(
+        queryset=EmailGroup.objects.all())
 
     def validate_email(self, value):
         """
@@ -168,7 +177,7 @@ class EmailListSerializer(serializers.Serializer):
             .values_list('email', flat=True)
         )
         return list(normalized_emails - existing_emails)
-            
+
     def create(self, validated_data):
         emails = validated_data.pop('email')
         group = validated_data.get('group', None)
@@ -181,12 +190,12 @@ class EmailListSerializer(serializers.Serializer):
         objs = EmailList.objects.bulk_create(email_objs)
         return objs
 
-    
 
 class EmailListSingleSerializer(serializers.Serializer):
     email = serializers.EmailField()
     is_subscribed = serializers.BooleanField()
-    group = serializers.PrimaryKeyRelatedField(queryset=EmailGroup.objects.all())
+    group = serializers.PrimaryKeyRelatedField(
+        queryset=EmailGroup.objects.all())
 
     def update(self, instance, validated_data):
         instance.email = validated_data.get('email', instance.email)
@@ -195,40 +204,46 @@ class EmailListSingleSerializer(serializers.Serializer):
         instance.group = validated_data.get('group', instance.group)
         instance.save(update_fields=['email', 'is_subscribed', 'group'])
         return instance
-    
-    
+
+
 class EmailListViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmailList
         fields = ['id', 'email', 'is_subscribed', 'group']
         read_only_fields = ['id']
 
+
 class SingleEmailSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    
-    def validate_email(self,value):
+
+    def validate_email(self, value):
         email = value.strip().lower()
         queryset = SingleEmail.objects.filter(email=email)
         if self.instance:
             # Exclude current instance if it exists
             queryset = queryset.exclude(pk=self.instance.pk)
         if queryset.exists():
-                raise serializers.ValidationError(f" {email} Email already exists")
+            raise serializers.ValidationError(f" {email} Email already exists")
         return email
-    
+
     def create(self, validated_data):
         email = validated_data.get('email')
         obj = SingleEmail.objects.create(email=email)
         return obj
+
     def update(self, instance, validated_data):
         instance.email = validated_data.get('email', instance.email)
         instance.save()
         return instance
+
+
 class SingleEmailViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = SingleEmail
         fields = ['id', 'email']
         read_only_fields = ['id']
+
+
 class EmailAttachmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmailAttachment
@@ -240,7 +255,7 @@ class EmailComposeViewSerializer(serializers.ModelSerializer):
         source='emailattachment_set', many=True, read_only=True)
 
     class Meta:
-        model = Email_Compose
+        model = EmailCompose
         fields = ['id', 'subject', 'body', 'configurations', 'attachments']
 
 

@@ -1,10 +1,11 @@
+import pdb
 from .tasks import delete_email_list_cache, bulk_email_send_task
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 
 from member.models import Email
 from . import serializers
-from .models import EmailGroup, SMTPConfiguration,EmailList, SingleEmail, Email_Compose, EmailAttachment
+from .models import EmailGroup, SMTPConfiguration, EmailList, SingleEmail, EmailCompose, EmailAttachment
 from rest_framework.response import Response
 import logging
 from activity_log.tasks import log_activity_task
@@ -20,8 +21,6 @@ from django.utils.http import urlencode
 from core.utils.pagination import CustomPageNumberPagination
 from django.db import transaction
 logger = logging.getLogger("myapp")
-import pdb
-
 
 
 class SetMailConfigurationAPIView(APIView):
@@ -237,7 +236,7 @@ class EmailComposeView(APIView):
         try:
             user = request.user
             paginator = CustomPageNumberPagination()
-            composes = Email_Compose.objects.filter(user=user).order_by('id')
+            composes = EmailCompose.objects.filter(user=user).order_by('id')
             paginated_qs = paginator.paginate_queryset(
                 composes, request, view=self)
             serializer = serializers.EmailComposeViewSerializer(
@@ -273,7 +272,7 @@ class EmailComposeDetailView(APIView):
     def patch(self, request, id):
         try:
             user = request.user
-            instance = Email_Compose.objects.get(pk=id, user=user)
+            instance = EmailCompose.objects.get(pk=id, user=user)
             serializer = serializers.EmailComposeUpdateSerializer(
                 data=request.data)
             if serializer.is_valid():
@@ -294,7 +293,7 @@ class EmailComposeDetailView(APIView):
                     "message": "Bad request",
                     "errors": serializer.errors
                 }, status=400)
-        except Email_Compose.DoesNotExist:
+        except EmailCompose.DoesNotExist:
             return Response({
                 "code": 404,
                 "status": "Not found",
@@ -323,8 +322,7 @@ class EmailComposeDetailView(APIView):
     def delete(self, request, id):
         try:
             user = request.user
-            # instance = get_object_or_404(Email_Compose, pk=id, user=user)
-            instance = Email_Compose.objects.get(pk=id, user=user)
+            instance = EmailCompose.objects.get(pk=id, user=user)
             with transaction.atomic():
                 attachments = EmailAttachment.objects.filter(
                     email_compose=instance)
@@ -341,7 +339,7 @@ class EmailComposeDetailView(APIView):
         #         "status": "Not found",
         #         "message": "Mail Compose not found",
         #     }, status=404)
-        except Email_Compose.DoesNotExist:
+        except EmailCompose.DoesNotExist:
             return Response({
                 "code": 404,
                 "status": "Not found",
@@ -370,7 +368,7 @@ class EmailComposeDetailView(APIView):
     def get(self, request, id):
         try:
             user = request.user
-            composes = get_object_or_404(Email_Compose, pk=id, user=user)
+            composes = get_object_or_404(EmailCompose, pk=id, user=user)
             serializer = serializers.EmailComposeViewSerializer(
                 composes)
             return Response({
@@ -890,18 +888,20 @@ class EmailListDetailView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            
+
+
 class SingleEmailView(APIView):
-    permission_classes = [IsAuthenticated,BulkEmailManagementPermission]
-    
-    def post (self,request):
+    permission_classes = [IsAuthenticated, BulkEmailManagementPermission]
+
+    def post(self, request):
         try:
             data = request.data
-            serializer = serializers.SingleEmailSerializer(data = data)
+            serializer = serializers.SingleEmailSerializer(data=data)
             if serializer.is_valid():
                 obj = serializer.save()
-                email= serializer.validated_data['email']
-                log_request(request, "Create Single Email ", "info", "User created single email successfully")
+                email = serializer.validated_data['email']
+                log_request(request, "Create Single Email ", "info",
+                            "User created single email successfully")
                 return Response({
                     "code": 201,
                     "status": "success",
@@ -913,18 +913,20 @@ class SingleEmailView(APIView):
                 }, status=status.HTTP_201_CREATED)
             else:
                 # activity log
-                log_request(request, "Create single email ", "errors", "User tried to create single email but faced an error")
+                log_request(request, "Create single email ", "errors",
+                            "User tried to create single email but faced an error")
                 return Response({
                     "code": 400,
                     "status": "failed",
                     "message": "Bad request",
                     "errors": serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
-                
+
         except Exception as e:
             logger.exception(str(e))
             # activity log
-            log_request(request, "Create Single Email", "errors", "User tried to create single email  but faced an error")
+            log_request(request, "Create Single Email", "errors",
+                        "User tried to create single email  but faced an error")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -933,12 +935,14 @@ class SingleEmailView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            
+
     def get(self, request):
         try:
             single_emails = SingleEmail.objects.all()
-            serializer = serializers.SingleEmailViewSerializer(single_emails, many=True)
-            log_request(request, "Retrieve Single Emails", "info", "User fetched single emails successfully")
+            serializer = serializers.SingleEmailViewSerializer(
+                single_emails, many=True)
+            log_request(request, "Retrieve Single Emails", "info",
+                        "User fetched single emails successfully")
             return Response({
                 "code": 200,
                 "status": "success",
@@ -947,7 +951,8 @@ class SingleEmailView(APIView):
             }, status=status.HTTP_200_OK)
         except Exception as e:
             logger.exception(str(e))
-            log_request(request, "Retrieve Single Emails", "errors", "User tried to fetch single emails but faced an error")
+            log_request(request, "Retrieve Single Emails", "errors",
+                        "User tried to fetch single emails but faced an error")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -956,6 +961,7 @@ class SingleEmailView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     def patch(self, request, id):
         try:
             single_email = SingleEmail.objects.get(id=id)
@@ -963,7 +969,8 @@ class SingleEmailView(APIView):
                 single_email, data=request.data, partial=True)
             if serializer.is_valid():
                 obj = serializer.save()
-                log_request(request, "Update Single Email", "info", "User updated single email successfully")
+                log_request(request, "Update Single Email", "info",
+                            "User updated single email successfully")
                 return Response({
                     "code": 200,
                     "status": "success",
@@ -974,7 +981,8 @@ class SingleEmailView(APIView):
                     }
                 }, status=status.HTTP_200_OK)
             else:
-                log_request(request, "Update Single Email", "errors", f"User tried to update single email but faced an error: {serializer.errors}")
+                log_request(request, "Update Single Email", "errors",
+                            f"User tried to update single email but faced an error: {serializer.errors}")
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -982,7 +990,8 @@ class SingleEmailView(APIView):
                     "errors": serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
         except SingleEmail.DoesNotExist:
-            log_request(request, "Update Single Email", "errors", f"User tried to update single email but it does not exist")
+            log_request(request, "Update Single Email", "errors",
+                        f"User tried to update single email but it does not exist")
             return Response({
                 "code": 404,
                 "status": "failed",
@@ -993,7 +1002,8 @@ class SingleEmailView(APIView):
             }, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             logger.exception(str(e))
-            log_request(request, "Update Single Email", "errors", f"User tried to update single email but faced an error")
+            log_request(request, "Update Single Email", "errors",
+                        f"User tried to update single email but faced an error")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -1002,18 +1012,21 @@ class SingleEmailView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     def delete(self, request, id):
         try:
             single_email = SingleEmail.objects.get(id=id)
             single_email.delete()
-            log_request(request, "Delete Single Email", "info", "User deleted single email successfully")
+            log_request(request, "Delete Single Email", "info",
+                        "User deleted single email successfully")
             return Response({
                 "code": 204,
                 "status": "success",
                 "message": "Single email deleted successfully"
             }, status=status.HTTP_204_NO_CONTENT)
         except SingleEmail.DoesNotExist:
-            log_request(request, "Delete Single Email", "errors", "User tried to delete single email but it does not exist")
+            log_request(request, "Delete Single Email", "errors",
+                        "User tried to delete single email but it does not exist")
             return Response({
                 "code": 404,
                 "status": "failed",
@@ -1024,7 +1037,8 @@ class SingleEmailView(APIView):
             }, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             logger.exception(str(e))
-            log_request(request, "Delete Single Email", "errors", f"User tried to delete single email but faced an error")
+            log_request(request, "Delete Single Email", "errors",
+                        f"User tried to delete single email but faced an error")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -1033,6 +1047,7 @@ class SingleEmailView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class EmailSendView(APIView):
     permission_classes = [IsAuthenticated, BulkEmailManagementPermission]
@@ -1043,21 +1058,24 @@ class EmailSendView(APIView):
             if serializer.is_valid():
                 obj = serializer.save()
                 email_compose = serializer.validated_data['email_compose']
-                group  = serializer.validated_data.get("group", None)
-                single_email = serializer.validated_data.get("single_email", None)
+                group = serializer.validated_data.get("group", None)
+                single_email = serializer.validated_data.get(
+                    "single_email", None)
                 if single_email is None and group is not None:
                     bulk_email_send_task.delay_on_commit(
                         email_compose_id=email_compose.id,
-                        email_addresses=list(group.group_email_lists.values_list('email', flat=True))
+                        email_addresses=list(
+                            group.group_email_lists.values_list('email', flat=True))
                     )
                 elif group is None and single_email is not None:
                     bulk_email_send_task.delay_on_commit(
                         email_compose_id=email_compose.id,
                         email_addresses=[single_email.email]
                     )
-                
+
                 # activity log
-                log_request(request, "Create Email Send", "info", "User created email send successfully")
+                log_request(request, "Create Email Send", "info",
+                            "User created email send successfully")
                 return Response({
                     "code": 201,
                     "status": "success",
@@ -1065,11 +1083,12 @@ class EmailSendView(APIView):
                     "data": {
                         "id": obj.id,
                         "email_compose": obj.email_compose.id,
-                        
+
                     }
                 }, status=status.HTTP_201_CREATED)
             else:
-                log_request(request, "Create Email Send", "errors", f"User tried to create email send but faced an error: {serializer.errors}")
+                log_request(request, "Create Email Send", "errors",
+                            f"User tried to create email send but faced an error: {serializer.errors}")
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -1078,7 +1097,8 @@ class EmailSendView(APIView):
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.exception(str(e))
-            log_request(request, "Create Email Send", "errors", f"User tried to create email send but faced an error")
+            log_request(request, "Create Email Send", "errors",
+                        f"User tried to create email send but faced an error")
             return Response({
                 "code": 500,
                 "status": "failed",
