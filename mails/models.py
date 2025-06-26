@@ -70,9 +70,9 @@ class EmailAttachment(MailBaseModel):
 
 
 STATUS_CHOICES = [
-    ('success', 'Success'),
-    ('failed', 'Failed'),
-    ('pending', 'Pending'),
+    ('success', 'success'),
+    ('failed', 'failed'),
+    ('pending', 'pending'),
 ]
 
 
@@ -80,7 +80,7 @@ class Outbox(MailBaseModel):
     email_address = models.EmailField(max_length=255)
     status = models.CharField(max_length=50, choices=STATUS_CHOICES)
     email_compose = models.ForeignKey(
-        EmailCompose, on_delete=models.CASCADE, null=True, blank=True)
+        EmailCompose, on_delete=models.CASCADE, null=True, blank=True, related_name="outbox_email_composes")
     failed_reason = models.CharField(
         max_length=255, blank=True, null=True, default=None)
     is_from_template = models.BooleanField(default=False)

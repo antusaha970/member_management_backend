@@ -1,5 +1,5 @@
 import pdb
-from .tasks import delete_email_list_cache, bulk_email_send_task
+from .tasks import delete_email_list_cache, bulk_email_send_task, retry_failed_emails
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 
@@ -1094,6 +1094,42 @@ class EmailSendView(APIView):
             logger.exception(str(e))
             log_request(request, "Create Email Send", "errors",
                         f"User tried to create email send but faced an error")
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class EmailRetryView(APIView):
+    permission_classes = [IsAuthenticated, ]
+
+    def post(self, request):
+        try:
+            is_one_process_running = cache.get("mails::retry")
+            if is_one_process_running:
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "One process is already running",
+                    "errors": {
+                        "retry": ["One process is already running"]
+                    }
+                }, status=400)
+            else:
+                retry_failed_emails.delay()
+                return Response({
+                    "code": 200,
+                    "status": "success",
+                    "message": "Retry process started successfully"
+                }, status=200)
+        except Exception as e:
+            logger.exception(str(e))
+            log_request(request, "Retry failed emails", "errors",
+                        f"user tried to retry failed emails but faced an error")
             return Response({
                 "code": 500,
                 "status": "failed",

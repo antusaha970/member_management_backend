@@ -22,11 +22,17 @@ urlpatterns = [
     path("v1/email/lists/<int:id>/", views.EmailListDetailView.as_view(),
          name="email_list_detail_view"),
     # Individual Emails
-    path("v1/email/individual_emails/", views.SingleEmailView.as_view(), name="individual_email_list_create_view"),
-    path("v1/email/individual_emails/<int:id>/", views.SingleEmailView.as_view(), name="individual_email_detail_view"),
+    path("v1/email/individual_emails/", views.SingleEmailView.as_view(),
+         name="individual_email_list_create_view"),
+    path("v1/email/individual_emails/<int:id>/",
+         views.SingleEmailView.as_view(), name="individual_email_detail_view"),
     # Send Email Action (Bulk or Single)
     path("v1/emails/send/", views.EmailSendView.as_view(), name="email_send"),
+    path("v1/emails/retry/", views.EmailRetryView.as_view(),
+         name="email_retry_send"),
     # Email Outbox
-    path("v1/email/outboxes/", views.OutboxView.as_view(), name="email_outbox_list_view"),
-    path("v1/email/outboxes/<int:id>/", views.EmailOutboxDetailView.as_view(), name="email_outbox_detail_view"),
+    path("v1/email/outboxes/", views.OutboxView.as_view(),
+         name="email_outbox_list_view"),
+    path("v1/email/outboxes/<int:id>/",
+         views.EmailOutboxDetailView.as_view(), name="email_outbox_detail_view"),
 ]
