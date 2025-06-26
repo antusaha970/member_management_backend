@@ -1,5 +1,5 @@
 import pdb
-from .tasks import delete_email_list_cache, bulk_email_send_task, retry_failed_emails
+from .tasks import bulk_email_send_task, retry_failed_emails
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 
@@ -403,7 +403,8 @@ class EmailGroupView(APIView):
     def post(self, request):
         try:
             user = request.user
-            serializer = serializers.EmailGroupSerializer(data=request.data, context={"user": user})
+            serializer = serializers.EmailGroupSerializer(
+                data=request.data, context={"user": user})
             if serializer.is_valid():
                 obj = serializer.save()
                 name = serializer.validated_data['name']
@@ -457,7 +458,8 @@ class EmailGroupView(APIView):
     def get(self, request):
         try:
 
-            email_groups = EmailGroup.objects.prefetch_related('group_email_lists').all()
+            email_groups = EmailGroup.objects.prefetch_related(
+                'group_email_lists').all()
             serializer = serializers.EmailGroupViewSerializer(
                 email_groups, many=True)
             # activity log
@@ -496,7 +498,8 @@ class EmailGroupDetailView(APIView):
 
     def get(self, request, group_id):
         try:
-            email_group = EmailGroup.objects.prefetch_related('group_email_lists').get(id=group_id,)
+            email_group = EmailGroup.objects.prefetch_related(
+                'group_email_lists').get(id=group_id,)
             serializer = serializers.EmailGroupViewSerializer(email_group)
             # activity log
             log_activity_task.delay_on_commit(
@@ -540,7 +543,8 @@ class EmailGroupDetailView(APIView):
 
     def patch(self, request, group_id):
         try:
-            email_group = EmailGroup.objects.get(id=group_id, user=request.user)
+            email_group = EmailGroup.objects.get(
+                id=group_id, user=request.user)
             serializer = serializers.EmailGroupSerializer(
                 email_group, data=request.data, partial=True)
             if serializer.is_valid():
@@ -608,17 +612,20 @@ class EmailGroupDetailView(APIView):
 
     def delete(self, request, group_id):
         try:
-            email_group = EmailGroup.objects.get(id=group_id, user=request.user)
+            email_group = EmailGroup.objects.get(
+                id=group_id, user=request.user)
             email_group.delete()
-            log_request(request, "Delete Email Group", "info", "User deleted email group successfully")
+            log_request(request, "Delete Email Group", "info",
+                        "User deleted email group successfully")
             return Response({
                 "code": 204,
                 "status": "success",
                 "message": "Email group deleted successfully"
             }, status=status.HTTP_204_NO_CONTENT)
         except EmailGroup.DoesNotExist:
-          
-            log_request(request, "Delete Email Group", "errors", "User tried to delete email group but it does not exist")
+
+            log_request(request, "Delete Email Group", "errors",
+                        "User tried to delete email group but it does not exist")
             return Response({
                 "code": 404,
                 "status": "failed",
@@ -630,7 +637,8 @@ class EmailGroupDetailView(APIView):
         except Exception as e:
             logger.exception(str(e))
             # activity log
-            log_request(request, "Delete Email Group", "errors", "User tried to delete email group but faced an error")
+            log_request(request, "Delete Email Group", "errors",
+                        "User tried to delete email group but faced an error")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -690,7 +698,6 @@ class EmailListView(APIView):
     def get(self, request):
         try:
             query_params = request.query_params
-            
 
             email_lists = EmailList.objects.all().order_by('id')
             paginator = CustomPageNumberPagination()
@@ -905,10 +912,11 @@ class SingleEmailView(APIView):
         try:
             query_params = request.query_params.get('email', None)
             paginator = CustomPageNumberPagination()
-            single_emails = SingleEmail.objects.all()            
+            single_emails = SingleEmail.objects.all()
             if query_params:
-                single_emails = single_emails.filter(email__icontains=query_params)
-            
+                single_emails = single_emails.filter(
+                    email__icontains=query_params)
+
             result_page = paginator.paginate_queryset(single_emails, request)
             serializer = serializers.SingleEmailViewSerializer(
                 result_page, many=True)
