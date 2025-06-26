@@ -1,5 +1,5 @@
 import pdb
-from .tasks import delete_email_list_cache, bulk_email_send_task
+from .tasks import  bulk_email_send_task
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 
@@ -414,8 +414,6 @@ class EmailGroupView(APIView):
                     severity_level="info",
                     description="User created an email group successfully",
                 )
-                # Clear cache for email lists
-                delete_email_list_cache.delay()
                 return Response({
                     "code": 201,
                     "status": "success",
@@ -554,7 +552,6 @@ class EmailGroupDetailView(APIView):
                     description=f"User updated email group successfully",
                 )
                 # Clear cache for email lists
-                delete_email_list_cache.delay()
                 return Response({
                     "code": 200,
                     "status": "success",
@@ -614,8 +611,6 @@ class EmailGroupDetailView(APIView):
             email_group = EmailGroup.objects.get(id=group_id, user=request.user)
             email_group.delete()
             log_request(request, "Delete Email Group", "info", "User deleted email group successfully")
-            # remove cache for email lists
-            delete_email_list_cache.delay()
             return Response({
                 "code": 204,
                 "status": "success",
@@ -654,13 +649,10 @@ class EmailListView(APIView):
             serializer = serializers.EmailListSerializer(data=request.data)
             if serializer.is_valid():
                 objs = serializer.save()
-                print(objs)
                 group = serializer.validated_data['group']
                 # activity log
                 log_request(request, "Create Email List", "info",
                             "User created email list successfully")
-                # Clear cache for email lists
-                delete_email_list_cache.delay()
                 return Response({
                     "code": 201,
                     "status": "success",
@@ -698,14 +690,7 @@ class EmailListView(APIView):
     def get(self, request):
         try:
             query_params = request.query_params
-            query_items = sorted(query_params.items())
-            query_string = urlencode(query_items) if query_items else "default"
-            cache_key = f"email_lists::{query_string}"
-
-            cached_response = cache.get(cache_key)
-            if cached_response:
-                print(f"Cache hit for key: {cache_key}")
-                return Response(cached_response, status=200)
+            
 
             email_lists = EmailList.objects.all().order_by('id')
             paginator = CustomPageNumberPagination()
@@ -724,7 +709,6 @@ class EmailListView(APIView):
             }
 
             # Cache for 2 minutes
-            cache.set(cache_key, response_data, 60 * 30)
             log_request(request, "Retrieve Email Lists", "info",
                         "User fetched email lists successfully")
 
@@ -792,8 +776,6 @@ class EmailListDetailView(APIView):
                 obj = serializer.update(email_list, serializer.validated_data)
                 log_request(request, "Update Email List", "info",
                             "User updated email list successfully")
-                # Clear cache for email lists
-                delete_email_list_cache.delay()
                 return Response({
                     "code": 200,
                     "status": "success",
@@ -843,7 +825,6 @@ class EmailListDetailView(APIView):
             log_request(request, "Delete Email List", "info",
                         "User deleted email list successfully")
             # Clear cache for email lists
-            delete_email_list_cache.delay()
             return Response({
                 "code": 204,
                 "status": "success",
@@ -922,17 +903,19 @@ class SingleEmailView(APIView):
 
     def get(self, request):
         try:
-            single_emails = SingleEmail.objects.all()
+            query_params = request.query_params.get('email', None)
+            paginator = CustomPageNumberPagination()
+            single_emails = SingleEmail.objects.all()            
+            if query_params:
+                single_emails = single_emails.filter(email__icontains=query_params)
+            
+            result_page = paginator.paginate_queryset(single_emails, request)
             serializer = serializers.SingleEmailViewSerializer(
-                single_emails, many=True)
+                result_page, many=True)
+            paginated_data = paginator.get_paginated_response(serializer.data)
             log_request(request, "Retrieve Single Emails", "info",
                         "User fetched single emails successfully")
-            return Response({
-                "code": 200,
-                "status": "success",
-                "message": "Single emails retrieved successfully",
-                "data": serializer.data
-            }, status=status.HTTP_200_OK)
+            return paginated_data
         except Exception as e:
             logger.exception(str(e))
             log_request(request, "Retrieve Single Emails", "errors",

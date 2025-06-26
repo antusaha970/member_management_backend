@@ -13,29 +13,28 @@ from django.template.loader import render_to_string
 from django.conf import settings
 import logging
 logger = logging.getLogger("myapp")
+import os
 
 
-@shared_task
-def delete_email_list_cache():
-    try:
-        cache.delete_pattern("email_lists::*")
-        return "success"
-    except Exception as e:
-        logger.error(f"Error deleting email list cache: {e}")
-        return {"error": str(e)}
 
 
 @shared_task
 def bulk_email_send_task(email_compose_id, email_addresses):
     """
-    Sends bulk emails using the composed template and dynamic credentials.
-    Optimized to reduce DB write operations using bulk_create.
+    Sends bulk emails with optional attachments using a composed template.
+    Efficient database operations and attachment existence check added.
     """
     try:
-        email_compose_obj = EmailCompose.objects.select_related('configurations').get(id=email_compose_id)
+        if not email_addresses or not isinstance(email_addresses, list):
+            raise ValueError("Email addresses must be a non-empty list.")
 
+        email_compose_obj = EmailCompose.objects.select_related('configurations')\
+            .prefetch_related('email_compose_attachments').get(id=email_compose_id)
+
+        attachments = email_compose_obj.email_compose_attachments.all()
         email_host_user = email_compose_obj.configurations.username
         email_host_password = email_compose_obj.configurations.password
+
         if not email_host_user or not email_host_password:
             raise ValueError("Email username or password is missing in configuration.")
 
@@ -47,8 +46,8 @@ def bulk_email_send_task(email_compose_id, email_addresses):
             use_tls=True
         )
 
-        # Prepare email body from template
-        context = Context({"test": "test", "member": "test"})
+        # Prepare the rendered HTML body
+        context = Context({"test": "test12345", "member": "arifin"})
         template = Template(email_compose_obj.body)
         rendered_html = template.render(context)
 
@@ -66,9 +65,19 @@ def bulk_email_send_task(email_compose_id, email_addresses):
                     connection=connection
                 )
                 email.attach_alternative(rendered_html, "text/html")
-                email.send()
 
+                for attachment in attachments:
+                    file_path = attachment.file.path
+                    file_name = attachment.file.name
+                    if os.path.exists(file_path):
+                        with open(file_path, 'rb') as f:
+                            email.attach(os.path.basename(file_name), f.read())
+                    else:
+                        logger.warning(f"Attachment file not found: {file_path}")
+
+                email.send()
                 success_emails.append(user_email)
+
                 outbox_list.append(Outbox(
                     email_compose=email_compose_obj,
                     status="success",
@@ -85,6 +94,7 @@ def bulk_email_send_task(email_compose_id, email_addresses):
                     failed_reason=str(send_error)
                 ))
 
+        #  Bulk insert outbox records in batches
         try:
             with transaction.atomic():
                 for i in range(0, len(outbox_list), 100):
@@ -97,9 +107,12 @@ def bulk_email_send_task(email_compose_id, email_addresses):
             "success": success_emails,
             "failed": failed_emails
         }
+
     except Exception as general_error:
         logger.critical(f"Bulk email task failed: {general_error}")
         return {"error": str(general_error)}
+
+
 
 @shared_task
 def send_monthly_member_emails():

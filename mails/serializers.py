@@ -154,10 +154,10 @@ class EmailListDetailsSerializer(serializers.ModelSerializer):
 
 class EmailGroupViewSerializer(serializers.ModelSerializer):
     email_lists = EmailListDetailsSerializer(many=True, read_only=True, source='group_email_lists')
-
+    user = serializers.StringRelatedField(read_only=True)
     class Meta:
         model = EmailGroup
-        fields = ['id', 'name', 'description', 'created_at', 'updated_at', 'email_lists']
+        fields = ['id', 'name', 'description', 'created_at', 'updated_at', 'email_lists', 'user']
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 
@@ -214,12 +214,21 @@ class EmailListSingleSerializer(serializers.Serializer):
         return instance
 
 
+class EmailGroupDetailsSerializer(serializers.ModelSerializer):
+    user = serializers.StringRelatedField(read_only=True)
+    class Meta:
+        model = EmailGroup
+        fields = ['id', 'name', 'description', 'created_at', 'updated_at', 'user']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
 class EmailListViewSerializer(serializers.ModelSerializer):
+    group = EmailGroupDetailsSerializer(read_only=True)
     class Meta:
         model = EmailList
         fields = ['id', 'email', 'is_subscribed', 'group']
         read_only_fields = ['id']
-
+        
 
 class SingleEmailSerializer(serializers.Serializer):
     email = serializers.EmailField()
