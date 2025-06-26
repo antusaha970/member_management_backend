@@ -120,7 +120,7 @@ class EmailSendSerializer(serializers.Serializer):
 class EmailGroupSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255)
     description = serializers.CharField(max_length=500, required=False)
-    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    # user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
 
     def validate_name(self, value):
         name = value.strip().lower().replace(" ", "_")
@@ -135,7 +135,8 @@ class EmailGroupSerializer(serializers.Serializer):
         return name
 
     def create(self, validated_data):
-        obj = EmailGroup.objects.create(**validated_data)
+        user = self.context.get("user")
+        obj = EmailGroup.objects.create(**validated_data, user=user)
         return obj
 
     def update(self, instance, validated_data):
@@ -145,13 +146,20 @@ class EmailGroupSerializer(serializers.Serializer):
         instance.user = validated_data.get('user', instance.user)
         instance.save(update_fields=['name', 'description', 'user'])
         return instance
-
+    
+class EmailListDetailsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EmailList
+        fields = ['id', 'email', 'is_subscribed'] 
 
 class EmailGroupViewSerializer(serializers.ModelSerializer):
+    email_lists = EmailListDetailsSerializer(many=True, read_only=True, source='group_email_lists')
+
     class Meta:
         model = EmailGroup
-        fields = ['id', 'name', 'description', 'created_at', 'updated_at']
+        fields = ['id', 'name', 'description', 'created_at', 'updated_at', 'email_lists']
         read_only_fields = ['id', 'created_at', 'updated_at']
+
 
 
 class EmailListSerializer(serializers.Serializer):

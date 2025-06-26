@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     'django_filters',
     'django_celery_beat',
     'silk',
+    'django_extensions',
     # Custom apps
     'account',
     'club',

@@ -20,6 +20,7 @@ from django.core.cache import cache
 from django.utils.http import urlencode
 from core.utils.pagination import CustomPageNumberPagination
 from django.db import transaction
+from django.contrib.auth import get_user_model
 logger = logging.getLogger("myapp")
 
 
@@ -401,7 +402,8 @@ class EmailGroupView(APIView):
 
     def post(self, request):
         try:
-            serializer = serializers.EmailGroupSerializer(data=request.data)
+            user = request.user
+            serializer = serializers.EmailGroupSerializer(data=request.data, context={"user": user})
             if serializer.is_valid():
                 obj = serializer.save()
                 name = serializer.validated_data['name']
@@ -457,7 +459,7 @@ class EmailGroupView(APIView):
     def get(self, request):
         try:
 
-            email_groups = EmailGroup.objects.all()
+            email_groups = EmailGroup.objects.prefetch_related('group_email_lists').all()
             serializer = serializers.EmailGroupViewSerializer(
                 email_groups, many=True)
             # activity log
@@ -496,7 +498,7 @@ class EmailGroupDetailView(APIView):
 
     def get(self, request, group_id):
         try:
-            email_group = EmailGroup.objects.get(id=group_id)
+            email_group = EmailGroup.objects.prefetch_related('group_email_lists').get(id=group_id,)
             serializer = serializers.EmailGroupViewSerializer(email_group)
             # activity log
             log_activity_task.delay_on_commit(
@@ -540,7 +542,7 @@ class EmailGroupDetailView(APIView):
 
     def patch(self, request, group_id):
         try:
-            email_group = EmailGroup.objects.get(id=group_id)
+            email_group = EmailGroup.objects.get(id=group_id, user=request.user)
             serializer = serializers.EmailGroupSerializer(
                 email_group, data=request.data, partial=True)
             if serializer.is_valid():
@@ -587,7 +589,7 @@ class EmailGroupDetailView(APIView):
                 "status": "failed",
                 "message": "Email group not found",
                 "errors": {
-                    "group": ["Email group not found"]
+                    "group": ["Email group not found for the given id or user"]
                 }
             }, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
@@ -609,14 +611,9 @@ class EmailGroupDetailView(APIView):
 
     def delete(self, request, group_id):
         try:
-            email_group = EmailGroup.objects.get(id=group_id)
+            email_group = EmailGroup.objects.get(id=group_id, user=request.user)
             email_group.delete()
-            log_activity_task.delay_on_commit(
-                request_data_activity_log(request),
-                verb="Delete Email Group",
-                severity_level="info",
-                description=f"User deleted email group with id {group_id} successfully",
-            )
+            log_request(request, "Delete Email Group", "info", "User deleted email group successfully")
             # remove cache for email lists
             delete_email_list_cache.delay()
             return Response({
@@ -625,28 +622,20 @@ class EmailGroupDetailView(APIView):
                 "message": "Email group deleted successfully"
             }, status=status.HTTP_204_NO_CONTENT)
         except EmailGroup.DoesNotExist:
-            log_activity_task.delay_on_commit(
-                request_data_activity_log(request),
-                verb="Delete Email Group",
-                severity_level="errors",
-                description=f"User tried to delete email group but it does not exist",
-            )
+          
+            log_request(request, "Delete Email Group", "errors", "User tried to delete email group but it does not exist")
             return Response({
                 "code": 404,
                 "status": "failed",
                 "message": "Email group not found",
                 "errors": {
-                    "group": ["Email group not found"]
+                    "group": ["Email group not found for the given id or user"]
                 }
             }, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             logger.exception(str(e))
-            log_activity_task.delay_on_commit(
-                request_data_activity_log(request),
-                verb="Delete Email Group",
-                severity_level="errors",
-                description=f"User tried to delete email group but faced an error",
-            )
+            # activity log
+            log_request(request, "Delete Email Group", "errors", "User tried to delete email group but faced an error")
             return Response({
                 "code": 500,
                 "status": "failed",
