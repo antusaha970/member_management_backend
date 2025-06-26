@@ -397,7 +397,7 @@ class EmailComposeDetailView(APIView):
 
 
 class EmailGroupView(APIView):
-    permission_classes = [IsAuthenticated, BulkEmailManagementPermission]
+    permission_classes = [IsAuthenticated, ]
 
     def post(self, request):
         try:
@@ -492,7 +492,7 @@ class EmailGroupView(APIView):
 
 
 class EmailGroupDetailView(APIView):
-    permission_classes = [IsAuthenticated, BulkEmailManagementPermission]
+    permission_classes = [IsAuthenticated, ]
 
     def get(self, request, group_id):
         try:
@@ -658,7 +658,7 @@ class EmailGroupDetailView(APIView):
 
 
 class EmailListView(APIView):
-    permission_classes = [IsAuthenticated, BulkEmailManagementPermission]
+    permission_classes = [IsAuthenticated, ]
 
     def post(self, request):
         try:
@@ -756,7 +756,7 @@ class EmailListView(APIView):
 
 
 class EmailListDetailView(APIView):
-    permission_classes = [IsAuthenticated, BulkEmailManagementPermission]
+    permission_classes = [IsAuthenticated, ]
 
     def get(self, request, id):
         try:
@@ -886,7 +886,7 @@ class EmailListDetailView(APIView):
 
 
 class SingleEmailView(APIView):
-    permission_classes = [IsAuthenticated, BulkEmailManagementPermission]
+    permission_classes = [IsAuthenticated, ]
 
     def post(self, request):
         try:
@@ -1045,7 +1045,7 @@ class SingleEmailView(APIView):
 
 
 class EmailSendView(APIView):
-    permission_classes = [IsAuthenticated, BulkEmailManagementPermission]
+    permission_classes = [IsAuthenticated, ]
 
     def post(self, request):
         try:
@@ -1134,7 +1134,7 @@ class OutboxView(APIView):
 
 
 class EmailOutboxDetailView(APIView):
-    permission_classes = [IsAuthenticated, BulkEmailManagementPermission]
+    permission_classes = [IsAuthenticated, ]
 
     def get(self, request, id):
         try:
