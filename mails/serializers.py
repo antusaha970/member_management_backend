@@ -186,20 +186,30 @@ class EmailListSerializer(serializers.Serializer):
     group = serializers.PrimaryKeyRelatedField(
         queryset=EmailGroup.objects.all())
 
-    def validate_email(self, value):
+    def validate(self, attrs):
         """
-        Remove duplicates from input email list (case-insensitive),
-        and exclude emails that already exist in the database.
+        Remove duplicates from input list, case-insensitive,
+        and exclude (email, group) pairs that already exist in the database.
         """
-        normalized_emails = {email.strip().lower() for email in value}
-
-        if not normalized_emails:
-            return []
-        existing_emails = set(
-            EmailList.objects.filter(email__in=normalized_emails)
-            .values_list('email', flat=True)
+        raw_emails = attrs.get('email', [])
+        group = attrs.get('group')
+        # Normalize emails
+        normalized_emails = {email.strip().lower() for email in raw_emails}
+        # Filter only those (email, group) that already exist
+        existing_pairs = set(
+            EmailList.objects.filter(
+                email__in=normalized_emails,
+                group=group
+            ).values_list('email', flat=True)
         )
-        return list(normalized_emails - existing_emails)
+        # Remove those
+        filtered_emails = list(normalized_emails - existing_pairs)
+
+        if not filtered_emails:
+            raise serializers.ValidationError("All emails already exist in this group.")
+
+        attrs['email'] = filtered_emails
+        return attrs
 
     def create(self, validated_data):
         emails = validated_data.pop('email')

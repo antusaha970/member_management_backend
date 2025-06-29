@@ -1,7 +1,7 @@
 # filters.py
 
 import django_filters
-from .models import EmailList
+from .models import EmailList, Outbox,STATUS_CHOICES
 
 class EmailListFilter(django_filters.FilterSet):
     email = django_filters.CharFilter(lookup_expr='icontains')
@@ -12,3 +12,12 @@ class EmailListFilter(django_filters.FilterSet):
     class Meta:
         model = EmailList
         fields = ['email', 'is_subscribed', 'group', 'group_name']
+
+class OutboxFilter(django_filters.FilterSet):
+    email_address = django_filters.CharFilter(lookup_expr='icontains')
+    status = django_filters.ChoiceFilter(choices=STATUS_CHOICES)
+    is_from_template = django_filters.BooleanFilter()
+
+    class Meta:
+        model = Outbox
+        fields = ['email_address', 'status', 'is_from_template']

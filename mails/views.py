@@ -15,7 +15,7 @@ from django.shortcuts import get_object_or_404
 from django.http import Http404
 from mails.utils.permission_classes import BulkEmailManagementPermission
 from activity_log.utils.functions import log_request
-from .filters import EmailListFilter
+from .filters import EmailListFilter, OutboxFilter
 from django.core.cache import cache
 from django.utils.http import urlencode
 from core.utils.pagination import CustomPageNumberPagination
@@ -619,7 +619,7 @@ class EmailGroupDetailView(APIView):
 
 
 class EmailListView(APIView):
-    permission_classes = [IsAuthenticated, ]
+    permission_classes = [IsAuthenticated, BulkEmailManagementPermission]
 
     def post(self, request):
         try:
@@ -635,7 +635,6 @@ class EmailListView(APIView):
                     "status": "success",
                     "message": "Email list created successfully",
                     "data": {
-                        # "id": obj.count(),
                         "group": group.id,
                     }
                 }, status=status.HTTP_201_CREATED)
@@ -703,9 +702,8 @@ class EmailListView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
 class EmailListDetailView(APIView):
-    permission_classes = [IsAuthenticated, ]
+    permission_classes = [IsAuthenticated, BulkEmailManagementPermission]
 
     def get(self, request, id):
         try:
@@ -832,7 +830,7 @@ class EmailListDetailView(APIView):
 
 
 class SingleEmailView(APIView):
-    permission_classes = [IsAuthenticated, ]
+    permission_classes = [IsAuthenticated ]
 
     def post(self, request):
         try:
@@ -889,10 +887,17 @@ class SingleEmailView(APIView):
             result_page = paginator.paginate_queryset(single_emails, request)
             serializer = serializers.SingleEmailViewSerializer(
                 result_page, many=True)
-            paginated_data = paginator.get_paginated_response(serializer.data)
+            # paginated_data = paginator.get_paginated_response(serializer.data)
             log_request(request, "Retrieve Single Emails", "info",
                         "User fetched single emails successfully")
-            return paginated_data
+            final_response = paginator.get_paginated_response({
+                "code": 200,
+                "message": "Single emails retrieved successfully",
+                "status": "success",
+                "data": serializer.data,
+
+            })
+            return final_response
         except Exception as e:
             logger.exception(str(e))
             log_request(request, "Retrieve Single Emails", "errors",
@@ -1008,8 +1013,8 @@ class EmailSendView(APIView):
                 if single_email is None and group is not None:
                     bulk_email_send_task.delay_on_commit(
                         email_compose_id=email_compose.id,
-                        email_addresses=list(
-                            group.group_email_lists.values_list('email', flat=True))
+                        email_addresses=list(group.group_email_lists.filter(is_subscribed=True)
+                                             .values_list('email', flat=True))
                     )
                 elif group is None and single_email is not None:
                     bulk_email_send_task.delay_on_commit(
@@ -1032,7 +1037,7 @@ class EmailSendView(APIView):
                 }, status=status.HTTP_201_CREATED)
             else:
                 log_request(request, "Create Email Send", "errors",
-                            f"User tried to create email send but faced an error: {serializer.errors}")
+                            "User tried to create email send but faced an error")
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -1094,11 +1099,18 @@ class OutboxView(APIView):
 
     def get(self, request):
         try:
+            query_params = request.query_params
             outbox = Outbox.objects.all()
-            serializer = serializers.OutboxViewSerializer(outbox, many=True)
+            if query_params:
+                outbox = OutboxFilter(query_params, queryset=outbox).qs
+            # add pagination
+            paginator = CustomPageNumberPagination()
+            result_page = paginator.paginate_queryset(outbox, request)
+            # serialize the data
+            serializer = serializers.OutboxViewSerializer(result_page, many=True)
             log_request(request, "Retrieve Outbox", "info",
                         "User fetched outbox successfully")
-            return Response({
+            return paginator.get_paginated_response({
                 "code": 200,
                 "status": "success",
                 "message": "Outbox retrieved successfully",
