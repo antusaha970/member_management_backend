@@ -458,8 +458,7 @@ class EmailGroupView(APIView):
     def get(self, request):
         try:
 
-            email_groups = EmailGroup.objects.prefetch_related(
-                'group_email_lists').all()
+            email_groups = EmailGroup.objects.all()
             serializer = serializers.EmailGroupViewSerializer(
                 email_groups, many=True)
             # activity log
@@ -500,7 +499,8 @@ class EmailGroupDetailView(APIView):
         try:
             email_group = EmailGroup.objects.prefetch_related(
                 'group_email_lists').get(id=group_id,)
-            serializer = serializers.EmailGroupViewSerializer(email_group)
+            serializer = serializers.EmailGroupSingleViewSerializer(
+                email_group)
             # activity log
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
@@ -741,7 +741,7 @@ class EmailListDetailView(APIView):
     def get(self, request, id):
         try:
             email_list = EmailList.objects.get(id=id)
-            serializer = serializers.EmailListViewSerializer(email_list)
+            serializer = serializers.EmailListSingleViewSerializer(email_list)
             log_request(request, "Retrieve Email List", "info",
                         "User retrieved email list successfully")
             return Response({
