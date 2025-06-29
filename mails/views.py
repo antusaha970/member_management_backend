@@ -398,7 +398,7 @@ class EmailComposeDetailView(APIView):
 
 
 class EmailGroupView(APIView):
-    permission_classes = [IsAuthenticated, ]
+    permission_classes = [IsAuthenticated, BulkEmailManagementPermission]
 
     def post(self, request):
         try:
