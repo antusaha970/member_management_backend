@@ -1,4 +1,5 @@
 
+import os
 from django.template import Context, Template
 from django.core.mail import get_connection, EmailMultiAlternatives
 import pdb
@@ -13,9 +14,6 @@ from django.template.loader import render_to_string
 from django.conf import settings
 import logging
 logger = logging.getLogger("myapp")
-import os
-
-
 
 
 @shared_task
@@ -36,7 +34,8 @@ def bulk_email_send_task(email_compose_id, email_addresses):
         email_host_password = email_compose_obj.configurations.password
 
         if not email_host_user or not email_host_password:
-            raise ValueError("Email username or password is missing in configuration.")
+            raise ValueError(
+                "Email username or password is missing in configuration.")
 
         connection = get_connection(
             host='smtp.gmail.com',
@@ -73,7 +72,8 @@ def bulk_email_send_task(email_compose_id, email_addresses):
                         with open(file_path, 'rb') as f:
                             email.attach(os.path.basename(file_name), f.read())
                     else:
-                        logger.warning(f"Attachment file not found: {file_path}")
+                        logger.warning(
+                            f"Attachment file not found: {file_path}")
 
                 email.send()
                 success_emails.append(user_email)
@@ -85,7 +85,8 @@ def bulk_email_send_task(email_compose_id, email_addresses):
                 ))
 
             except Exception as send_error:
-                logger.error(f"Email send failed for {user_email}: {send_error}")
+                logger.error(
+                    f"Email send failed for {user_email}: {send_error}")
                 failed_emails.append((user_email, str(send_error)))
                 outbox_list.append(Outbox(
                     email_compose=email_compose_obj,
@@ -111,7 +112,6 @@ def bulk_email_send_task(email_compose_id, email_addresses):
     except Exception as general_error:
         logger.critical(f"Bulk email task failed: {general_error}")
         return {"error": str(general_error)}
-
 
 
 @shared_task
@@ -172,6 +172,7 @@ def retry_failed_emails():
         for mail in failed_mails:
             try:
                 compose = mail.email_compose
+                attachments = compose.email_compose_attachments.all()
                 if not compose:
                     continue
 
@@ -200,6 +201,17 @@ def retry_failed_emails():
                     to=[email],
                     connection=connection
                 )
+
+                for attachment in attachments:
+                    file_path = attachment.file.path
+                    file_name = attachment.file.name
+                    if os.path.exists(file_path):
+                        with open(file_path, 'rb') as f:
+                            email.attach(os.path.basename(file_name), f.read())
+                    else:
+                        logger.warning(
+                            f"Attachment file not found: {file_path}")
+
                 email.attach_alternative(rendered_html, "text/html")
                 email.send()
                 mail.status = "success"
