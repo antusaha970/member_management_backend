@@ -161,63 +161,6 @@ def send_monthly_member_emails():
         return {"status": False, "description": "Something went wrong while sending mail", "error": str(e)}
 
 
-# @shared_task
-# def retry_failed_emails():
-#     try:
-#         cache.set("mails::retry", True)
-#         failed_mails = Outbox.objects.select_related(
-#             "email_compose").filter(status="failed")
-#         outbox_list = []
-#         for mail in failed_mails:
-#             try:
-#                 compose = mail.email_compose
-#                 if not compose:
-#                     continue
-
-#                 subject = compose.subject
-#                 body = compose.body
-#                 email = mail.email_address
-#                 config = compose.configurations
-#                 if not config:
-#                     continue
-#                 username = config.username
-#                 password = config.password
-                
-#                 connection = get_connection(
-#                     host='smtp.gmail.com',
-#                     port=587,
-#                     username=username,
-#                     password=password,
-#                     use_tls=True
-#                 )
-#                 context = Context({})
-#                 template = Template(body)
-#                 rendered_html = template.render(context)
-#                 email = EmailMultiAlternatives(
-#                     subject=subject,
-#                     body=rendered_html,
-#                     from_email=username,
-#                     to=[email],
-#                     connection=connection
-#                 )
-#                 email.attach_alternative(rendered_html, "text/html")
-#                 email.send()
-#                 mail.status = "success"
-#                 mail.failed_reason = None
-#                 outbox_list.append(mail)
-
-#             except Exception as e:
-#                 mail.failed_reason = str(e)
-#                 outbox_list.append(mail)
-#         for i in range(0, len(outbox_list), 100):
-#             Outbox.objects.bulk_update(
-#                 outbox_list[i:i+100], ["status", "failed_reason"])
-#         return {"status": True, "description": "All mail has been sent"}
-#     except Exception as e:
-#         return {"status": False, "description": "something went wrong", "error": str(e)}
-#     finally:
-#         cache.delete("mails::retry")
-
 
 @shared_task
 def retry_failed_emails():
