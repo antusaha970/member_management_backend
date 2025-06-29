@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import *
 from collections import Counter
-
+import re
 
 class SMTPConfigurationSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255, required=False)
@@ -120,10 +120,11 @@ class EmailSendSerializer(serializers.Serializer):
 class EmailGroupSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255)
     description = serializers.CharField(max_length=500, required=False)
-    # user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
-
+    
     def validate_name(self, value):
-        name = value.strip().lower().replace(" ", "_")
+        value = value.strip().lower()
+        # Replace multiple spaces with a single underscore
+        name = re.sub(r'\s+', '_', value)
         # Exclude current instance if it exists
         queryset = EmailGroup.objects.filter(name=name)
         if self.instance:
@@ -133,6 +134,7 @@ class EmailGroupSerializer(serializers.Serializer):
                 f"Email group with name '{name}' already exists.")
 
         return name
+
 
     def create(self, validated_data):
         user = self.context.get("user")
@@ -146,7 +148,7 @@ class EmailGroupSerializer(serializers.Serializer):
         instance.user = validated_data.get('user', instance.user)
         instance.save(update_fields=['name', 'description', 'user'])
         return instance
-    
+        
 class EmailListDetailsSerializer(serializers.ModelSerializer):
     class Meta:
         model = EmailList
