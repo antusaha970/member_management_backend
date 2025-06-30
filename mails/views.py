@@ -25,7 +25,7 @@ logger = logging.getLogger("myapp")
 
 
 class SetMailConfigurationAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, BulkEmailManagementPermission]
 
     def post(self, request):
 
@@ -193,7 +193,7 @@ class SetMailConfigurationAPIView(APIView):
 
 
 class EmailComposeView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, BulkEmailManagementPermission]
 
     def post(self, request):
         try:
@@ -268,7 +268,7 @@ class EmailComposeView(APIView):
 
 
 class EmailComposeDetailView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, BulkEmailManagementPermission]
 
     def patch(self, request, id):
         try:
@@ -409,7 +409,8 @@ class EmailGroupView(APIView):
                 obj = serializer.save()
                 name = serializer.validated_data['name']
                 # activity log
-                log_request(request, "Create Email Group", "info", "User created an email group successfully")
+                log_request(request, "Create Email Group", "info",
+                            "User created an email group successfully")
                 return Response({
                     "code": 201,
                     "status": "success",
@@ -422,7 +423,8 @@ class EmailGroupView(APIView):
                 }, status=status.HTTP_201_CREATED)
             else:
                 # activity log
-                log_request(request, "Create Email Group", "info", "User tried to create an email group but faced an error")
+                log_request(request, "Create Email Group", "info",
+                            "User tried to create an email group but faced an error")
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -432,7 +434,8 @@ class EmailGroupView(APIView):
         except Exception as e:
             logger.exception(str(e))
             # activity log
-            log_request(request, "Create Email Group", "error", "User tried to create an email group but faced an error")
+            log_request(request, "Create Email Group", "error",
+                        "User tried to create an email group but faced an error")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -448,9 +451,10 @@ class EmailGroupView(APIView):
             email_groups = EmailGroup.objects.all()
             serializer = serializers.EmailGroupViewSerializer(
                 email_groups, many=True)
-            
+
             # activity log
-            log_request(request, "Retrieve Email Groups", "info", "User fetched email groups successfully")
+            log_request(request, "Retrieve Email Groups", "info",
+                        "User fetched email groups successfully")
             return Response({
                 "code": 200,
                 "status": "success",
@@ -459,7 +463,8 @@ class EmailGroupView(APIView):
             }, status=status.HTTP_200_OK)
         except Exception as e:
             logger.exception(str(e))
-            log_request(request, "Retrieve Email Groups", "error", "User tried to fetch all email groups but faced an error")
+            log_request(request, "Retrieve Email Groups", "error",
+                        "User tried to fetch all email groups but faced an error")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -471,7 +476,7 @@ class EmailGroupView(APIView):
 
 
 class EmailGroupDetailView(APIView):
-    permission_classes = [IsAuthenticated,BulkEmailManagementPermission]
+    permission_classes = [IsAuthenticated, BulkEmailManagementPermission]
 
     def get(self, request, group_id):
         try:
@@ -480,7 +485,8 @@ class EmailGroupDetailView(APIView):
             serializer = serializers.EmailGroupSingleViewSerializer(
                 email_group)
             # activity log
-            log_request(request, "Retrieve Email Group", "info", "User fetched email group successfully")
+            log_request(request, "Retrieve Email Group", "info",
+                        "User fetched email group successfully")
             return Response({
                 "code": 200,
                 "status": "success",
@@ -500,7 +506,8 @@ class EmailGroupDetailView(APIView):
         except Exception as e:
             logger.exception(str(e))
             # activity log
-            log_request(request, "Retrieve Email Group", "error", "User tried to retrieve specific email group but faced an error")
+            log_request(request, "Retrieve Email Group", "error",
+                        "User tried to retrieve specific email group but faced an error")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -702,6 +709,7 @@ class EmailListView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 class EmailListDetailView(APIView):
     permission_classes = [IsAuthenticated, BulkEmailManagementPermission]
 
@@ -830,7 +838,7 @@ class EmailListDetailView(APIView):
 
 
 class SingleEmailView(APIView):
-    permission_classes = [IsAuthenticated ]
+    permission_classes = [IsAuthenticated, BulkEmailManagementPermission]
 
     def post(self, request):
         try:
@@ -999,7 +1007,7 @@ class SingleEmailView(APIView):
 
 
 class EmailSendView(APIView):
-    permission_classes = [IsAuthenticated, ]
+    permission_classes = [IsAuthenticated, BulkEmailManagementPermission]
 
     def post(self, request):
         try:
@@ -1059,7 +1067,7 @@ class EmailSendView(APIView):
 
 
 class EmailRetryView(APIView):
-    permission_classes = [IsAuthenticated, ]
+    permission_classes = [IsAuthenticated, BulkEmailManagementPermission]
 
     def post(self, request):
         try:
@@ -1095,7 +1103,7 @@ class EmailRetryView(APIView):
 
 
 class OutboxView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, BulkEmailManagementPermission]
 
     def get(self, request):
         try:
@@ -1107,7 +1115,8 @@ class OutboxView(APIView):
             paginator = CustomPageNumberPagination()
             result_page = paginator.paginate_queryset(outbox, request)
             # serialize the data
-            serializer = serializers.OutboxViewSerializer(result_page, many=True)
+            serializer = serializers.OutboxViewSerializer(
+                result_page, many=True)
             log_request(request, "Retrieve Outbox", "info",
                         "User fetched outbox successfully")
             return paginator.get_paginated_response({
@@ -1131,7 +1140,7 @@ class OutboxView(APIView):
 
 
 class EmailOutboxDetailView(APIView):
-    permission_classes = [IsAuthenticated, ]
+    permission_classes = [IsAuthenticated, BulkEmailManagementPermission]
 
     def get(self, request, id):
         try:
