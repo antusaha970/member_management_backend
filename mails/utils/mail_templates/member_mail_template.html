@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Member Details</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f6f6f6;
+        padding: 20px;
+        color: #333;
+      }
+      .container {
+        background-color: #fff;
+        border-radius: 8px;
+        padding: 30px;
+        max-width: 600px;
+        margin: auto;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      }
+      .header {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      .profile-photo {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        object-fit: cover;
+      }
+      .info {
+        line-height: 1.8;
+      }
+      .label {
+        font-weight: bold;
+      }
+      .footer {
+        margin-top: 30px;
+        font-size: 12px;
+        text-align: center;
+        color: #999;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h2>👤 Member Profile</h2>
+        <img class="profile-photo" alt="Profile Photo" />
+      </div>
+
+      <div class="info">
+        <p><span class="label">Member ID:</span> {{ member_ID }}</p>
+        <p><span class="label">Name:</span> {{ first_name }} {{ last_name }}</p>
+        <p><span class="label">Date of Birth:</span> {{ date_of_birth }}</p>
+        <p><span class="label">Batch Number:</span> {{ batch_number }}</p>
+        <p>
+          <span class="label">Anniversary Date:</span> {{ anniversary_date }}
+        </p>
+        <p><span class="label">Blood Group:</span> {{ blood_group }}</p>
+        <p><span class="label">Nationality:</span> {{ nationality }}</p>
+      </div>
+
+      <div class="footer">Member info email powered by your Django app 💌</div>
+    </div>
+  </body>
+</html>

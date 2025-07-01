@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     'django_filters',
     'django_celery_beat',
     'silk',
+    'django_extensions',
     # Custom apps
     'account',
     'club',
@@ -46,6 +47,7 @@ INSTALLED_APPS = [
     'member_financial_management',
     'facility',
     'promo_code_app',
+    'mails',
 ]
 
 # Middleware
@@ -219,7 +221,7 @@ EMAIL_USE_TLS = True
 EMAIL_PORT = 587
 EMAIL_HOST_USER = env("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")
-
+DEFAULT_FROM_EMAIL = env("EMAIL_HOST_USER")
 
 if 'test' in sys.argv:
     # Disable throttling in tests

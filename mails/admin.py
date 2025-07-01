@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.apps import apps
 from django.db import models
 
-app_name = "account"
+app_name = "mails"
 models_list = apps.get_app_config(app_name).get_models()
 
 for model in models_list:
