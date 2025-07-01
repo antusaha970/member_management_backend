@@ -1108,7 +1108,8 @@ class OutboxView(APIView):
     def get(self, request):
         try:
             query_params = request.query_params
-            outbox = Outbox.objects.all()
+            outbox = Outbox.objects.select_related('email_compose').all().order_by('id')
+
             if query_params:
                 outbox = OutboxFilter(query_params, queryset=outbox).qs
             # add pagination
