@@ -39,7 +39,13 @@ EMAIL_HOST_USER = env("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")
 
 # CORS settings for production
-CORS_ALLOWED_ORIGINS = []
+# CORS_ALLOWED_ORIGINS = []
+# CORS for local development
+CORS_ORIGIN_ALLOW_ALL = True
+# Cookie security OFF for development
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
+CORS_ALLOW_CREDENTIALS = True
 
 
 print("Using production settings")
