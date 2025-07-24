@@ -1592,6 +1592,15 @@ class GetUserPermissionsView(APIView):
                 severity_level="info",
                 description="retrieve permission get completed",
             )
+            if not users_data:
+                user_info = {
+                    "user_id":  user.id,
+                    "username": user.username,
+                    "is_admin": user.is_superuser,
+                    "groups": [],
+                    "permissions": []
+                }
+                users_data.append(user_info)
 
             response = Response({
                 "code": status.HTTP_200_OK,
