@@ -9,11 +9,12 @@ from member.utils.utility_functions import generate_member_id
 import pdb
 from member.utils.permission_classes import AddMemberPermission
 from rest_framework.exceptions import ValidationError, PermissionDenied
+from django.core.cache import cache
 
 
 class MembershipTypeView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def get_permissions(self):
         if self.request.method == "POST":
             return [AddMemberPermission()]
@@ -47,14 +48,15 @@ class MembershipTypeView(APIView):
     def get(self, request):
         try:
             membership_types = MembershipType.objects.all()
-            serializer = MembershipTypeViewSerializer(membership_types, many=True)
+            serializer = MembershipTypeViewSerializer(
+                membership_types, many=True)
             return Response({
                 "code": status.HTTP_200_OK,
                 "message": "Membership type retrieve successful",
                 "status": "success",
                 "data": serializer.data},
                 status=status.HTTP_200_OK)
-        
+
         except Exception as e:
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -64,6 +66,7 @@ class MembershipTypeView(APIView):
                     'server_error': [str(e)]
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 class InstituteNameView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -72,6 +75,7 @@ class InstituteNameView(APIView):
             return [AddMemberPermission()]
         else:
             return [IsAuthenticated()]
+
     def post(self, request):
         data = request.data
         serializer = InstituteNameSerializer(data=data)
@@ -80,7 +84,7 @@ class InstituteNameView(APIView):
             inst_name = serializer.save()
             name = serializer.validated_data["name"]
             code = serializer.validated_data["code"]
-            
+
             return Response({
                 "code": status.HTTP_200_OK,
                 "message": "Institute name created successfully",
@@ -91,15 +95,15 @@ class InstituteNameView(APIView):
                     "code": code
                 }
             },
-            status=status.HTTP_201_CREATED)
+                status=status.HTTP_201_CREATED)
 
         else:
             return Response({
-                    "code": 400,
-                    "status": "failed",
-                    "message": "Invalid request",
-                    "errors": serializer.errors,
-                }, status=status.HTTP_400_BAD_REQUEST)
+                "code": 400,
+                "status": "failed",
+                "message": "Invalid request",
+                "errors": serializer.errors,
+            }, status=status.HTTP_400_BAD_REQUEST)
 
     def get(self, request):
         try:
@@ -111,7 +115,7 @@ class InstituteNameView(APIView):
                 "status": "success",
                 "data": serializer.data},
                 status=status.HTTP_200_OK)
-        
+
         except Exception as e:
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -120,10 +124,11 @@ class InstituteNameView(APIView):
                 'errors': {
                     'server_error': [str(e)]
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+
+
 class GenderView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def get_permissions(self):
         if self.request.method == "POST":
             return [AddMemberPermission()]
@@ -154,7 +159,7 @@ class GenderView(APIView):
                 "message": "Invalid request",
                 "errors": serializer.errors
             }, status=status.HTTP_400_BAD_REQUEST)
-    
+
     def get(self, request):
         try:
             genders = Gender.objects.all()
@@ -165,7 +170,7 @@ class GenderView(APIView):
                 "status": "success",
                 "data": serializer.data},
                 status=status.HTTP_200_OK)
-        
+
         except Exception as e:
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -175,16 +180,17 @@ class GenderView(APIView):
                     'server_error': [str(e)]
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 class MembershipStatusChoiceView(APIView):
-    
+
     permission_classes = [IsAuthenticated]
-    
+
     def get_permissions(self):
         if self.request.method == "POST":
             return [AddMemberPermission()]
         else:
             return [IsAuthenticated()]
-    
+
     def post(self, request):
         data = request.data
         serializer = MembershipStatusChoiceSerializer(data=data)
@@ -209,18 +215,19 @@ class MembershipStatusChoiceView(APIView):
                 "message": "Invalid request",
                 "errors": serializer.errors
             }, status=status.HTTP_400_BAD_REQUEST)
-        
+
     def get(self, request):
         try:
             membership_status = MembershipStatusChoice.objects.all()
-            serializer = MembershipStatusChoiceViewSerializer(membership_status, many=True)
+            serializer = MembershipStatusChoiceViewSerializer(
+                membership_status, many=True)
             return Response({
                 "code": status.HTTP_200_OK,
                 "message": "Membership status retrieve successful",
                 "status": "success",
                 "data": serializer.data},
                 status=status.HTTP_200_OK)
-        
+
         except Exception as e:
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -230,15 +237,16 @@ class MembershipStatusChoiceView(APIView):
                     'server_error': [str(e)]
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 class MaritalStatusChoiceView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def get_permissions(self):
         if self.request.method == "POST":
             return [AddMemberPermission()]
         else:
             return [IsAuthenticated()]
-    
+
     def post(self, request):
         data = request.data
         serializer = MaritalStatusChoiceSerializer(data=data)
@@ -267,14 +275,15 @@ class MaritalStatusChoiceView(APIView):
     def get(self, request):
         try:
             marital_status = MaritalStatusChoice.objects.all()
-            serializer = MaritalStatusChoiceViewSerializer(marital_status, many=True)
+            serializer = MaritalStatusChoiceViewSerializer(
+                marital_status, many=True)
             return Response({
                 "code": status.HTTP_200_OK,
                 "message": "Marital status retrieve successful",
                 "status": "success",
                 "data": serializer.data},
                 status=status.HTTP_200_OK)
-        
+
         except Exception as e:
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -284,14 +293,16 @@ class MaritalStatusChoiceView(APIView):
                     'server_error': [str(e)]
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 class EmploymentTypeChoiceView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def get_permissions(self):
         if self.request.method == "POST":
             return [AddMemberPermission()]
         else:
             return [IsAuthenticated()]
+
     def post(self, request):
         data = request.data
         serializer = EmploymentTypeChoiceSerializer(data=data)
@@ -316,18 +327,19 @@ class EmploymentTypeChoiceView(APIView):
                 "message": "Invalid request",
                 "errors": serializer.errors
             }, status=status.HTTP_400_BAD_REQUEST)
-        
+
     def get(self, request):
         try:
             employment_type = EmploymentTypeChoice.objects.all()
-            serializer = EmploymentTypeChoiceViewSerializer(employment_type, many=True)
+            serializer = EmploymentTypeChoiceViewSerializer(
+                employment_type, many=True)
             return Response({
                 "code": status.HTTP_200_OK,
                 "message": "Employment type retrieve successful",
                 "status": "success",
                 "data": serializer.data},
                 status=status.HTTP_200_OK)
-        
+
         except Exception as e:
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -336,16 +348,17 @@ class EmploymentTypeChoiceView(APIView):
                 'errors': {
                     'server_error': [str(e)]
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+
+
 class EmailTypeChoiceView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def get_permissions(self):
         if self.request.method == "POST":
             return [AddMemberPermission()]
         else:
             return [IsAuthenticated()]
-    
+
     def post(self, request):
         data = request.data
         serializer = EmailTypeChoiceSerializer(data=data)
@@ -381,7 +394,7 @@ class EmailTypeChoiceView(APIView):
                 "status": "success",
                 "data": serializer.data},
                 status=status.HTTP_200_OK)
-        
+
         except Exception as e:
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -391,15 +404,16 @@ class EmailTypeChoiceView(APIView):
                     'server_error': [str(e)]
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 class ContactTypeChoiceView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def get_permissions(self):
         if self.request.method == "POST":
             return [AddMemberPermission()]
         else:
             return [IsAuthenticated()]
-        
+
     def post(self, request):
         data = request.data
         serializer = ContactTypeChoiceSerializer(data=data)
@@ -424,18 +438,19 @@ class ContactTypeChoiceView(APIView):
                 "message": "Invalid request",
                 "errors": serializer.errors
             }, status=status.HTTP_400_BAD_REQUEST)
-      
+
     def get(self, request):
         try:
             contact_type = ContactTypeChoice.objects.all()
-            serializer = ContactTypeChoiceViewSerializer(contact_type, many=True)
+            serializer = ContactTypeChoiceViewSerializer(
+                contact_type, many=True)
             return Response({
                 "code": status.HTTP_200_OK,
                 "message": "Contact type retrieve successful",
                 "status": "success",
                 "data": serializer.data},
                 status=status.HTTP_200_OK)
-        
+
         except Exception as e:
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -444,17 +459,17 @@ class ContactTypeChoiceView(APIView):
                 'errors': {
                     'server_error': [str(e)]
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            
-    
+
+
 class AddressTypeChoiceView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def get_permissions(self):
         if self.request.method == "POST":
             return [AddMemberPermission()]
         else:
             return [IsAuthenticated()]
-        
+
     def post(self, request):
         data = request.data
         serializer = AddressTypeChoiceSerializer(data=data)
@@ -479,18 +494,19 @@ class AddressTypeChoiceView(APIView):
                 "message": "Invalid request",
                 "errors": serializer.errors
             }, status=status.HTTP_400_BAD_REQUEST)
-    
+
     def get(self, request):
         try:
             address_type = AddressTypeChoice.objects.all()
-            serializer = AddressTypeChoiceViewSerializer(address_type, many=True)
+            serializer = AddressTypeChoiceViewSerializer(
+                address_type, many=True)
             return Response({
                 "code": status.HTTP_200_OK,
                 "message": "Address type retrieve successful",
                 "status": "success",
                 "data": serializer.data},
                 status=status.HTTP_200_OK)
-        
+
         except Exception as e:
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -499,17 +515,17 @@ class AddressTypeChoiceView(APIView):
                 'errors': {
                     'server_error': [str(e)]
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+
 
 class DocumentTypeChoiceView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def get_permissions(self):
         if self.request.method == "POST":
             return [AddMemberPermission()]
         else:
             return [IsAuthenticated()]
-    
+
     def post(self, request):
         data = request.data
         serializer = DocumentTypeChoiceSerializer(data=data)
@@ -538,14 +554,15 @@ class DocumentTypeChoiceView(APIView):
     def get(self, request):
         try:
             document_type = DocumentTypeChoice.objects.all()
-            serializer = DocumentTypeChoiceViewSerializer(document_type, many=True)
+            serializer = DocumentTypeChoiceViewSerializer(
+                document_type, many=True)
             return Response({
                 "code": status.HTTP_200_OK,
                 "message": "Document type retrieve successful",
                 "status": "success",
                 "data": serializer.data},
                 status=status.HTTP_200_OK)
-        
+
         except Exception as e:
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -558,13 +575,13 @@ class DocumentTypeChoiceView(APIView):
 
 class SpouseStatusChoiceView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def get_permissions(self):
         if self.request.method == "POST":
             return [AddMemberPermission()]
         else:
             return [IsAuthenticated()]
-            
+
     def post(self, request):
         data = request.data
         serializer = SpouseStatusChoiceSerializer(data=data)
@@ -589,18 +606,19 @@ class SpouseStatusChoiceView(APIView):
                 "message": "Invalid request",
                 "errors": serializer.errors
             }, status=status.HTTP_400_BAD_REQUEST)
-    
+
     def get(self, request):
         try:
             spouse_status = SpouseStatusChoice.objects.all()
-            serializer = SpouseStatusChoiceViewSerializer(spouse_status, many=True)
+            serializer = SpouseStatusChoiceViewSerializer(
+                spouse_status, many=True)
             return Response({
                 "code": status.HTTP_200_OK,
                 "message": "Spouse status retrieve successful",
                 "status": "success",
                 "data": serializer.data},
                 status=status.HTTP_200_OK)
-        
+
         except Exception as e:
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -609,21 +627,17 @@ class SpouseStatusChoiceView(APIView):
                 'errors': {
                     'server_error': [str(e)]
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-               
-        
-        
-
 
 
 class DescendantRelationChoiceView(APIView):
     permission_classes = [IsAuthenticated]
-    
+
     def get_permissions(self):
         if self.request.method == "POST":
             return [AddMemberPermission()]
         else:
             return [IsAuthenticated()]
-    
+
     def post(self, request):
         data = request.data
         serializer = DescendantRelationChoiceSerializer(data=data)
@@ -648,18 +662,19 @@ class DescendantRelationChoiceView(APIView):
                 "message": "Invalid request",
                 "errors": serializer.errors
             }, status=status.HTTP_400_BAD_REQUEST)
-    
+
     def get(self, request):
         try:
             descendant_relation = DescendantRelationChoice.objects.all()
-            serializer = DescendantRelationChoiceViewSerializer(descendant_relation, many=True)
+            serializer = DescendantRelationChoiceViewSerializer(
+                descendant_relation, many=True)
             return Response({
                 "code": status.HTTP_200_OK,
                 "message": "Descendant relation retrieve successful",
                 "status": "success",
                 "data": serializer.data},
                 status=status.HTTP_200_OK)
-        
+
         except Exception as e:
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -669,4 +684,93 @@ class DescendantRelationChoiceView(APIView):
                     'server_error': [str(e)]
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    
+
+class AllChoicesView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            cache_key = "all_choices_cache"
+            cached_data = cache.get(cache_key)
+            do_serve_cache = request.query_params.get(
+                "cache")
+            if do_serve_cache == None:
+                do_serve_cache = True
+            elif do_serve_cache == "false":
+                do_serve_cache = False
+            else:
+                do_serve_cache = True
+
+            if cached_data and do_serve_cache:
+                return Response(cached_data, status=status.HTTP_200_OK)
+
+            # models
+            gender = Gender.objects.all()
+            membership_type = MembershipType.objects.all()
+            institute_name = InstituteName.objects.all()
+            membership_status = MembershipStatusChoice.objects.all()
+            marital_status = MaritalStatusChoice.objects.all()
+            employment_type = EmploymentTypeChoice.objects.all()
+            email_type = EmailTypeChoice.objects.all()
+            contact_type = ContactTypeChoice.objects.all()
+            address_type = AddressTypeChoice.objects.all()
+            document_type = DocumentTypeChoice.objects.all()
+            spouse_status_choice = SpouseStatusChoice.objects.all()
+            descendant_relation_choice = DescendantRelationChoice.objects.all()
+
+            # serializers
+            gender_serializer = GenderSerializer(gender, many=True)
+            membership_type_serializer = MembershipTypeSerializer(
+                membership_type, many=True)
+            institute_name_serializer = InstituteNameSerializer(
+                institute_name, many=True)
+            membership_status_serializer = MembershipStatusChoiceSerializer(
+
+                membership_status, many=True)
+            marital_status_serializer = MaritalStatusChoiceSerializer(
+                marital_status, many=True)
+            employment_type_serializer = EmploymentTypeChoiceSerializer(
+                employment_type, many=True)
+            email_type_serializer = EmailTypeChoiceSerializer(
+                email_type, many=True)
+            contact_type_serializer = ContactTypeChoiceSerializer(
+                contact_type, many=True)
+            address_type_serializer = AddressTypeChoiceSerializer(
+                address_type, many=True)
+            document_type_serializer = DocumentTypeChoiceSerializer(
+                document_type, many=True)
+            spouse_status_choice_serializer = SpouseStatusChoiceSerializer(
+                spouse_status_choice, many=True)
+            descendant_relation_choice_serializer = DescendantRelationChoiceSerializer(
+                descendant_relation_choice, many=True)
+            response_data = {
+                "gender": gender_serializer.data,
+                "membership_type": membership_type_serializer.data,
+                "institute_name": institute_name_serializer.data,
+                "membership_status": membership_status_serializer.data,
+                "marital_status": marital_status_serializer.data,
+                "employment_type": employment_type_serializer.data,
+                "email_type": email_type_serializer.data,
+                "contact_type": contact_type_serializer.data,
+                "address_type": address_type_serializer.data,
+                "document_type": document_type_serializer.data,
+                "spouse_status_choice": spouse_status_choice_serializer.data,
+                "descendant_relation_choice": descendant_relation_choice_serializer.data
+            }
+            response = Response({
+                "code": status.HTTP_200_OK,
+                "message": "All choices retrieve successful",
+                "status": "success",
+                "data": response_data
+            }, status=200)
+            cache.set(cache_key, response_data, 60*60)
+            return response
+
+        except Exception as e:
+            return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
+                'errors': {
+                    'server_error': [str(e)]
+                }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

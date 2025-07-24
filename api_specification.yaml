@@ -11653,6 +11653,32 @@ paths:
                     example: ok
                   data:
                     type: object
+  /api/core/v1/all_choices/:
+    get:
+      parameters:
+        - name: cache
+          in: query
+          schema:
+            type: boolean
+          required: false
+      summary: Get all choices
+      description: Get all available choices from all available choices
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                  status:
+                    type: string
+                  message:
+                    type: string
+                  data:
+                    type: object
 
 components:
   securitySchemes:
