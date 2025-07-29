@@ -269,6 +269,30 @@ class AssignGroupPermissionSerializer(serializers.Serializer):
         return instance
 
 
+class AssignGroupPermissionSerializerV2(serializers.Serializer):
+    users = serializers.PrimaryKeyRelatedField(
+        queryset=get_user_model().objects.all(), required=True, many=True)
+    group = serializers.PrimaryKeyRelatedField(
+        queryset=GroupModel.objects.all(), required=True)
+
+    def create(self, validated_data):
+        group = validated_data.pop('group')
+        users = validated_data.get("users")
+        for user in users:
+            assign_obj, _ = AssignGroupPermission.objects.get_or_create(
+                user=user)
+            if not assign_obj.group.filter(id=group.id).exists():
+                assign_obj.group.add(group)
+                assign_obj.save()
+        return True
+
+    def update(self, instance, validated_data):
+        groups = validated_data.get('group', [])
+        instance.group.set(groups)
+        instance.save()
+        return instance
+
+
 class GroupSerializerForViewAllGroups(serializers.ModelSerializer):
     class Meta:
         model = GroupModel

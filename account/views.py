@@ -1404,6 +1404,68 @@ class AssignGroupPermissionView(APIView):
             }, status=status.HTTP_400_BAD_REQUEST)
 
 
+class AssignGroupPermissionViewV2(APIView):
+    permission_classes = [IsAuthenticated,
+                          GroupUserManagementPermission]
+
+    def post(self, request):
+        try:
+            data = request.data
+            serializer = AssignGroupPermissionSerializerV2(data=data)
+            if serializer.is_valid():
+                with transaction.atomic():
+                    serializer.save()
+                group = serializer.validated_data.get("group")
+                users = serializer.validated_data.get("users")
+
+                users_data = []
+                for user in users:
+                    users_data.append(
+                        {"user_id": user.id, "username": user.username})
+                clear_user_permissions_cache()
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Assigned a user to the group",
+                    severity_level="info",
+                    description="Assigned a user to the group with some permissions",
+                )
+                return Response({
+                    "code": status.HTTP_201_CREATED,
+                    "message": "Operation successful",
+                    "status": "success",
+                    "users": users_data,
+                    "group": group.id
+                }, status=status.HTTP_201_CREATED)
+
+            else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Bad request in assign group",
+                    severity_level="warning",
+                    description="Bad request for Assigning a user to the group with some permissions",
+                )
+                return Response({
+                    "code": status.HTTP_400_BAD_REQUEST,
+                    "message": "Invalid request",
+                    "status": "failed",
+                    "errors": serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Error occurred assign group",
+                severity_level="error",
+                description="Error occurred while adding a user in a group",
+            )
+            return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
+                'errors': {'server_error': [str(e)]}
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 class AdminUserEmailView(APIView):
     permission_classes = [IsAuthenticated, RegisterUserPermission]
 
