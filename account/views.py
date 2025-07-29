@@ -1141,6 +1141,69 @@ class SpecificGroupPermissionView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+class SpecificGroupPermissionViewV2(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.request.method == "DELETE":
+            return [GroupDeletePermission()]
+        elif self.request.method == "PATCH":
+            return [GroupEditPermission()]
+        else:
+            return [IsAuthenticated()]
+
+    def patch(self, request, group_id):
+        """Update a group with required permissions at least one permission"""
+        try:
+            group = get_object_or_404(GroupModel, pk=group_id)
+            serializer = GroupModelSerializerV2(
+                group, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                # after updating the group delete the permissions cache
+                clear_user_permissions_cache()
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Updated a group",
+                    severity_level="info",
+                    description="Updated a group with required permissions",
+                )
+                return Response({
+                    "code": status.HTTP_200_OK,
+                    "message": "Operation successful",
+                    "status": "success",
+                    'data': serializer.data
+                })
+            else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Bad request in update group",
+                    severity_level="warning",
+                    description="Made a bad request for updating a group",
+                )
+                return Response({
+                    "code": status.HTTP_400_BAD_REQUEST,
+                    "message": "Invalid request",
+                    "status": "failed",
+                    'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Error",
+                severity_level="info",
+                description="Error while Updated a group with required permissions",
+            )
+            return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
+                'errors': {
+                    'server_error': [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 class AssignGroupPermissionView(APIView):
     permission_classes = [IsAuthenticated,
                           GroupUserManagementPermission]

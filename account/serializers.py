@@ -243,6 +243,49 @@ class GroupModelSerializer(serializers.Serializer):
         return instance
 
 
+class GroupModelSerializerV2(serializers.Serializer):
+    name = serializers.CharField(max_length=250, required=False)
+    permission = serializers.PrimaryKeyRelatedField(
+        queryset=PermissonModel.objects.all(), many=True, required=False)
+
+    def validate_name(self, value):
+        if self.instance:
+            # if we are updating existing instance then make sure new name doesn't conflict with existing groups
+            if self.instance.name != value:
+                is_new_name_exist = GroupModel.objects.filter(
+                    name=value).exists()
+                if is_new_name_exist:
+                    raise serializers.ValidationError(
+                        f"{value} name already exists")
+
+            return value
+        name = value.replace(' ', '_').lower()
+        if GroupModel.objects.filter(name=name).exists():
+            raise serializers.ValidationError(
+                f"Group with this name {value} already exists.")
+
+        return name
+
+    def create(self, validated_data):
+
+        permissions_data = validated_data.pop('permission')
+        group = GroupModel.objects.create(**validated_data)
+        group.permission.set(permissions_data)
+        return group
+
+    def update(self, instance, validated_data):
+        group_name = validated_data.get("name", None)
+        permissions = validated_data.get("permission", None
+                                         )
+        if group_name:
+            instance.name = group_name
+        if permissions:
+            for permission in permissions:
+                instance.permission.add(permission)
+        instance.save()
+        return instance
+
+
 class AssignGroupPermissionSerializer(serializers.Serializer):
     user = serializers.PrimaryKeyRelatedField(
         queryset=get_user_model().objects.all(), required=True)
