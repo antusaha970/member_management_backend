@@ -34,6 +34,7 @@ from .utils.rate_limiting_classes import LoginRateThrottle
 from django.core.cache import cache
 from core.utils.pagination import CustomPageNumberPagination
 import logging
+from django.db.models import Count
 # set env
 environ.Env.read_env()
 env = environ.Env()
@@ -982,6 +983,54 @@ class GroupPermissionView(APIView):
                 verb="Error while deleting group",
                 severity_level="warning",
                 description="Error occurred while deleting a group",
+            )
+            return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
+                'errors': {
+                    'server_error': [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class GroupPermissionViewV2(APIView):
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [GroupCreatePermission()]
+        elif self.request.method == "GET":
+            return [GroupViewPermission()]
+        elif self.request.method == "DELETE":
+            return [GroupDeletePermission()]
+        else:
+            return [IsAuthenticated()]
+
+    def get(self, request):
+        try:
+            data = GroupModel.objects.annotate(
+                permission_count=Count('permission', distinct=True),
+                user_count=Count("assigngrouppermission__id", distinct=True)
+            )
+            serializer = GroupSerializerForViewAllGroupsV2(data, many=True)
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="View all groups",
+                severity_level="info",
+                description="Made a request to view all the groups",
+            )
+            return Response({
+                "code": status.HTTP_200_OK,
+                "message": "Fetched all available groups with permission count and user count.",
+                "status": "success",
+                'data': serializer.data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Error viewing groups",
+                severity_level="warning",
+                description="Error occurred while viewing groups",
             )
             return Response({
                 "code": status.HTTP_500_INTERNAL_SERVER_ERROR,

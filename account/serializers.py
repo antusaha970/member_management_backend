@@ -241,7 +241,6 @@ class GroupModelSerializer(serializers.Serializer):
         instance.permission.set(permissions)
         instance.save()
         return instance
-    
 
 
 class AssignGroupPermissionSerializer(serializers.Serializer):
@@ -269,13 +268,21 @@ class AssignGroupPermissionSerializer(serializers.Serializer):
         instance.save()
         return instance
 
-    
 
 class GroupSerializerForViewAllGroups(serializers.ModelSerializer):
     class Meta:
         model = GroupModel
         fields = "__all__"
         depth = 1
+
+
+class GroupSerializerForViewAllGroupsV2(serializers.ModelSerializer):
+    permission_count = serializers.IntegerField(read_only=True)
+    user_count = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = GroupModel
+        fields = ["id", "name", "permission_count", "user_count"]
 
 
 class DeleteUserFromGroupSerializer(serializers.Serializer):
