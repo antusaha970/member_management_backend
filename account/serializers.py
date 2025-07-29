@@ -387,6 +387,10 @@ class AdminUserEmailSerializer(serializers.Serializer):
         if user:
             raise serializers.ValidationError(
                 "Email already exists.")
+        verified_email = VerifySuccessfulEmail.objects.filter(
+            email=value).exists()
+        if verified_email:
+            VerifySuccessfulEmail.objects.filter(email=value).delete()
         return value
 
     def create(self, validated_data):

@@ -1538,45 +1538,46 @@ class AdminUserEmailView(APIView):
             serializer = AdminUserEmailSerializer(
                 data=data)
             if serializer.is_valid():
-                instance = serializer.save()
-                email = serializer.validated_data["email"]
-                try:
-                    otp = OTP.objects.get(email=email)
-                    otp_value = otp.otp
-                    send_otp_email.delay_on_commit(email, otp_value)
+                with transaction.atomic():
+                    instance = serializer.save()
+                    email = serializer.validated_data["email"]
+                    try:
+                        otp = OTP.objects.get(email=email)
+                        otp_value = otp.otp
+                        send_otp_email.delay_on_commit(email, otp_value)
 
-                except OTP.DoesNotExist:
+                    except OTP.DoesNotExist:
+                        log_activity_task.delay_on_commit(
+                            request_data_activity_log(request),
+                            verb="Bad request while registering user",
+                            severity_level="warning",
+                            description="Made a request for registering user and the request was invalid",
+                        )
+                        return Response({
+                            "code": status.HTTP_404_NOT_FOUND,
+                            "message": "Invalid request",
+                            "status": "failed",
+                            "errors": {
+                                'otp': ["OTP for the provided email does not exist."]
+                            }}, status=status.HTTP_404_NOT_FOUND)
                     log_activity_task.delay_on_commit(
                         request_data_activity_log(request),
-                        verb="Bad request while registering user",
-                        severity_level="warning",
-                        description="Made a request for registering user and the request was invalid",
+                        verb="Request for OTP sending",
+                        severity_level="info",
+                        description="Made a request for sending OTP",
                     )
-                    return Response({
-                        "code": status.HTTP_404_NOT_FOUND,
-                        "message": "Invalid request",
-                        "status": "failed",
-                        "errors": {
-                            'otp': ["OTP for the provided email does not exist."]
-                        }}, status=status.HTTP_404_NOT_FOUND)
-                log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),
-                    verb="Request for OTP sending",
-                    severity_level="info",
-                    description="Made a request for sending OTP",
-                )
-                response = Response({
-                    "code": status.HTTP_201_CREATED,
-                    "message": "Operation successful",
-                    "status": "success",
-                    "message": "OTP sent successfully",
-                    "to": {
-                        "email": email,
-                    }
-                }, status=status.HTTP_201_CREATED)
-                # Add no cache header in response
-                response = add_no_cache_header_in_response(response)
-                return response
+                    response = Response({
+                        "code": status.HTTP_201_CREATED,
+                        "message": "Operation successful",
+                        "status": "success",
+                        "message": "OTP sent successfully",
+                        "to": {
+                            "email": email,
+                        }
+                    }, status=status.HTTP_201_CREATED)
+                    # Add no cache header in response
+                    response = add_no_cache_header_in_response(response)
+                    return response
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
                 verb="Bad request while registering user",
