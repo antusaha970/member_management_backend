@@ -242,7 +242,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')  # Collected files
 
 
 CELERY_BEAT_SCHEDULE = {
-    "flush-activity-logs-every-1-min": {
+    "flush-activity-logs-every-10-min": {
         "task": "activity_log.tasks.flush_activity_logs",
         "schedule": crontab(minute="*/10"),
     },
