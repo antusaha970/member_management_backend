@@ -1,7 +1,7 @@
+from activity_log.tasks import log_activity_task
 import requests
 import logging
 logger = logging.getLogger("myapp")
-from activity_log.tasks import log_activity_task
 
 
 def get_client_ip(request):
@@ -50,17 +50,13 @@ def get_location(ip):
 
 def request_data_activity_log(request):
     client_ip = get_client_ip(request)
-    # client_ip = "8.8.8.8"
-    if request.user is not None:
-        user_id = request.user.id
-    else:
-        user_id = None
+    user_id = request.user.id
     data = {
         "user_id": user_id,
         "method": request.method,
         "path": request.path,
         "ip": client_ip,
-        "location": get_location(client_ip),
+        "location": "None",
         "user_agent": request.META.get("HTTP_USER_AGENT", "Unknown"),
         "device": request.META.get("COMPUTERNAME", "Unknown Device"),
         "referrer_url": request.META.get("HTTP_REFERER", "None"),

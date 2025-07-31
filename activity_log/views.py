@@ -22,7 +22,7 @@ class ActivityLogAPIView(APIView):
         try:
             user = request.user
             activity_logs = ActivityLog.objects.filter(
-                user=user).order_by('id')
+                user=user).order_by('-id')
 
             if not activity_logs.exists():
                 log_request(request, "No activity logs found for this user",
@@ -91,7 +91,7 @@ class AllUserActivityLogAPIView(APIView):
             if cached_response:
                 return Response(cached_response, status=200)
 
-            activity_logs = ActivityLog.objects.all().order_by('id')
+            activity_logs = ActivityLog.objects.all().order_by('-id')
             paginator = CustomPageNumberPagination()
             paginated_queryset = paginator.paginate_queryset(
                 activity_logs, request, view=self)

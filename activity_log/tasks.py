@@ -70,11 +70,12 @@ def flush_activity_logs():
 
     for log in logs:
         user = None
-        if log.get("user_id"):
+        if log.get("user"):
             try:
-                user = User.objects.get(id=log["user_id"])
+                user = User.objects.get(pk=log["user"])
             except User.DoesNotExist:
                 pass
+
         timestamp = parse_datetime(log["timestamp"])
         if timestamp and is_naive(timestamp):
             timestamp = make_aware(timestamp)
