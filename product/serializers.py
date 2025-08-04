@@ -25,6 +25,7 @@ class BrandViewSerializer(serializers.ModelSerializer):
 
 class ProductCategorySerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255)
+    is_active = serializers.BooleanField(required=False)
     
     def validate_name(self, value):
         if ProductCategory.objects.filter(name=value).exists():
@@ -34,6 +35,12 @@ class ProductCategorySerializer(serializers.Serializer):
     def create(self, validated_data):
         category=ProductCategory.objects.create(**validated_data)
         return category
+    
+    def update(self, instance, validated_data):
+        instance.name = validated_data.get('name', instance.name)
+        instance.is_active = validated_data.get('is_active',instance.is_active)
+        instance.save()
+        return instance
     
 class ProductCategoryViewSerializer(serializers.ModelSerializer):
     class Meta:

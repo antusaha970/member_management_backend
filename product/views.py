@@ -198,7 +198,7 @@ class ProductCategoryView(APIView):
             Response: The response containing the list of all product categories.
         """
         try:
-            product_categories = ProductCategory.objects.all()
+            product_categories = ProductCategory.objects.filter(is_active=True)
             serializer = serializers.ProductCategoryViewSerializer(
                 product_categories, many=True)
             log_activity_task.delay_on_commit(
@@ -228,7 +228,127 @@ class ProductCategoryView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class ProductCategoryDetailView(APIView):
+    
+    def  patch(self, request, pk):
+        try:
+            product_category = ProductCategory.objects.get(pk=pk)
+            serializer = serializers.ProductCategorySerializer(
+                product_category, data=request.data, partial=True)
+            if serializer.is_valid():
+                obj = serializer.save()
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Product category updated successfully",
+                    severity_level="info",
+                    description="Product category updated successfully")
+                return Response({
+                    "code": 200,
+                    "message": "Product category updated successfully",
+                    "status": "success",
+                    "data":{
+                        "id": obj.id,
+                        "name": obj.name
+                    }
+                },status=status.HTTP_200_OK)
+            else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Category update failed",
+                    severity_level="error",
+                    description="user tried to update product category but made an invalid request",)
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Invalid request",
+                    "errors": serializer.errors,
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except ProductCategory.DoesNotExist:
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Product category update failed",
+                severity_level="error",
+                description="An error occurred while update product category",)
+            return Response({
+                "code": status.HTTP_404_NOT_FOUND,
+                "message": "Product category not found",
+                "status": "failed",
+                "data":{
+                    "category":["Product category not found for provided id"]
+                }
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Product category update failed",
+                severity_level="error",
+                description="user tried to update product category but made an invalid request",)
+            return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
+                'errors': {
+                    'server_error': [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+    def delete(self, request, pk):
+        try:
+            product_category = ProductCategory.objects.get(pk=pk)
+            product_category.is_active = False
+            product_category.save()
+            
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Product category deleted successfully",
+                severity_level="info",
+                description="Product category deleted successfully"
+            )
+            
+            return Response({
+                "code": 204,
+                "message": "Product category deleted successfully",
+                "status": "success",
+               
+            }, status=status.HTTP_204_NO_CONTENT)
+        
+        except ProductCategory.DoesNotExist:
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Product category delete failed",
+                severity_level="error",
+                description="Tried to delete non-existing product category"
+            )
+            return Response({
+                "code": status.HTTP_404_NOT_FOUND,
+                "message": "Product category not found",
+                "status": "failed",
+                "data": {
+                    "category": ["Product category not found for provided id"]
+                }
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Product category delete failed",
+                severity_level="error",
+                description="An error occurred while deleting product category"
+            )
+        return Response({
+            "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+            "message": "Error occurred",
+            "status": "failed",
+            "errors": {
+                "server_error": [str(e)]
+            }
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    
+    
+       
 class ProductView(APIView):
     def get_permissions(self):
         if self.request.method == "POST":
