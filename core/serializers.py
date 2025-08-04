@@ -4,6 +4,7 @@ from .models import *
 
 class MembershipTypeSerializer(serializers.Serializer):
     name = serializers.CharField()
+    id = serializers.IntegerField(read_only=True, required=False)
 
     def validate_name(self, value):
         upp_value = value.upper()
@@ -27,6 +28,8 @@ class MembershipTypeViewSerializer(serializers.ModelSerializer):
 class InstituteNameSerializer(serializers.Serializer):
     name = serializers.CharField()
     code = serializers.CharField()
+    id = serializers.IntegerField(read_only=True, required=False)
+
     
 
     def validate_name(self, value):
@@ -57,6 +60,7 @@ class InstituteNameViewSerializer(serializers.ModelSerializer):
 
 class GenderSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=50)
+    id = serializers.IntegerField(read_only=True, required=False)
 
     def validate_name(self, value):
         is_exist = Gender.objects.filter(name=value).exists()
@@ -79,6 +83,8 @@ class GenderViewSerializer(serializers.ModelSerializer):
 
 class MembershipStatusChoiceSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255)
+    id = serializers.IntegerField(read_only=True, required=False)
+
     
     def validate_name(self, value):
         is_exist = MembershipStatusChoice.objects.filter(name=value).exists()
@@ -99,6 +105,8 @@ class MembershipStatusChoiceViewSerializer(serializers.ModelSerializer):
 
 class MaritalStatusChoiceSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255)
+    id = serializers.IntegerField(read_only=True, required=False)
+
     
     def validate_name(self, value):
         is_exist = MaritalStatusChoice.objects.filter(name=value).exists()
@@ -118,6 +126,8 @@ class MaritalStatusChoiceViewSerializer(serializers.ModelSerializer):
 
 class EmploymentTypeChoiceSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255)
+    id = serializers.IntegerField(read_only=True, required=False)
+
     
     def validate_name(self, value):
         is_exist = EmploymentTypeChoice.objects.filter(name=value).exists()
@@ -138,6 +148,8 @@ class EmploymentTypeChoiceViewSerializer(serializers.ModelSerializer):
 
 class EmailTypeChoiceSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255)
+    id = serializers.IntegerField(read_only=True, required=False)
+
     
     def validate_name(self, value):
         is_exist = EmailTypeChoice.objects.filter(name=value).exists()
@@ -158,6 +170,8 @@ class EmailTypeChoiceViewSerializer(serializers.ModelSerializer):
 
 class ContactTypeChoiceSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255)
+    id = serializers.IntegerField(read_only=True, required=False)
+
     
     def validate_name(self, value):
         is_exist = ContactTypeChoice.objects.filter(name=value).exists()
@@ -178,6 +192,7 @@ class ContactTypeChoiceViewSerializer(serializers.ModelSerializer):
 
 class AddressTypeChoiceSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255)
+    id = serializers.IntegerField(read_only=True, required=False)
     
     def validate_name(self, value):
         is_exist = AddressTypeChoice.objects.filter(name=value).exists()
@@ -198,6 +213,7 @@ class AddressTypeChoiceViewSerializer(serializers.ModelSerializer):
 
 class DocumentTypeChoiceSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255)
+    id = serializers.IntegerField(read_only=True, required=False)
     
     def validate_name(self, value):
         is_exist = DocumentTypeChoice.objects.filter(name=value).exists()
@@ -218,6 +234,7 @@ class DocumentTypeChoiceViewSerializer(serializers.ModelSerializer):
 
 class SpouseStatusChoiceSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255)
+    id = serializers.IntegerField(read_only=True, required=False)
     
     def validate_name(self, value):
         is_exist = SpouseStatusChoice.objects.filter(name=value).exists()
@@ -238,6 +255,8 @@ class SpouseStatusChoiceViewSerializer(serializers.ModelSerializer):
 
 class DescendantRelationChoiceSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255)
+    id = serializers.IntegerField(read_only=True, required=False)
+    
     
     def validate_name(self, value):
         is_exist = DescendantRelationChoice.objects.filter(name=value).exists()
