@@ -1100,18 +1100,19 @@ class MemberDocumentSerializer(serializers.Serializer):
         queryset=DocumentTypeChoice.objects.all())
     document_number = serializers.CharField(max_length=50, required=False)
     id = serializers.IntegerField(required=False)
+    is_active=serializers.BooleanField(required=False)
 
-    def validate_member_ID(self, value):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
         if self.instance:
-            is_exist = Member.objects.filter(member_ID=value).exists()
-            if is_exist:
-                return value
-            else:
-                raise serializers.ValidationError("Member does not exist")
-        is_exist = Member.objects.filter(member_ID=value).exists()
-        if not is_exist:
-            raise serializers.ValidationError(
-                f"{value} is not a valid member id")
+            self.fields['document_document'].required = False
+    
+    def validate_member_ID(self, value):
+        
+        if not Member.objects.filter(member_ID=value).exists():
+            raise serializers.ValidationError(f"No member exists with this {value} id")
+            
         return value
 
     def create(self, validated_data):
@@ -1131,7 +1132,10 @@ class MemberDocumentSerializer(serializers.Serializer):
                 "document_type", document_obj.document_type)
             document_obj.document_number = validated_data.get(
                 "document_number", document_obj.document_number)
-            document_obj.save()
+            document_obj.is_active = validated_data.get(
+                "is_active", document_obj.is_active)
+            document_obj.save(update_fields=["document_document", "document_type", "document_number", "is_active"])
+            return document_obj
         else:
             member_ID = validated_data.pop("member_ID")
             if Member.objects.filter(member_ID=member_ID).exists():

@@ -6,25 +6,40 @@ from member.models import Member
 from promo_code_app.models import PromoCode
 import pdb
 
+from rest_framework import serializers
+from .models import Brand
+
+from rest_framework import serializers
+from .models import Brand
+
 class BrandSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255)
     is_active = serializers.BooleanField(required=False)
-    
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # If we're updating (instance exists), make 'name' optional
+        if self.instance:
+            self.fields['name'].required = False
+
     def validate_name(self, value):
-        if Brand.objects.filter(name=value).exists():
+        # Only check for duplicate name during creation
+        if not self.instance and Brand.objects.filter(name=value).exists():
             raise serializers.ValidationError("Brand with this name already exists.")
         return value
-    
+
     def create(self, validated_data):
-        brand=Brand.objects.create(**validated_data)
-        return brand
-    
+        obj = Brand.objects.create(**validated_data)
+        return obj
+
     def update(self, instance, validated_data):
         instance.name = validated_data.get('name', instance.name)
         instance.is_active = validated_data.get('is_active', instance.is_active)
         instance.save(update_fields=['name', 'is_active'])
         return instance
-    
+
+
 class BrandViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Brand
@@ -33,6 +48,13 @@ class BrandViewSerializer(serializers.ModelSerializer):
 class ProductCategorySerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255)
     is_active = serializers.BooleanField(required=False)
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # If we're updating (instance exists), make 'name' optional
+        if self.instance:
+            self.fields['name'].required = False
     
     def validate_name(self, value):
         if ProductCategory.objects.filter(name=value).exists():

@@ -97,7 +97,7 @@ class BrandView(APIView):
         """
         try:
 
-            brands = Brand.objects.filter(is_active=True)
+            brands = Brand.objects.all().order_by("id")
             serializer = serializers.BrandViewSerializer(brands, many=True)
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
@@ -197,8 +197,7 @@ class ProductBrandDetailView(APIView):
     def delete(self, request, pk):
         try:
             brand = Brand.objects.get(pk=pk)
-            brand.is_active = False
-            brand.save()
+            brand.delete()
 
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
@@ -314,7 +313,7 @@ class ProductCategoryView(APIView):
             Response: The response containing the list of all product categories.
         """
         try:
-            product_categories = ProductCategory.objects.filter(is_active=True)
+            product_categories = ProductCategory.objects.all().order_by('id') 
             serializer = serializers.ProductCategoryViewSerializer(
                 product_categories, many=True)
             log_activity_task.delay_on_commit(
@@ -412,8 +411,7 @@ class ProductCategoryDetailView(APIView):
     def delete(self, request, pk):
         try:
             product_category = ProductCategory.objects.get(pk=pk)
-            product_category.is_active = False
-            product_category.save()
+            product_category.delete()
             
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
