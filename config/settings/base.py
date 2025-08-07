@@ -137,14 +137,14 @@ timezone = 'Asia/Dhaka'
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
 
 DJANGO_ENV = os.getenv("DJANGO_ENV", default="development")
-print(DJANGO_ENV)
 if DJANGO_ENV == "production":
     REDIS_LOCATION = os.getenv("REDIS_URL_PROD")
 else:
     REDIS_LOCATION = os.getenv("REDIS_URL_DEV")
 
 CELERY_BROKER_URL = REDIS_LOCATION
-print(REDIS_LOCATION,CELERY_BROKER_URL)
+
+
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
