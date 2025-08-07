@@ -129,8 +129,6 @@ SIMPLE_JWT = {
 }
 
 # Celery settings
-# CELERY_BROKER_URL = 'redis://127.0.0.1:6379'
-CELERY_BROKER_URL = "redis://redis:6379/1"
 result_backend = 'django-db'
 accept_content = ['json']
 task_serializer = 'json'
@@ -138,12 +136,19 @@ result_serializer = 'json'
 timezone = 'Asia/Dhaka'
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
 
-# Caching settings (Redis)
+DJANGO_ENV = os.getenv("DJANGO_ENV", default="development")
+print(DJANGO_ENV)
+if DJANGO_ENV == "production":
+    REDIS_LOCATION = os.getenv("REDIS_URL_PROD")
+else:
+    REDIS_LOCATION = os.getenv("REDIS_URL_DEV")
+
+CELERY_BROKER_URL = REDIS_LOCATION
+print(REDIS_LOCATION,CELERY_BROKER_URL)
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        # "LOCATION": "redis://127.0.0.1:6379",
-        "LOCATION": "redis://redis:6379/1",
+        "LOCATION": REDIS_LOCATION,
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
             "SERIALIZER": "django_redis.serializers.json.JSONSerializer",

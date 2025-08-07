@@ -97,7 +97,7 @@ class BrandView(APIView):
         """
         try:
 
-            brands = Brand.objects.all()
+            brands = Brand.objects.filter(is_active=True)
             serializer = serializers.BrandViewSerializer(brands, many=True)
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
@@ -126,6 +126,122 @@ class BrandView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class ProductBrandDetailView(APIView):
+
+    def patch(self, request, pk):
+        try:
+            brand = Brand.objects.get(pk=pk)
+            serializer = serializers.BrandSerializer(brand, data=request.data, partial=True)
+            if serializer.is_valid():
+                obj = serializer.save()
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Brand updated successfully",
+                    severity_level="info",
+                    description="Brand updated successfully"
+                )
+                return Response({
+                    "code": 200,
+                    "message": "Brand updated successfully",
+                    "status": "success",
+                    "data": {
+                        "id": obj.id,
+                        "name": obj.name
+                    }
+                }, status=status.HTTP_200_OK)
+            else:
+                log_activity_task.delay_on_commit(
+                    request_data_activity_log(request),
+                    verb="Brand update failed",
+                    severity_level="error",
+                    description="Invalid request made to update brand"
+                )
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Invalid request",
+                    "errors": serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Brand.DoesNotExist:
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Brand update failed",
+                severity_level="error",
+                description="Brand not found for update"
+            )
+            return Response({
+                "code": status.HTTP_404_NOT_FOUND,
+                "message": "Brand not found",
+                "status": "failed",
+                "data": {
+                    "brand": ["Brand not found for provided id"]
+                }
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Brand update failed",
+                severity_level="error",
+                description="Exception occurred while updating brand"
+            )
+            return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def delete(self, request, pk):
+        try:
+            brand = Brand.objects.get(pk=pk)
+            brand.is_active = False
+            brand.save()
+
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Brand deleted successfully",
+                severity_level="info",
+                description="Brand marked as inactive"
+            )
+            return Response({
+                "code": 204,
+                "message": "Brand Soft deleted successfully",
+                "status": "success"
+            }, status=status.HTTP_204_NO_CONTENT)
+        except Brand.DoesNotExist:
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Brand delete failed",
+                severity_level="error",
+                description="Attempted to delete non-existent brand"
+            )
+            return Response({
+                "code": status.HTTP_404_NOT_FOUND,
+                "message": "Brand not found",
+                "status": "failed",
+                "data": {
+                    "brand": ["Brand not found for provided id"]
+                }
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Brand delete failed",
+                severity_level="error",
+                description="Exception occurred while deleting brand"
+            )
+            return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class ProductCategoryView(APIView):
     def get_permissions(self):

@@ -8,6 +8,7 @@ import pdb
 
 class BrandSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255)
+    is_active = serializers.BooleanField(required=False)
     
     def validate_name(self, value):
         if Brand.objects.filter(name=value).exists():
@@ -17,6 +18,12 @@ class BrandSerializer(serializers.Serializer):
     def create(self, validated_data):
         brand=Brand.objects.create(**validated_data)
         return brand
+    
+    def update(self, instance, validated_data):
+        instance.name = validated_data.get('name', instance.name)
+        instance.is_active = validated_data.get('is_active', instance.is_active)
+        instance.save(update_fields=['name', 'is_active'])
+        return instance
     
 class BrandViewSerializer(serializers.ModelSerializer):
     class Meta:
@@ -39,7 +46,7 @@ class ProductCategorySerializer(serializers.Serializer):
     def update(self, instance, validated_data):
         instance.name = validated_data.get('name', instance.name)
         instance.is_active = validated_data.get('is_active',instance.is_active)
-        instance.save()
+        instance.save(update_fields=['name', 'is_active'])
         return instance
     
 class ProductCategoryViewSerializer(serializers.ModelSerializer):
