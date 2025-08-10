@@ -603,6 +603,13 @@ class MemberSpouseSerializer(serializers.Serializer):
         queryset=SpouseStatusChoice.objects.all(), required=False)
     member_ID = serializers.CharField()
     id = serializers.IntegerField(required=False)
+    is_active = serializers.BooleanField(required=False)
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if self.instance:
+            self.fields['image'].required = False
 
     def validate_member_ID(self, value):
 
@@ -648,9 +655,13 @@ class MemberSpouseSerializer(serializers.Serializer):
             if 'current_status' in validated_data and spouse_obj.current_status != validated_data.get('current_status', spouse_obj.current_status):
                 is_update = True
                 spouse_obj.current_status = validated_data['current_status']
+            
+            if 'is_active' in validated_data and spouse_obj.is_active != validated_data.get('is_active', spouse_obj.is_active):
+                is_update = True
+                spouse_obj.is_active = validated_data['is_active']
 
             if is_update:
-                spouse_obj.save()
+                spouse_obj.save(update_fields=["spouse_name", "spouse_contact_number", "spouse_dob", "image", "current_status", "is_active"])
                 return spouse_obj
 
         return instance
@@ -745,6 +756,14 @@ class MemberCertificateSerializer(serializers.Serializer):
     certificate_number = serializers.CharField(max_length=100, required=False)
     certificate_document = serializers.FileField()
     id = serializers.IntegerField(required=False)
+    is_active = serializers.BooleanField(required=False)
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if self.instance:
+            self.fields['certificate_document'].required = False
+    
 
     def validate_member_ID(self, value):
 
@@ -776,7 +795,9 @@ class MemberCertificateSerializer(serializers.Serializer):
                 "certificate_number", certificate_obj.certificate_number)
             certificate_obj.certificate_document = validated_data.get(
                 "certificate_document", certificate_obj.certificate_document)
-            certificate_obj.save()
+            certificate_obj.is_active = validated_data.get(
+                "is_active", certificate_obj.is_active)
+            certificate_obj.save(update_fields=["title", "certificate_number", "certificate_document", "is_active"])
         else:
             member_ID = validated_data.pop("member_ID")
             if Member.objects.filter(member_ID=member_ID).exists():
@@ -798,6 +819,13 @@ class MemberDescendantsSerializer(serializers.Serializer):
         queryset=DescendantRelationChoice.objects.all(), required=False)
     name = serializers.CharField(max_length=100)
     id = serializers.IntegerField(required=False)
+    is_active = serializers.BooleanField(required=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if self.instance:
+            self.fields['image'].required = False
 
     def validate_member_ID(self, value):
 
@@ -842,9 +870,12 @@ class MemberDescendantsSerializer(serializers.Serializer):
             if "name" in validated_data and descendant_obj.name != validated_data.get("name"):
                 descendant_obj.name = validated_data.get("name")
                 is_updated = True
+            if "is_active" in validated_data and descendant_obj.is_active != validated_data.get("is_active"):
+                descendant_obj.is_active = validated_data.get("is_active")
+                is_updated = True
 
             if is_updated:
-                descendant_obj.save()
+                descendant_obj.save(update_fields=["descendant_contact_number", "dob", "image", "relation_type", "name", "is_active"])
                 return descendant_obj
 
         return instance
@@ -1056,6 +1087,13 @@ class MemberCompanionInformationSerializer(serializers.Serializer):
         max_length=100, required=False)
     companion_image = serializers.ImageField(required=False)
     id = serializers.IntegerField(required=False)
+    is_active = serializers.BooleanField(required=False)
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if self.instance:
+            self.fields['companion_image'].required = False
 
     def validate_member_ID(self, value):
 
@@ -1088,7 +1126,9 @@ class MemberCompanionInformationSerializer(serializers.Serializer):
                 "companion_card_number", companion_info.companion_card_number)
             companion_info.relation_with_member = validated_data.get(
                 "relation_with_member", companion_info.relation_with_member)
-            companion_info.save()
+            companion_info.is_active = validated_data.get(
+                "is_active", companion_info.is_active)
+            companion_info.save(update_fields=["companion_name", "companion_image", "companion_dob", "companion_contact_number", "companion_card_number", "relation_with_member", "is_active"])
             return companion_info
         return instance
 
