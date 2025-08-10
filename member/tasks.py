@@ -48,3 +48,13 @@ def delete_members_cache():
         return "success"
     except Exception as e:
         return str(e)
+
+
+@shared_task
+def delete_members_specific_cache(member_id):
+    try:
+        cache.delete_pattern(f"specific_member::{member_id}*")
+        return "success"
+    except Exception as e:
+        return str(e)
+

@@ -30,7 +30,7 @@ from .models import Spouse, Profession
 from .tasks import delete_member_model_dependencies
 from django.core.cache import cache
 from django.utils.http import urlencode
-from .tasks import delete_members_cache
+from .tasks import delete_members_cache,delete_members_specific_cache
 logger = logging.getLogger("myapp")
 
 
@@ -620,13 +620,14 @@ class MemberContactNumberView(APIView):
             data = request.data
             serializer = serializers.MemberContactNumberSerializer(data=data)
             if serializer.is_valid():
-                with transaction.atomic():
-                    instance = serializer.save()
-
+                member_ID = serializer.validated_data.get("member_ID")
+                instance = serializer.save()
+        
                 # activity log
                 log_request(request, "Member contact number added successfully",
                             "info", "user tried to add member contact number and succeeded")
-
+                
+                delete_members_specific_cache.delay(member_ID)
                 return Response({
                     "code": 201,
                     "message": "Member contact number has been created successfully",
@@ -664,12 +665,11 @@ class MemberContactNumberView(APIView):
             serializer = serializers.MemberContactNumberSerializer(
                 member, data=data)
             if serializer.is_valid():
-                with transaction.atomic():
-                    instance = serializer.save(instance=member)
+                instance = serializer.save(instance=member)
                 # activity log
                 log_request(request, "Member contact number updated successfully",
                             "info", "user tried to update member contact number and succeeded")
-
+                delete_members_specific_cache.delay(member_ID)
                 return Response({
                     "code": 200,
                     "message": "Member contact number has been updated successfully",
@@ -730,13 +730,13 @@ class MemberEmailAddressView(APIView):
             data = request.data
             serializer = serializers.MemberEmailAddressSerializer(data=data)
             if serializer.is_valid():
-                with transaction.atomic():
-                    instance = serializer.save()
+                member_ID = serializer.validated_data.get("member_ID")
+                instance = serializer.save()
 
                 # activity log
                 log_request(request, "Member email address added successfully",
                             "info", "user tried to add member email address and succeeded")
-
+                delete_members_specific_cache.delay(member_ID)
                 return Response({
                     "code": 201,
                     "message": "Member Email address has been created successfully",
@@ -780,12 +780,12 @@ class MemberEmailAddressView(APIView):
             serializer = serializers.MemberEmailAddressSerializer(
                 member, data=data)
             if serializer.is_valid():
-                with transaction.atomic():
-                    instance = serializer.save(instance=member)
+                member_ID = serializer.validated_data.get("member_ID")
+                instance = serializer.save(instance=member)
                 # activity log
                 log_request(request, "Member email address updated successfully",
                             "info", "user tried to update member email address and succeeded")
-
+                delete_members_specific_cache.delay(member_ID)
                 return Response({
                     "code": 200,
                     "message": "Member Email address has been updated successfully",
@@ -847,12 +847,13 @@ class MemberAddressView(APIView):
             data = request.data
             serializer = serializers.MemberAddressSerializer(data=data)
             if serializer.is_valid():
-                with transaction.atomic():
-                    instance = serializer.save()
-
+                member_ID = serializer.validated_data.get("member_ID")
+                instance = serializer.save()
                 # activity log
                 log_request(request, "Member address added successfully",
                             "info", "user tried to add member address and succeeded")
+
+                delete_members_specific_cache.delay(member_ID)
                 return Response({
                     "code": 201,
                     "message": "Member address has been created successfully",
@@ -890,12 +891,11 @@ class MemberAddressView(APIView):
             data = request.data
             serializer = serializers.MemberAddressSerializer(member, data=data)
             if serializer.is_valid():
-                with transaction.atomic():
-                    instance = serializer.save()
-
+                instance = serializer.save()
                 # activity log
                 log_request(request, "Member address updated successfully",
                             "info", "user tried to update member address and succeeded")
+                delete_members_specific_cache.delay(member_ID)
                 return Response({
                     "code": 200,
                     "message": "Member address has been updated successfully",
@@ -959,13 +959,12 @@ class MemberSpouseView(APIView):
             data = request.data
             serializer = serializers.MemberSpouseSerializer(data=data)
             if serializer.is_valid():
-                with transaction.atomic():
-                    instance = serializer.save()
-
+                member_ID = serializer.validated_data.get("member_ID")
+                instance = serializer.save()
                 # activity log
                 log_request(request, "Member spouse added successfully",
                             "info", "user tried to add member spouse and succeeded")
-
+                delete_members_specific_cache.delay(member_ID)
                 return Response({
                     "code": 201,
                     "message": "Member address has been created successfully",
@@ -1031,10 +1030,11 @@ class MemberSpouseView(APIView):
                 with transaction.atomic():
                     if instance is not None:
                         instance = serializer.save(instance=instance)
-
+                        member_ID = serializer.validated_data.get("member_ID")
                         # activity log
                         log_request(request, "Member spouse updated successfully",
                                     "info", "user tried to update member spouse and succeeded")
+                        delete_members_specific_cache.delay(member_ID)
                         return Response({
                             "code": 200,
                             "message": "Member Spouse has been updated successfully",
@@ -1044,11 +1044,14 @@ class MemberSpouseView(APIView):
                             }
                         }, status=status.HTTP_200_OK)
                     else:
+                        
                         instance = serializer.save()
-
+                        member_ID = serializer.validated_data.get("member_ID")
                         # activity log
                         log_request(request, "Member spouse updated successfully",
                                     "info", "user tried to update member spouse and succeeded")
+
+                        delete_members_specific_cache.delay(member_ID)
                         return Response({
                             "code": 201,
                             "message": "Member spouse has been created successfully",
@@ -1100,13 +1103,12 @@ class MemberDescendsView(APIView):
             data = request.data
             serializer = serializers.MemberDescendantsSerializer(data=data)
             if serializer.is_valid():
-                with transaction.atomic():
-                    instance = serializer.save()
-
+                member_ID = serializer.validated_data.get("member_ID")
+                instance = serializer.save()
                 # activity log
                 log_request(request, "Member descendants added successfully",
                             "info", "user tried to add member descendants and succeeded")
-
+                delete_members_specific_cache.delay(member_ID)
                 return Response({
                     "code": 201,
                     "message": "Member Descendant has been created successfully",
@@ -1175,11 +1177,11 @@ class MemberDescendsView(APIView):
                 with transaction.atomic():
                     if instance is not None:
                         instance = serializer.save(instance=instance)
-
+                        member_ID = serializer.validated_data.get("member_ID")
                         # activity log
                         log_request(request, "Member descendants updated successfully",
                                     "info", "user tried to update member descendants and succeeded")
-
+                        delete_members_specific_cache.delay(member_ID)
                         return Response({
                             "code": 200,
                             "message": "Member Descendant has been updated successfully",
@@ -1190,11 +1192,11 @@ class MemberDescendsView(APIView):
                         }, status=status.HTTP_200_OK)
                     else:
                         instance = serializer.save()
-
+                        member_ID = serializer.validated_data.get("member_ID")
                         # activity log
                         log_request(request, "Member descendants created successfully",
                                     "info", "user tried to create member descendants and succeeded")
-
+                        delete_members_specific_cache.delay(member_ID)
                         return Response({
                             "code": 201,
                             "message": "Member Descendant has been created successfully",
@@ -1247,13 +1249,14 @@ class MemberJobView(APIView):
             data = request.data
             serializer = serializers.MemberJobSerializer(data=data)
             if serializer.is_valid():
-                with transaction.atomic():
-                    instance = serializer.save()
-
+                member_ID = serializer.validated_data.get("member_ID")
+                instance = serializer.save()
                 # activity log
                 log_request(request, "Member job created successfully",
                             "info", "user tried to create member job and succeeded")
 
+                # delete cache for specific view member details
+                delete_members_specific_cache.delay(member_ID)
                 return Response({
                     "code": 201,
                     "message": "Member job has been created successfully",
@@ -1292,13 +1295,13 @@ class MemberJobView(APIView):
             data = request.data
             serializer = serializers.MemberJobSerializer(member, data=data)
             if serializer.is_valid():
-                with transaction.atomic():
-                    instance = serializer.save(instance=member)
-
+                member_ID = serializer.validated_data.get("member_ID")
+                instance = serializer.save(instance=member)
                 # activity log
                 log_request(request, "Member job updated successfully",
                             "info", "user tried to update member job and succeeded")
-
+                # delete cache for specific view member details
+                delete_members_specific_cache.delay(member_ID)
                 return Response({
                     "code": 200,
                     "message": "Member job has been updated successfully",
@@ -1306,7 +1309,6 @@ class MemberJobView(APIView):
                     "data": instance
                 }, status=status.HTTP_200_OK)
             else:
-
                 # activity log
                 log_request(request, "Member job updated failed", "error",
                             "user tried to update member job but made an invalid request")
@@ -1363,12 +1365,13 @@ class MemberEmergencyContactView(APIView):
             serializer = serializers.MemberEmergencyContactSerializer(
                 data=data)
             if serializer.is_valid():
-                with transaction.atomic():
-                    instance = serializer.save()
-
+                member_ID = serializer.validated_data.get("member_ID")
+                instance = serializer.save()
                 # activity log
                 log_request(request, "Member emergency contact created successfully",
                             "info", "user tried to create member emergency contact and succeeded")
+                # delete cache for specific view member details
+                delete_members_specific_cache.delay(member_ID)
                 return Response({
                     "code": 201,
                     "message": "Member Emergency contact has been created successfully",
@@ -1404,19 +1407,17 @@ class MemberEmergencyContactView(APIView):
     def patch(self, request, member_ID):
         try:
             member = models.Member.objects.get(member_ID=member_ID)
-            print(member)
-
             data = request.data
             serializer = serializers.MemberEmergencyContactSerializer(
                 member, data=data)
             if serializer.is_valid():
-                with transaction.atomic():
-                    instance = serializer.save(instance=member)
-
+                member_ID = serializer.validated_data.get("member_ID")
+                instance = serializer.save(instance=member)
                 # activity log
                 log_request(request, "Member emergency contact updated successfully",
                             "info", "user tried to update an emergency contact and succeeded")
-
+                # delete cache for specific view member details
+                delete_members_specific_cache.delay(member_ID)
                 return Response({
                     "code": 200,
                     "message": "Member Emergency contact has been updated successfully",
@@ -1439,6 +1440,7 @@ class MemberEmergencyContactView(APIView):
             # activity log
             log_request(request, "Member emergency contact updated failed", "error",
                         "user tried to update an emergency contact but made an invalid request")
+            
             return Response({
                 "code": 404,
                 "status": "failed",
@@ -1480,13 +1482,15 @@ class MemberCompanionView(APIView):
             serializer = serializers.MemberCompanionInformationSerializer(
                 data=data)
             if serializer.is_valid():
+                member_ID = serializer.validated_data.get("member_ID")
                 with transaction.atomic():
                     instance = serializer.save()
 
                 # activity log
                 log_request(request, "Member companion created successfully",
                             "info", "user tried to create member companion and succeeded")
-
+                 # delete cache for specific view member details
+                delete_members_specific_cache.delay(member_ID)
                 return Response({
                     "code": 201,
                     "message": "Member Companion has been created successfully",
@@ -1537,12 +1541,14 @@ class MemberCompanionView(APIView):
             if serializer.is_valid():
                 with transaction.atomic():
                     if instance is not None:
+                        member_ID = serializer.validated_data.get("member_ID")
                         instance = serializer.save()
 
                         # activity log
                         log_request(request, "Member companion updated successfully",
                                     "info", "user tried to update member companion and succeeded")
-
+                        # delete cache for specific view member details
+                        delete_members_specific_cache.delay(member_ID)
                         return Response({
                             "code": 200,
                             "message": "Member companion has been updated successfully",
@@ -1553,10 +1559,11 @@ class MemberCompanionView(APIView):
                         }, status=status.HTTP_200_OK)
                     else:
                         instance = serializer.save()
-
+                        member_ID = serializer.validated_data.get("member_ID")
                         # activity log
                         log_request(request, "Member companion created successfully",
                                     "info", "user tried to create member companion and succeeded")
+                        delete_members_specific_cache.delay(member_ID)
                         return Response({
                             "code": 201,
                             "message": "Member companion has been created successfully",
@@ -1610,8 +1617,11 @@ class MemberDocumentView(APIView):
                 data=data)
             if serializer.is_valid():
                 with transaction.atomic():
+                    member_ID = serializer.validated_data.get("member_ID")
                     instance = serializer.save()
 
+                # delete cache for specific view member details
+                delete_members_specific_cache.delay(member_ID)
                 # activity log
                 log_request(request, "Member documents created successfully",
                             "info", "user tried to create member documents and succeeded")
@@ -1696,8 +1706,10 @@ class MemberDocumentView(APIView):
             if serializer.is_valid():
                 with transaction.atomic():
                     if instance is not None:
+                        member_ID = serializer.validated_data.get("member_ID")
                         instance = serializer.save(instance=instance)
-
+                        # delete cache for specific view member details
+                        delete_members_specific_cache.delay(member_ID)
                         # activity log
                         log_request(request, "Member documents updated successfully",
                                     "info", "user tried to update member documents and succeeded")
@@ -1710,10 +1722,12 @@ class MemberDocumentView(APIView):
                             }
                         }, status=status.HTTP_200_OK)
                     else:
+                        member_ID = serializer.validated_data.get("member_ID")
                         instance = serializer.save()
                         # activity log
                         log_request(request, "Member documents created successfully",
                                     "info", "user tried to create member documents and succeeded")
+                        delete_members_specific_cache.delay(member_ID)
                         return Response({
                             "code": 201,
                             "message": "Member Documents has been created successfully",
@@ -1916,6 +1930,7 @@ class MemberSingleHistoryView(APIView):
             # activity log
             log_request(request, "Viewing single member history failed", "error",
                         "A user tried to view single member history but made an invalid request.")
+            
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -1942,11 +1957,13 @@ class MemberSpecialDayView(APIView):
             data = request.data
             serializer = serializers.MemberSpecialDaySerializer(data=data)
             if serializer.is_valid():
+                member_ID = serializer.validated_data.get("member_ID")
                 instances = serializer.save()
                 # activity log
                 log_request(request, "Creating new member special days", "info",
                             "A user has successfully created new member special days.")
-
+                 # delete cache for specific view member details
+                delete_members_specific_cache.delay(member_ID)
                 return Response({
                     "code": 201,
                     "status": "success",
@@ -1988,11 +2005,14 @@ class MemberSpecialDayView(APIView):
                 member, data=data)
             if serializer.is_valid():
                 with transaction.atomic():
+                    member_ID = serializer.validated_data.get("member_ID")
                     instance = serializer.save(instance=member)
 
                 # activity log
                 log_request(request, "Updating member special days", "info",
                             "A user has successfully updated member special days.")
+                 # delete cache for specific view member details
+                delete_members_specific_cache.delay(member_ID)
                 return Response({
                     "code": 200,
                     "message": "Member special day has been updated successfully",
@@ -2003,6 +2023,8 @@ class MemberSpecialDayView(APIView):
                 # activity log
                 log_request(request, "Updating member special days failed", "error",
                             "A user tried to update member special days but made an invalid request")
+                 # delete cache for specific view member details
+                delete_members_specific_cache.delay(instance.id)
                 return Response({
                     "code": 400,
                     "status": "failed",
@@ -2050,16 +2072,17 @@ class MemberCertificateView(APIView):
     def post(self, request):
         try:
             data = request.data
-            # pdb.set_trace()
             serializer = serializers.MemberCertificateSerializer(data=data)
 
             if serializer.is_valid():
+                member_ID = serializer.validated_data.get("member_ID")
                 instance = serializer.save()
 
                 # activity log
                 log_request(request, "Creating new member certificates", "info",
                             "A user has successfully created new member certificates.")
-
+                # delete cache for specific  member details
+                delete_members_specific_cache.delay(member_ID)
                 return Response({
                     "code": 201,
                     "status": "success",
@@ -2110,11 +2133,12 @@ class MemberCertificateView(APIView):
             if serializer.is_valid():
                 with transaction.atomic():
                     if instance is not None:
+                        member_ID = serializer.validated_data.get("member_ID")
                         instance = serializer.save(instance=instance)
                         # activity log
                         log_request(request, "Updating member certificates", "info",
                                     "A user has successfully updated member certificates.")
-
+                        delete_members_specific_cache.delay(member_ID)
                         return Response({
                             "code": 200,
                             "message": "Member Certificate has been updated successfully",
@@ -2124,10 +2148,12 @@ class MemberCertificateView(APIView):
                             }
                         }, status=status.HTTP_200_OK)
                     else:
+                        member_ID = serializer.validated_data.get("member_ID")
                         instance = serializer.save()
                         # activity log
                         log_request(request, "Creating new member certificates", "info",
                                     "A user has successfully created new member certificates.")
+                        delete_members_specific_cache.delay(member_ID)
                         return Response({
                             "code": 201,
                             "message": "Member Certificate has been created successfully",
