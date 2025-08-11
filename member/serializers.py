@@ -604,7 +604,7 @@ class MemberSpouseSerializer(serializers.Serializer):
     member_ID = serializers.CharField()
     id = serializers.IntegerField(required=False)
     is_active = serializers.BooleanField(required=False)
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -655,13 +655,14 @@ class MemberSpouseSerializer(serializers.Serializer):
             if 'current_status' in validated_data and spouse_obj.current_status != validated_data.get('current_status', spouse_obj.current_status):
                 is_update = True
                 spouse_obj.current_status = validated_data['current_status']
-            
+
             if 'is_active' in validated_data and spouse_obj.is_active != validated_data.get('is_active', spouse_obj.is_active):
                 is_update = True
                 spouse_obj.is_active = validated_data['is_active']
 
             if is_update:
-                spouse_obj.save(update_fields=["spouse_name", "spouse_contact_number", "spouse_dob", "image", "current_status", "is_active"])
+                spouse_obj.save(update_fields=[
+                                "spouse_name", "spouse_contact_number", "spouse_dob", "image", "current_status", "is_active"])
                 return spouse_obj
 
         return instance
@@ -757,13 +758,12 @@ class MemberCertificateSerializer(serializers.Serializer):
     certificate_document = serializers.FileField()
     id = serializers.IntegerField(required=False)
     is_active = serializers.BooleanField(required=False)
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         if self.instance:
             self.fields['certificate_document'].required = False
-    
 
     def validate_member_ID(self, value):
 
@@ -797,7 +797,8 @@ class MemberCertificateSerializer(serializers.Serializer):
                 "certificate_document", certificate_obj.certificate_document)
             certificate_obj.is_active = validated_data.get(
                 "is_active", certificate_obj.is_active)
-            certificate_obj.save(update_fields=["title", "certificate_number", "certificate_document", "is_active"])
+            certificate_obj.save(update_fields=[
+                                 "title", "certificate_number", "certificate_document", "is_active"])
         else:
             member_ID = validated_data.pop("member_ID")
             if Member.objects.filter(member_ID=member_ID).exists():
@@ -875,7 +876,8 @@ class MemberDescendantsSerializer(serializers.Serializer):
                 is_updated = True
 
             if is_updated:
-                descendant_obj.save(update_fields=["descendant_contact_number", "dob", "image", "relation_type", "name", "is_active"])
+                descendant_obj.save(update_fields=[
+                                    "descendant_contact_number", "dob", "image", "relation_type", "name", "is_active"])
                 return descendant_obj
 
         return instance
@@ -1088,7 +1090,7 @@ class MemberCompanionInformationSerializer(serializers.Serializer):
     companion_image = serializers.ImageField(required=False)
     id = serializers.IntegerField(required=False)
     is_active = serializers.BooleanField(required=False)
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -1128,7 +1130,8 @@ class MemberCompanionInformationSerializer(serializers.Serializer):
                 "relation_with_member", companion_info.relation_with_member)
             companion_info.is_active = validated_data.get(
                 "is_active", companion_info.is_active)
-            companion_info.save(update_fields=["companion_name", "companion_image", "companion_dob", "companion_contact_number", "companion_card_number", "relation_with_member", "is_active"])
+            companion_info.save(update_fields=["companion_name", "companion_image", "companion_dob",
+                                "companion_contact_number", "companion_card_number", "relation_with_member", "is_active"])
             return companion_info
         return instance
 
@@ -1140,19 +1143,20 @@ class MemberDocumentSerializer(serializers.Serializer):
         queryset=DocumentTypeChoice.objects.all())
     document_number = serializers.CharField(max_length=50, required=False)
     id = serializers.IntegerField(required=False)
-    is_active=serializers.BooleanField(required=False)
+    is_active = serializers.BooleanField(required=False)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         if self.instance:
             self.fields['document_document'].required = False
-    
+
     def validate_member_ID(self, value):
-        
+
         if not Member.objects.filter(member_ID=value).exists():
-            raise serializers.ValidationError(f"No member exists with this {value} id")
-            
+            raise serializers.ValidationError(
+                f"No member exists with this {value} id")
+
         return value
 
     def create(self, validated_data):
@@ -1174,7 +1178,8 @@ class MemberDocumentSerializer(serializers.Serializer):
                 "document_number", document_obj.document_number)
             document_obj.is_active = validated_data.get(
                 "is_active", document_obj.is_active)
-            document_obj.save(update_fields=["document_document", "document_type", "document_number", "is_active"])
+            document_obj.save(update_fields=[
+                              "document_document", "document_type", "document_number", "is_active"])
             return document_obj
         else:
             member_ID = validated_data.pop("member_ID")

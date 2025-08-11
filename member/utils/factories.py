@@ -15,39 +15,39 @@ class ContactTypeFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = ContactTypeChoice
 
-    name = factory.Sequence(lambda n: f"{fake.name()}{n}")
+    name = factory.Sequence(lambda n: f"{fake.name()[:5]}{n}")
 
 
 class EmailTypeChoiceFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = EmailTypeChoice
 
-    name = factory.Sequence(lambda n: f"{fake.name()}{n}")
+    name = factory.Sequence(lambda n: f"{fake.name()[:5]}{n}")
 
 
 class AddressTypeChoiceFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = AddressTypeChoice
 
-    name = factory.Sequence(lambda n: f"{fake.name()}{n}")
+    name = factory.Sequence(lambda n: f"{fake.name()[:5]}{n}")
 
 
 class SpouseStatusChoiceFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = SpouseStatusChoice
-    name = factory.Sequence(lambda n: f"{fake.name()}{n}")
+    name = factory.Sequence(lambda n: f"{fake.name()[:5]}{n}")
 
 
 class DescendantRelationChoiceFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = DescendantRelationChoice
-    name = factory.Sequence(lambda n: f"{fake.name()}{n}")
+    name = factory.Sequence(lambda n: f"{fake.name()[:5]}{n}")
 
 
 class DocumentTypeChoiceFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = DocumentTypeChoice
-    name = factory.Sequence(lambda n: f"{fake.name()}{n}")
+    name = factory.Sequence(lambda n: f"{fake.name()[:5]}{n}")
 
 
 def generate_test_image():
@@ -68,7 +68,7 @@ class MembershipTypeFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = MembershipType
 
-    name = factory.Sequence(lambda n: f"{fake.name()}{n}")
+    name = factory.Sequence(lambda n: f"{fake.word()[:9]}{n}")
 
 
 class InstituteNameFactory(factory.django.DjangoModelFactory):
@@ -133,8 +133,9 @@ class SpouseFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Spouse
 
-    spouse_name = factory.Faker("name")
-    spouse_contact_number = factory.Faker("phone_number")
+    spouse_name = factory.LazyFunction(lambda: fake.name()[:20])
+    spouse_contact_number = factory.LazyFunction(
+        lambda: fake.phone_number()[:20])
     spouse_dob = factory.Faker('date_of_birth', minimum_age=18, maximum_age=60)
     image = factory.LazyFunction(lambda: generate_test_image())
     # Foreign Key Relations
@@ -146,7 +147,7 @@ class DescendantFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Descendant
 
-    name = factory.Faker("name")
+    name = factory.LazyFunction(lambda: fake.name()[:20])
     dob = factory.Faker('date_of_birth', minimum_age=1, maximum_age=100)
     image = factory.LazyFunction(lambda: generate_test_image())
     descendant_contact_number = factory.Faker('phone_number')
@@ -160,7 +161,7 @@ class CompanionInformationFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = CompanionInformation
 
-    companion_name = factory.Faker("name")
+    companion_name = factory.LazyFunction(lambda: fake.name()[:20])
     companion_contact_number = factory.Faker("phone_number")
     companion_dob = factory.Faker(
         'date_of_birth', minimum_age=1, maximum_age=100)
@@ -233,8 +234,8 @@ class AddressFactory(factory.django.DjangoModelFactory):
     member = factory.LazyAttribute(lambda _: shared_member)
     address_type = factory.LazyAttribute(lambda _: shared_contact_type)
 
-    title = factory.Faker("name")
-    address = factory.Faker("name")
+    title = factory.LazyFunction(lambda: fake.name()[:20])
+    address = factory.LazyFunction(lambda: fake.name()[:20])
     is_primary = False
 
     # record keeping
@@ -264,11 +265,11 @@ class EmergencyContactFactory(factory.django.DjangoModelFactory):
 class JobFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Profession
-    title = factory.Faker("name")
-    organization_name = factory.Faker("name")
+    title = factory.LazyFunction(lambda: fake.name()[:20])
+    organization_name = factory.LazyFunction(lambda: fake.name()[:20])
     job_description = factory.Faker("name"
                                     )
-    location = factory.Faker("name")
+    location = factory.LazyFunction(lambda: fake.name()[:20])
     # relation (shared)
     member = factory.LazyAttribute(lambda _: shared_member)
     # record keeping
@@ -281,7 +282,7 @@ class JobFactory(factory.django.DjangoModelFactory):
 class SpecialDayFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = SpecialDay
-    title = factory.Faker("name")
+    title = factory.LazyFunction(lambda: fake.name()[:20])
     # relation (shared)
     member = factory.LazyAttribute(lambda _: shared_member)
     # record keeping
