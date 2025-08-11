@@ -141,6 +141,7 @@ class ProductMediaSerializer(serializers.Serializer):
         return media
     
 class ProductMediaViewSerializer(serializers.ModelSerializer):
+    
     class Meta:
         model = ProductMedia
         fields = "__all__"
@@ -200,6 +201,8 @@ class ProductPriceViewSerializer(serializers.ModelSerializer):
     
 class ProductViewSerializer(serializers.ModelSerializer):
     media = ProductMediaViewSerializer(many=True, source='product_media', read_only=True)
+    category = serializers.StringRelatedField(read_only=True)
+    brand = serializers.StringRelatedField(read_only=True)
     class Meta:
         model = Product
         fields = "__all__"
