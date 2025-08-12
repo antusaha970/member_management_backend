@@ -23,7 +23,8 @@ from promo_code_app.models import AppliedPromoCode
 from core.utils.pagination import CustomPageNumberPagination
 from member_financial_management.utils.permission_classes import MemberFinancialManagementPermission
 logger = logging.getLogger("myapp")
-
+from .tasks import delete_products_cache
+from .utils.filters import ProductFilter
 
 class BrandView(APIView):
     def get_permissions(self):
@@ -484,7 +485,7 @@ class ProductView(APIView):
             if serializer.is_valid():
                 product_instance = serializer.save()
                 # cache_delete
-                cache.delete_pattern("products::*")
+                delete_products_cache.delay()
 
                 product_name = serializer.validated_data["name"]
                 log_activity_task.delay_on_commit(
@@ -544,12 +545,13 @@ class ProductView(APIView):
             cached_response = cache.get(cache_key)
             if cached_response:
                 return Response(cached_response, status=200)
-            products = Product.objects.filter(is_active=True).select_related(
-                'category', 'brand').prefetch_related('product_media').order_by('id')
+            products = Product.objects.filter(is_active=True).order_by('id')
+            filtered = ProductFilter(request.query_params, queryset=products)
+            queryset = filtered.qs  # Apply filters
             # Apply pagination
             paginator = CustomPageNumberPagination()
             paginated_products = paginator.paginate_queryset(
-                products, request, view=self)
+                queryset, request, view=self)
             serializer = serializers.ProductViewSerializer(
                 paginated_products, many=True)
             # activity log
@@ -610,6 +612,8 @@ class ProductMediaView(APIView):
                     verb="Product media created successfully",
                     severity_level="info",
                     description="Product media created successfully for product",)
+                # delete products cache
+                delete_products_cache.delay()
                 return Response({
                     "code": 201,
                     "message": "Product media created successfully",
@@ -669,7 +673,7 @@ class ProductPriceView(APIView):
             if serializer.is_valid():
                 product_price_instance = serializer.save()
                 # cache_delete
-                cache.delete_pattern("product_prices::*")
+                delete_products_cache.delay()
                 product_price = serializer.validated_data["price"]
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),

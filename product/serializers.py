@@ -81,7 +81,7 @@ class ProductSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=255)
     description = serializers.CharField()
     price = serializers.DecimalField(max_digits=10, decimal_places=2)
-    discount_rate = serializers.DecimalField(max_digits=5, decimal_places=2, default=0.0)
+    discount_rate = serializers.DecimalField(max_digits=5, decimal_places=2, default=0.0, required=False)
     quantity_in_stock = serializers.IntegerField()
     sku = serializers.CharField(max_length=50)
     category = serializers.IntegerField()
@@ -116,13 +116,11 @@ class ProductSerializer(serializers.Serializer):
         except Brand.DoesNotExist:
             raise serializers.ValidationError("Brand does not exist.")
         return brand_instance
-
+    
 
     def create(self, validated_data):
         product = Product.objects.create(**validated_data)
         return product
-
-
 
 class ProductMediaSerializer(serializers.Serializer):
     image = serializers.ImageField()
@@ -137,6 +135,7 @@ class ProductMediaSerializer(serializers.Serializer):
 
 
     def create(self, validated_data):
+        
         media =  ProductMedia.objects.create(**validated_data) 
         return media
     

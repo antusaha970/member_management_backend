@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 from member.models import Member
-from restaurant.models import Restaurant
+from restaurant.models import Restaurant, RestaurantItem
 from event.models import Event
 from product.models import Product
 from facility.models import Facility
@@ -77,7 +77,7 @@ class InvoiceItem(FinancialBaseModel):
     invoice = models.ForeignKey(
         Invoice, on_delete=models.PROTECT, related_name="invoice_items")
     restaurant_items = models.ManyToManyField(
-        Restaurant, related_name="restaurant_items")
+        RestaurantItem, related_name="invoice_item_restaurants")
     products = models.ManyToManyField(
         Product, related_name="invoice_item_products")
     facility = models.ManyToManyField(

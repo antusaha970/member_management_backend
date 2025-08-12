@@ -1,5 +1,6 @@
 from django.db import models
 from member.models import MembershipType
+import product
 
 
 class ProductBaseModel(models.Model):
@@ -40,6 +41,7 @@ class Product(ProductBaseModel):
                               null=True, blank=True, related_name="products_brand")
     class Meta:
         unique_together = ('name', 'category')
+
 
     def __str__(self):
         return self.name

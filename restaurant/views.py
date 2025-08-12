@@ -626,40 +626,140 @@ class RestaurantItemMediaView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+# class RestaurantItemBuyView(APIView):
+#     permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
+
+#     def post(self, request):
+#         try:
+#             serializer = serializers.RestaurantItemBuySerializer(
+#                 data=request.data)
+#             if serializer.is_valid():
+#                 restaurant = serializer.validated_data["restaurant"]
+#                 restaurant_items = serializer.validated_data["restaurant_items"]
+#                 member = serializer.validated_data["member_ID"]
+#                 member = Member.objects.get(member_ID=member)
+#                 total_amount = reduce(
+#                     lambda acc, item: acc + item["id"].selling_price*item["quantity"], restaurant_items, 0)
+#                 invoice_type, _ = InvoiceType.objects.get_or_create(
+#                     name="Restaurant")
+#                 promo_code = serializer.validated_data["promo_code"]
+#                 discount = 0
+#                 if promo_code != None:
+#                     if promo_code.percentage is not None:
+#                         percentage = promo_code.percentage
+#                         discount = (percentage/100) * total_amount
+#                         total_amount = total_amount - discount
+#                     else:
+#                         discount = promo_code.amount
+#                         if discount <= total_amount:
+#                             total_amount = total_amount - discount
+#                         else:
+#                             discount = total_amount
+#                             total_amount = 0
+#                     promo_code.remaining_limit -= 1
+#                     promo_code.save(update_fields=["remaining_limit"])
+#                 else:
+#                     promo_code = ""
+#                 with transaction.atomic():
+#                     invoice = Invoice.objects.create(
+#                         currency="BDT",
+#                         invoice_number=generate_unique_invoice_number(),
+#                         balance_due=total_amount,
+#                         paid_amount=0,
+#                         issue_date=date.today(),
+#                         total_amount=total_amount,
+#                         is_full_paid=False,
+#                         status="unpaid",
+#                         invoice_type=invoice_type,
+#                         generated_by=request.user,
+#                         member=member,
+#                         restaurant=restaurant,
+#                         discount=discount,
+#                         promo_code=promo_code
+#                     )
+#                     if promo_code != "":
+#                         AppliedPromoCode.objects.create(
+#                             discounted_amount=discount, promo_code=promo_code, used_by=member)
+#                     restaurant_items_objs = []
+#                     for item in restaurant_items:
+#                         restaurant_items_objs.append(item["id"].id)
+#                     invoice_item = InvoiceItem.objects.create(
+#                         invoice=invoice
+#                     )
+#                     invoice_item.restaurant_items.set(restaurant_items_objs)
+#                 delete_invoice_cache.delay()
+#                 return Response({
+#                     "code": 201,
+#                     "status": "success",
+#                     "message": "Invoice created successfully",
+#                     "data": InvoiceSerializer(invoice).data
+#                 }, status=status.HTTP_201_CREATED)
+#             else:
+#                 return Response({
+#                     "code": 400,
+#                     "status": "failed",
+#                     "message": "bad request",
+#                     "errors": serializer.errors
+#                 }, status=status.HTTP_400_BAD_REQUEST)
+#         except Exception as e:
+#             logger.exception(str(e))
+#             return Response({
+#                 "code": 500,
+#                 "status": "failed",
+#                 "message": "Something went wrong. Please try again.",
+#                 "errors": {
+#                     "server_error": [str(e)]
+#                 }
+#             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 class RestaurantItemBuyView(APIView):
     permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
 
     def post(self, request):
         try:
-            serializer = serializers.RestaurantItemBuySerializer(
-                data=request.data)
+            serializer = serializers.RestaurantItemBuySerializer(data=request.data)
             if serializer.is_valid():
                 restaurant = serializer.validated_data["restaurant"]
                 restaurant_items = serializer.validated_data["restaurant_items"]
-                member = serializer.validated_data["member_ID"]
-                member = Member.objects.get(member_ID=member)
+                print("restaurant_items:", restaurant_items)
+                member_id = serializer.validated_data["member_ID"]
+                member = Member.objects.get(member_ID=member_id)
+
+                # Calculate total amount
                 total_amount = reduce(
-                    lambda acc, item: acc + item["id"].selling_price*item["quantity"], restaurant_items, 0)
-                invoice_type, _ = InvoiceType.objects.get_or_create(
-                    name="Restaurant")
-                promo_code = serializer.validated_data["promo_code"]
+                    lambda acc, item: acc + item["id"].selling_price * item["quantity"],
+                    restaurant_items,
+                    0
+                )
+
+                # Get or create invoice type
+                invoice_type, _ = InvoiceType.objects.get_or_create(name="Restaurant")
+
+                promo_code_obj = serializer.validated_data.get("promo_code")
                 discount = 0
-                if promo_code != None:
-                    if promo_code.percentage is not None:
-                        percentage = promo_code.percentage
-                        discount = (percentage/100) * total_amount
-                        total_amount = total_amount - discount
+                promo_code_str = ""  # Because promo_code field is CharField in Invoice model
+
+                if promo_code_obj is not None:
+                    if promo_code_obj.percentage is not None:
+                        discount = (promo_code_obj.percentage / 100) * total_amount
                     else:
-                        discount = promo_code.amount
-                        if discount <= total_amount:
-                            total_amount = total_amount - discount
-                        else:
-                            discount = total_amount
-                            total_amount = 0
-                    promo_code.remaining_limit -= 1
-                    promo_code.save(update_fields=["remaining_limit"])
-                else:
-                    promo_code = ""
+                        discount = promo_code_obj.amount
+
+                    # Apply discount limits
+                    if discount > total_amount:
+                        discount = total_amount
+                    total_amount -= discount
+
+                    # Update promo code remaining limit
+                    promo_code_obj.remaining_limit -= 1
+                    promo_code_obj.save(update_fields=["remaining_limit"])
+
+                    promo_code_str = str(promo_code_obj)  # store string representation or ID as needed
+
+                # Validate restaurant_items IDs
+                restaurant_items_ids = [item["id"].id for item in restaurant_items]
+
                 with transaction.atomic():
                     invoice = Invoice.objects.create(
                         currency="BDT",
@@ -675,32 +775,55 @@ class RestaurantItemBuyView(APIView):
                         member=member,
                         restaurant=restaurant,
                         discount=discount,
-                        promo_code=promo_code
+                        promo_code=promo_code_str  # CharField expects string
                     )
-                    if promo_code != "":
+
+                    if promo_code_obj is not None:
                         AppliedPromoCode.objects.create(
-                            discounted_amount=discount, promo_code=promo_code, used_by=member)
-                    restaurant_items_objs = []
-                    for item in restaurant_items:
-                        restaurant_items_objs.append(item["id"].id)
-                    invoice_item = InvoiceItem.objects.create(
-                        invoice=invoice
-                    )
-                    invoice_item.restaurant_items.set(restaurant_items_objs)
+                            discounted_amount=discount,
+                            promo_code=promo_code_obj,
+                            used_by=member
+                        )
+
+                    invoice_item = InvoiceItem.objects.create(invoice=invoice)
+                    print("InvoiceItem created:", invoice_item.id)
+
+                    restaurant_items_objs = RestaurantItem.objects.filter(id__in=restaurant_items_ids)
+                    print("restaurant_items_objs:", restaurant_items_objs)
+                    try:
+                        invoice_item.restaurant_items.set(restaurant_items_objs)
+                        print("Restaurant items set successfully")
+                    except Exception as e:
+                        print("Error setting restaurant_items:", e)
+                        raise
+
+
+                    print("Restaurant items set")
+
                 delete_invoice_cache.delay()
+
                 return Response({
                     "code": 201,
                     "status": "success",
                     "message": "Invoice created successfully",
                     "data": InvoiceSerializer(invoice).data
                 }, status=status.HTTP_201_CREATED)
+
             else:
                 return Response({
                     "code": 400,
                     "status": "failed",
-                    "message": "bad request",
+                    "message": "Bad request",
                     "errors": serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
+
+        except Member.DoesNotExist:
+            return Response({
+                "code": 404,
+                "status": "failed",
+                "message": "Member not found"
+            }, status=status.HTTP_404_NOT_FOUND)
+
         except Exception as e:
             logger.exception(str(e))
             return Response({
@@ -711,7 +834,6 @@ class RestaurantItemBuyView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 class RestaurantUploadExcelView(APIView):
     permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
