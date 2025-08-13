@@ -16,7 +16,7 @@ class MemberSerializer(serializers.Serializer):
     date_of_birth = serializers.DateField()
     batch_number = serializers.CharField(required=False)
     anniversary_date = serializers.DateField(required=False)
-    profile_photo = serializers.ImageField()
+    profile_photo = serializers.ImageField(required=False)
     blood_group = serializers.CharField(required=False)
     nationality = serializers.CharField(required=False)
     membership_type = serializers.CharField()
@@ -121,6 +121,12 @@ class MemberSerializer(serializers.Serializer):
         if not InstituteName.objects.filter(name=institute_name, code=institute_code).exists():
             raise serializers.ValidationError(
                 {"member_ID": "Invalid institute name or code"})
+        request = self.context.get("request")
+        if request and request.method == "POST":
+            if not attrs.get("profile_photo"):
+                raise serializers.ValidationError({
+                    "profile_photo": "This field is required when creating a member."
+                })
 
         return super().validate(attrs)
 

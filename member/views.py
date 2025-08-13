@@ -30,7 +30,7 @@ from .models import Spouse, Profession
 from .tasks import delete_member_model_dependencies
 from django.core.cache import cache
 from django.utils.http import urlencode
-from .tasks import delete_members_cache,delete_members_specific_cache
+from .tasks import delete_members_cache, delete_members_specific_cache
 logger = logging.getLogger("myapp")
 
 
@@ -52,7 +52,8 @@ class MemberView(APIView):
     def post(self, request):
         try:
             data = request.data
-            member_serializer = serializers.MemberSerializer(data=data)
+            member_serializer = serializers.MemberSerializer(
+                data=data, context={"request": request})
             is_member_serializer_valid = member_serializer.is_valid()
             if is_member_serializer_valid:
                 with transaction.atomic():
@@ -622,11 +623,11 @@ class MemberContactNumberView(APIView):
             if serializer.is_valid():
                 member_ID = serializer.validated_data.get("member_ID")
                 instance = serializer.save()
-        
+
                 # activity log
                 log_request(request, "Member contact number added successfully",
                             "info", "user tried to add member contact number and succeeded")
-                
+
                 delete_members_specific_cache.delay(member_ID)
                 return Response({
                     "code": 201,
@@ -1044,7 +1045,7 @@ class MemberSpouseView(APIView):
                             }
                         }, status=status.HTTP_200_OK)
                     else:
-                        
+
                         instance = serializer.save()
                         member_ID = serializer.validated_data.get("member_ID")
                         # activity log
@@ -1440,7 +1441,7 @@ class MemberEmergencyContactView(APIView):
             # activity log
             log_request(request, "Member emergency contact updated failed", "error",
                         "user tried to update an emergency contact but made an invalid request")
-            
+
             return Response({
                 "code": 404,
                 "status": "failed",
@@ -1489,7 +1490,7 @@ class MemberCompanionView(APIView):
                 # activity log
                 log_request(request, "Member companion created successfully",
                             "info", "user tried to create member companion and succeeded")
-                 # delete cache for specific view member details
+                # delete cache for specific view member details
                 delete_members_specific_cache.delay(member_ID)
                 return Response({
                     "code": 201,
@@ -1659,17 +1660,19 @@ class MemberDocumentView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def get(self,request):
+    def get(self, request):
         try:
             documents = models.Documents.objects.all()
 
             paginator = CustomPageNumberPagination()
             paginated_queryset = paginator.paginate_queryset(
                 documents, request, view=self)
-            serializer = serializers.MemberDocumentViewSerializer(paginated_queryset, many=True)
+            serializer = serializers.MemberDocumentViewSerializer(
+                paginated_queryset, many=True)
 
             # activity log
-            log_request(request, "Member documents retrieved successfully","info","user tried to retrieve member documents and succeeded")
+            log_request(request, "Member documents retrieved successfully",
+                        "info", "user tried to retrieve member documents and succeeded")
             return paginator.get_paginated_response({
                 "code": 200,
                 "message": "Member documents retrieved successfully",
@@ -1680,7 +1683,8 @@ class MemberDocumentView(APIView):
         except Exception as e:
             logger.exception(str(e))
             # activity log
-            log_request(request, "Member documents retrieved failed","error","user tried to retrieve member documents but made an invalid request")
+            log_request(request, "Member documents retrieved failed", "error",
+                        "user tried to retrieve member documents but made an invalid request")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -1930,7 +1934,7 @@ class MemberSingleHistoryView(APIView):
             # activity log
             log_request(request, "Viewing single member history failed", "error",
                         "A user tried to view single member history but made an invalid request.")
-            
+
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -1962,7 +1966,7 @@ class MemberSpecialDayView(APIView):
                 # activity log
                 log_request(request, "Creating new member special days", "info",
                             "A user has successfully created new member special days.")
-                 # delete cache for specific view member details
+                # delete cache for specific view member details
                 delete_members_specific_cache.delay(member_ID)
                 return Response({
                     "code": 201,
@@ -2011,7 +2015,7 @@ class MemberSpecialDayView(APIView):
                 # activity log
                 log_request(request, "Updating member special days", "info",
                             "A user has successfully updated member special days.")
-                 # delete cache for specific view member details
+                # delete cache for specific view member details
                 delete_members_specific_cache.delay(member_ID)
                 return Response({
                     "code": 200,
@@ -2023,7 +2027,7 @@ class MemberSpecialDayView(APIView):
                 # activity log
                 log_request(request, "Updating member special days failed", "error",
                             "A user tried to update member special days but made an invalid request")
-                 # delete cache for specific view member details
+                # delete cache for specific view member details
                 delete_members_specific_cache.delay(instance.id)
                 return Response({
                     "code": 400,
