@@ -650,7 +650,50 @@ class ProductMediaView(APIView):
                     'server_error': [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+    def get(self, request):
+        """
+        Retrieves a list of all product media and logs an activity.
+        Returns:
+            Response: The response containing the list of all product media.
+        """
+        try:
+           
+            product_media = ProductMedia.objects.filter(is_active=True).select_related('product').order_by('id')
+            # Apply pagination
+            paginator = CustomPageNumberPagination()
+            paginated_media = paginator.paginate_queryset(product_media, request, view=self)
+            serializer = serializers.ProductMediaViewSerializer(paginated_media, many=True)
+            # activity log
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Product media retrieval successful",
+                severity_level="info",
+                description="User successfully retrieved all product media"
+            )
+            final_response = paginator.get_paginated_response({
+                "code": 200,
+                "message": "Product media list retrieved successfully",
+                "status": "success",
+                "data": serializer.data,
+            })
+            return final_response
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Product media retrieval failed",
+                severity_level="error",
+                description="An error occurred while retrieving product media"
+            )
+            return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
 
 class ProductPriceView(APIView):
     def get_permissions(self):
@@ -726,12 +769,7 @@ class ProductPriceView(APIView):
             Response: The response containing the list of product prices.
         """
         try:
-            query_items = sorted(request.query_params.items())
-            query_string = urlencode(query_items) if query_items else "default"
-            cache_key = f"product_prices::{query_string}"
-            cached_response = cache.get(cache_key)
-            if cached_response:
-                return Response(cached_response, status=200)
+            
             price = ProductPrice.objects.filter(is_active=True).select_related(
                 'product', 'membership_type').order_by('id')
             # Apply pagination
@@ -755,8 +793,7 @@ class ProductPriceView(APIView):
                 "data": serializer.data,
 
             })
-            cache.set(cache_key, final_response.data,
-                      timeout=60 * 30)  # Cache for 30 minutes
+            
             return final_response
         except Exception as e:
             logger.exception(str(e))
