@@ -722,7 +722,6 @@ class RestaurantItemBuyView(APIView):
             if serializer.is_valid():
                 restaurant = serializer.validated_data["restaurant"]
                 restaurant_items = serializer.validated_data["restaurant_items"]
-                print("restaurant_items:", restaurant_items)
                 member_id = serializer.validated_data["member_ID"]
                 member = Member.objects.get(member_ID=member_id)
 
@@ -738,7 +737,7 @@ class RestaurantItemBuyView(APIView):
 
                 promo_code_obj = serializer.validated_data.get("promo_code")
                 discount = 0
-                promo_code_str = ""  # Because promo_code field is CharField in Invoice model
+                promo_code_str = ""  
 
                 if promo_code_obj is not None:
                     if promo_code_obj.percentage is not None:
@@ -755,10 +754,23 @@ class RestaurantItemBuyView(APIView):
                     promo_code_obj.remaining_limit -= 1
                     promo_code_obj.save(update_fields=["remaining_limit"])
 
-                    promo_code_str = str(promo_code_obj)  # store string representation or ID as needed
+                    promo_code_str = str(promo_code_obj)  
 
                 # Validate restaurant_items IDs
                 restaurant_items_ids = [item["id"].id for item in restaurant_items]
+                valid_ids = set(
+                    RestaurantItem.objects.filter(id__in=restaurant_items_ids).values_list('id', flat=True)
+                )
+                if set(restaurant_items_ids) != valid_ids:
+                    logger.error("Invalid restaurant item IDs sent in request")
+                    return Response({
+                        "code": 400,
+                        "status": "failed",
+                        "message": "Invalid restaurant item IDs",
+                        "data": {
+                            "invalid_ids": list(set(restaurant_items_ids) - valid_ids)
+                        }
+                    }, status=status.HTTP_400_BAD_REQUEST)
 
                 with transaction.atomic():
                     invoice = Invoice.objects.create(
@@ -775,7 +787,7 @@ class RestaurantItemBuyView(APIView):
                         member=member,
                         restaurant=restaurant,
                         discount=discount,
-                        promo_code=promo_code_str  # CharField expects string
+                        promo_code=promo_code_str  
                     )
 
                     if promo_code_obj is not None:
@@ -786,20 +798,8 @@ class RestaurantItemBuyView(APIView):
                         )
 
                     invoice_item = InvoiceItem.objects.create(invoice=invoice)
-                    print("InvoiceItem created:", invoice_item.id)
-
-                    restaurant_items_objs = RestaurantItem.objects.filter(id__in=restaurant_items_ids)
-                    print("restaurant_items_objs:", restaurant_items_objs)
-                    try:
-                        invoice_item.restaurant_items.set(restaurant_items_objs)
-                        print("Restaurant items set successfully")
-                    except Exception as e:
-                        print("Error setting restaurant_items:", e)
-                        raise
-
-
-                    print("Restaurant items set")
-
+                    invoice_item.restaurant_items.set(valid_ids)
+                    
                 delete_invoice_cache.delay()
 
                 return Response({
