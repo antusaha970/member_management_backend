@@ -148,6 +148,7 @@ class MemberSerializer(serializers.Serializer):
         return member
 
     def update(self, instance, validated_data):
+        old_id = instance.member_ID
         member_ID = validated_data.get('member_ID', instance.member_ID)
         membership_type = validated_data.get(
             'membership_type', instance.membership_type)
@@ -210,7 +211,7 @@ class MemberSerializer(serializers.Serializer):
             MemberHistory.objects.bulk_update(update_lst, ['end_date'])
             history = MemberHistory(
                 start_date=timezone.now(),
-                stored_member_id=member_ID,
+                stored_member_id=old_id,
                 transferred=True,
                 transferred_reason="updated",
                 member=instance
@@ -1199,6 +1200,9 @@ class MemberDocumentSerializer(serializers.Serializer):
 
 
 class MemberHistorySerializer(serializers.ModelSerializer):
+    member = serializers.CharField(
+        source="member.member_ID", read_only=True)
+
     class Meta:
         model = MemberHistory
         fields = "__all__"

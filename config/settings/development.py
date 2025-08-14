@@ -14,7 +14,7 @@ ALLOWED_HOSTS = ["*"]
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',  
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
@@ -32,6 +32,7 @@ EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")
 
 # CORS for local development
 CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOW_CREDENTIALS = True
 
 # Cookie security OFF for development
 SESSION_COOKIE_SECURE = False
