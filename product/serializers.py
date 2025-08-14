@@ -138,9 +138,13 @@ class ProductMediaSerializer(serializers.Serializer):
         
         media =  ProductMedia.objects.create(**validated_data) 
         return media
-    
+class SimpleProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = ['id', 'name', 'sku']
+
 class ProductMediaViewSerializer(serializers.ModelSerializer):
-    
+    product = SimpleProductSerializer(read_only=True)
     class Meta:
         model = ProductMedia
         fields = "__all__"
@@ -181,6 +185,11 @@ class ProductPriceSerializer(serializers.Serializer):
             raise serializers.ValidationError("Product does not exist.")
         return product_instance
 
+    def validate(self, attrs):
+        if ProductPrice.objects.filter(membership_type=attrs['membership_type'], product=attrs['product']).exists():
+            raise serializers.ValidationError("Product price for this membership type already exists.")
+        return attrs
+
     def create(self, validated_data):
         product_price = ProductPrice.objects.create(**validated_data)
         return product_price
@@ -189,9 +198,12 @@ class MembershipTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = MembershipType
         fields = "__all__"
-    
+
+
+
 class ProductPriceViewSerializer(serializers.ModelSerializer):
     membership_type = MembershipTypeSerializer(read_only=True)
+    product = SimpleProductSerializer(read_only=True)
     class Meta:
         model = ProductPrice
         fields = "__all__"
