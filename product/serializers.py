@@ -235,6 +235,7 @@ class ProductBuySerializer(serializers.Serializer):
         if not Member.objects.filter(member_ID=value).exists():
             raise serializers.ValidationError(f"{value} is not a member")
         return value
+    
     def validate_promo_code(self, value):
         if not value:
             return value
@@ -243,11 +244,9 @@ class ProductBuySerializer(serializers.Serializer):
             promo_code = PromoCode.objects.get(promo_code=value)
         except PromoCode.DoesNotExist:
             raise serializers.ValidationError("This is not a valid promo code.")
-
+        if promo_code.category.name != "product":
+            raise serializers.ValidationError("This is not an product category promo code.")
         if not promo_code.is_promo_code_valid():
             raise serializers.ValidationError("This promo code is expired or not valid any more.")
-
-        if not promo_code.category.filter(name__iexact="product").exists():
-            raise serializers.ValidationError("This is not an product category promo code.")
 
         return promo_code

@@ -2190,3 +2190,36 @@ class MemberCertificateView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class MemberIDListView(APIView):
+    permission_classes = [IsAuthenticated, ViewMemberPermission]
+
+    def get(self, request):
+        try:
+            # Get all member IDs for active members
+            member_ids = Member.objects.filter(
+                status=0, is_active=True
+            ).values_list("member_ID", flat=True)
+            # activity log
+            log_request(request, "Retrieved member ID list", "info",
+                        "A user has successfully retrieved the list of member IDs.")
+
+            return Response({
+                "code": 200,
+                "status": "success",
+                "message": "List of all member IDs",
+                "data": list(member_ids)
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.exception(str(e))
+            # activity log
+            log_request(request, "Retrieved member ID list failed", "error",
+                        "A user tried to retrieve the list of member IDs but an error occurred.")
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -25,6 +25,8 @@ from member_financial_management.utils.permission_classes import MemberFinancial
 logger = logging.getLogger("myapp")
 from .tasks import delete_products_cache
 from .utils.filters import ProductFilter
+from . import services
+
 
 class BrandView(APIView):
     def get_permissions(self):
@@ -888,110 +890,161 @@ class ProductDetailView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+# class ProductBuyView(APIView):
+#     permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
+
+#     def post(self, request):
+#         """
+#         Creates an invoice for a product purchase.
+#         Args:
+#             request (Request): The request containing the data for the invoice instance.
+#         Returns:
+#             Response: The response containing the created invoice and a success message.
+#         """
+#         try:
+#             data = request.data
+#             serializer = serializers.ProductBuySerializer(data=data)
+
+#             if serializer.is_valid():
+#                 member_id = serializer.validated_data["member_ID"]
+#                 product_items = serializer.validated_data["product_items"]
+#                 member = Member.objects.get(member_ID=member_id)
+#                 promo_code = serializer.validated_data["promo_code"]
+#                 discount = 0
+#                 total_price = 0
+#                 product_ids = []
+#                 for item in product_items:
+#                     product = item["product"]
+#                     quantity = item["quantity"]
+#                     product_price = ProductPrice.objects.filter(
+#                         product=product, membership_type=member.membership_type).first()
+#                     if product_price:
+#                         total_price += product_price.price * quantity
+#                     else:
+#                         total_price += product.price * quantity
+#                     product_ids.extend([product.id] * quantity)
+#                     product_quantity = product_price.product.quantity_in_stock - quantity
+#                     product_price.product.quantity_in_stock = product_quantity
+#                     product_price.product.save(update_fields=["quantity_in_stock"])
+#                 if promo_code is not None:
+#                     if promo_code.percentage is not None:
+#                         percentage = promo_code.percentage
+#                         discount = (percentage/100) * total_price
+#                         total_price = total_price - discount
+#                     else:
+#                         discount = promo_code.amount
+#                         if discount <= total_price:
+#                             total_price = total_price - discount
+#                         else:
+#                             discount = total_price
+#                             total_price = 0
+#                     promo_code.remaining_limit -= 1
+#                     promo_code.save(update_fields=["remaining_limit"])
+#                 else:
+#                     promo_code = ""
+#                 invoice_type, _ = InvoiceType.objects.get_or_create(
+#                     name="Product")
+#                 with transaction.atomic():
+
+#                     invoice = Invoice.objects.create(
+#                         currency="BDT",
+#                         invoice_number=generate_unique_invoice_number(),
+#                         balance_due=total_price,
+#                         paid_amount=0,
+#                         issue_date=date.today(),
+#                         total_amount=total_price,
+#                         is_full_paid=False,
+#                         status="unpaid",
+#                         invoice_type=invoice_type,
+#                         generated_by=request.user,
+#                         member=member,
+#                         promo_code=promo_code,
+#                         discount=discount,
+#                     )
+
+#                     if promo_code != "":
+#                         AppliedPromoCode.objects.create(
+#                             discounted_amount=discount, promo_code=promo_code, used_by=member)
+#                     invoice_item = InvoiceItem.objects.create(invoice=invoice)
+#                     invoice_item.products.set(product_ids)
+                    
+
+#                 log_activity_task.delay_on_commit(
+#                     request_data_activity_log(request),
+#                     verb="Invoice created successfully",
+#                     severity_level="info",
+#                     description="User generated an invoice successfully",
+#                 )
+#                 # Delete cache for invoice
+#                 delete_invoice_cache.delay()
+
+#                 return Response({
+#                     "code": 200,
+#                     "message": "Invoice created successfully",
+#                     "status": "success",
+#                     "data": InvoiceSerializer(invoice).data
+#                 }, status=status.HTTP_200_OK)
+
+#             else:
+#                 log_activity_task.delay_on_commit(
+#                     request_data_activity_log(request),
+#                     verb="Invoice creation failed",
+#                     severity_level="error",
+#                     description="User attempted to generate an invoice with invalid data",
+#                 )
+#                 return Response({
+#                     "code": 400,
+#                     "status": "failed",
+#                     "message": "Invalid request",
+#                     "errors": serializer.errors
+#                 }, status=status.HTTP_400_BAD_REQUEST)
+
+#         except Exception as e:
+#             return Response({
+#                 "code": 500,
+#                 "status": "error",
+#                 "message": "Something went wrong",
+#                 "error": str(e)
+#             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 class ProductBuyView(APIView):
     permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
 
     def post(self, request):
-        """
-        Creates an invoice for a product purchase.
-        Args:
-            request (Request): The request containing the data for the invoice instance.
-        Returns:
-            Response: The response containing the created invoice and a success message.
-        """
+        serializer = serializers.ProductBuySerializer(data=request.data)
+        if not serializer.is_valid():
+            self._log_activity(request, "Invoice creation failed", "error")
+            return Response({
+                "code": 400,
+                "status": "failed",
+                "message": "Invalid request",
+                "errors": serializer.errors
+            }, status=400)
+
         try:
-            data = request.data
-            serializer = serializers.ProductBuySerializer(data=data)
+            member = Member.objects.get(member_ID=serializer.validated_data["member_ID"])
+            product_items = serializer.validated_data["product_items"]
+            promo_code = serializer.validated_data.get("promo_code")
 
-            if serializer.is_valid():
-                member_id = serializer.validated_data["member_ID"]
-                product_items = serializer.validated_data["product_items"]
-                member = Member.objects.get(member_ID=member_id)
-                promo_code = serializer.validated_data["promo_code"]
-                discount = 0
-                total_price = 0
-                product_ids = []
-                for item in product_items:
-                    product = item["product"]
-                    quantity = item["quantity"]
-                    product_price = ProductPrice.objects.filter(
-                        product=product, membership_type=member.membership_type).first()
-                    if product_price:
-                        total_price += product_price.price * quantity
-                    else:
-                        total_price += product.price * quantity
-                    product_ids.extend([product.id] * quantity)
-                if promo_code is not None:
-                    if promo_code.percentage is not None:
-                        percentage = promo_code.percentage
-                        discount = (percentage/100) * total_price
-                        total_price = total_price - discount
-                    else:
-                        discount = promo_code.amount
-                        if discount <= total_price:
-                            total_price = total_price - discount
-                        else:
-                            discount = total_price
-                            total_price = 0
-                    promo_code.remaining_limit -= 1
-                    promo_code.save(update_fields=["remaining_limit"])
-                else:
-                    promo_code = ""
-                invoice_type, _ = InvoiceType.objects.get_or_create(
-                    name="Product")
-                with transaction.atomic():
+            total_price, discount, product_ids = services.calculate_total_price(member, product_items)
+            total_price, discount = services.apply_discount(total_price, promo_code)
 
-                    invoice = Invoice.objects.create(
-                        currency="BDT",
-                        invoice_number=generate_unique_invoice_number(),
-                        balance_due=total_price,
-                        paid_amount=0,
-                        issue_date=date.today(),
-                        total_amount=total_price,
-                        is_full_paid=False,
-                        status="unpaid",
-                        invoice_type=invoice_type,
-                        generated_by=request.user,
-                        member=member,
-                        promo_code=promo_code,
-                        discount=discount,
-                    )
+            with transaction.atomic():
+                invoice = services.create_invoice(member, total_price, discount, promo_code, request.user)
+                services.update_stock(product_items)
+                services.create_invoice_items(invoice, product_ids)
+                if promo_code:
+                    services.apply_promo_usage(promo_code, discount, member)
 
-                    if promo_code != "":
-                        AppliedPromoCode.objects.create(
-                            discounted_amount=discount, promo_code=promo_code, used_by=member)
-                    invoice_item = InvoiceItem.objects.create(invoice=invoice)
-                    invoice_item.products.set(product_ids)
+            self._log_activity(request, "Invoice created successfully", "info")
+            delete_invoice_cache.delay()
 
-                log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),
-                    verb="Invoice created successfully",
-                    severity_level="info",
-                    description="User generated an invoice successfully",
-                )
-                # Delete cache for invoice
-                delete_invoice_cache.delay()
-
-                return Response({
-                    "code": 200,
-                    "message": "Invoice created successfully",
-                    "status": "success",
-                    "data": InvoiceSerializer(invoice).data
-                }, status=status.HTTP_200_OK)
-
-            else:
-                log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),
-                    verb="Invoice creation failed",
-                    severity_level="error",
-                    description="User attempted to generate an invoice with invalid data",
-                )
-                return Response({
-                    "code": 400,
-                    "status": "failed",
-                    "message": "Invalid request",
-                    "errors": serializer.errors
-                }, status=status.HTTP_400_BAD_REQUEST)
+            return Response({
+                "code": 200,
+                "message": "Invoice created successfully",
+                "status": "success",
+                "data": InvoiceSerializer(invoice).data
+            }, status=200)
 
         except Exception as e:
             return Response({
@@ -999,4 +1052,12 @@ class ProductBuyView(APIView):
                 "status": "error",
                 "message": "Something went wrong",
                 "error": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            }, status=500)
+
+    def _log_activity(self, request, message, level):
+        log_activity_task.delay_on_commit(
+            request_data_activity_log(request),
+            verb=message,
+            severity_level=level,
+            description=f"User attempted invoice action: {message}"
+        )
