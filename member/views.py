@@ -1830,7 +1830,7 @@ class MemberHistoryView(APIView):
             if cached_response:
                 return Response(cached_response, status=200)
 
-            history = MemberHistory.objects.all()
+            history = MemberHistory.objects.all().order_by("-created_at")
 
             # Now get the values
             start_date = query_dict.get("start_date")

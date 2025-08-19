@@ -21,6 +21,7 @@ urlpatterns = [
     path('api/facility/', include('facility.urls')),
     path('api/promo_code/', include('promo_code_app.urls')),
     path('api/mails/', include('mails.urls')),
+    path('api/dashboard/', include('dashboard.urls')),
 
     path('api-auth/', include('rest_framework.urls')),
     path('silk/', include('silk.urls', namespace='silk')),
@@ -33,5 +34,6 @@ if settings.DEBUG:
 else:
 
     urlpatterns += [
-        re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+        re_path(r'^media/(?P<path>.*)$', serve,
+                {'document_root': settings.MEDIA_ROOT}),
     ]
