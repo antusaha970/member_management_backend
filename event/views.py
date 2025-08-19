@@ -1,6 +1,5 @@
 
 from .utils.permission_classes import EventManagementPermission
-from member_financial_management.tasks import delete_invoice_cache
 from django.utils.http import urlencode
 from django.core.cache import cache
 from core.utils.pagination import CustomPageNumberPagination
@@ -792,7 +791,6 @@ class EventTicketBuyView(APIView):
                     severity_level="info",
                     description="user generated an invoice successfully",)
                 # delete the cache for invoices
-                delete_invoice_cache.delay()
                 return Response({
                     "code": 200,
                     "message": "Invoice created successfully",

@@ -9,7 +9,6 @@ from activity_log.tasks import log_activity_task
 from activity_log.utils.functions import request_data_activity_log
 from member_financial_management.models import Invoice, InvoiceItem, InvoiceType, Income, IncomeReceivingType, Due, MemberDue
 from member_financial_management.utils.functions import generate_unique_invoice_number
-from member_financial_management.tasks import delete_all_financial_cache
 from member.models import Member
 from django.db import transaction
 from functools import reduce
@@ -22,7 +21,6 @@ from django.core.cache import cache
 from django.utils.http import urlencode
 import pandas as pd
 import pdb
-from member_financial_management.tasks import delete_invoice_cache
 from member_financial_management.models import Transaction, PaymentMethod, Payment, SaleType, Sale
 from member_financial_management.utils.functions import generate_unique_invoice_number
 from .utils.permission_classes import RestaurantManagementPermission
@@ -687,7 +685,6 @@ class RestaurantItemMediaView(APIView):
 #                         invoice=invoice
 #                     )
 #                     invoice_item.restaurant_items.set(restaurant_items_objs)
-#                 delete_invoice_cache.delay()
 #                 return Response({
 #                     "code": 201,
 #                     "status": "success",
@@ -800,7 +797,6 @@ class RestaurantItemBuyView(APIView):
                     invoice_item = InvoiceItem.objects.create(invoice=invoice)
                     invoice_item.restaurant_items.set(valid_ids)
                     
-                delete_invoice_cache.delay()
 
                 return Response({
                     "code": 201,
@@ -1062,7 +1058,6 @@ class RestaurantUploadExcelView(APIView):
                             "status": "success",
                             "reason": "Successfully uploaded"
                         })
-                    delete_all_financial_cache.delay()
                     return Response({
                         "code": 201,
                         "status": "success",

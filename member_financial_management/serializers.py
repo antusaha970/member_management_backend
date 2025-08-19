@@ -439,8 +439,6 @@ class InvoiceCustomDeleteSerializer(serializers.Serializer):
 
 
 class InvoiceUpdateSerializer(serializers.Serializer):
-    balance_due = serializers.DecimalField(max_digits=12, decimal_places=2)
     paid_amount = serializers.DecimalField(max_digits=12, decimal_places=2)
-    total_amount = serializers.DecimalField(max_digits=12, decimal_places=2)
     payment_method = serializers.PrimaryKeyRelatedField(
         queryset=PaymentMethod.active_objects.all())

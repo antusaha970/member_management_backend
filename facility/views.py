@@ -27,7 +27,6 @@ from django.db.models import Q
 from .filters import FacilityFilter
 from .utils.permission_classes import FacilityManagementPermission
 from member_financial_management.utils.permission_classes import MemberFinancialManagementPermission
-from member_financial_management.tasks import delete_invoice_cache
 
 
 logger = logging.getLogger("myapp")
@@ -359,7 +358,6 @@ class FacilityBuyView(APIView):
                     severity_level="info",
                     description="user generated an invoice successfully",)
                 # delete the cache for the invoice list
-                delete_invoice_cache.delay()
                 return Response({
                     "code": 200,
                     "message": "Invoice created successfully",

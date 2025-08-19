@@ -1,5 +1,4 @@
 from .utils.permission_classes import ProductManagementPermission
-from member_financial_management.tasks import delete_invoice_cache
 from django.utils.http import urlencode
 from django.core.cache import cache
 import pdb
@@ -976,7 +975,6 @@ class ProductDetailView(APIView):
 #                     description="User generated an invoice successfully",
 #                 )
 #                 # Delete cache for invoice
-#                 delete_invoice_cache.delay()
 
 #                 return Response({
 #                     "code": 200,
@@ -1037,7 +1035,6 @@ class ProductBuyView(APIView):
                     services.apply_promo_usage(promo_code, discount, member)
 
             self._log_activity(request, "Invoice created successfully", "info")
-            delete_invoice_cache.delay()
 
             return Response({
                 "code": 200,

@@ -16,7 +16,6 @@ from .models import PaymentMethod, Transaction, Payment, Sale, SaleType, IncomeP
 from django.utils.http import urlencode
 from . import serializers
 from .utils.functions import generate_unique_sale_number
-from .tasks import delete_all_financial_cache, delete_member_accounts_cache
 from .utils.functions import generate_unique_invoice_number, generate_unique_sale_number
 from datetime import datetime
 from member.models import Member
@@ -24,6 +23,8 @@ import pandas as pd
 from django.http import Http404
 from .utils.permission_classes import MemberFinancialManagementPermission
 logger = logging.getLogger("myapp")
+from .services.invoices.update_invoice_func import update_invoice
+from .services.invoices.invoice_payment import process_invoice_payment
 
 
 class PaymentMethodView(APIView):
@@ -123,345 +124,398 @@ class PaymentMethodView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+# class InvoicePaymentView(APIView):
+#     permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
+
+#     def post(self, request):
+#         try:
+#             serializer = serializers.InvoicePaymentSerializer(
+#                 data=request.data)
+#             if serializer.is_valid():
+#                 invoice = serializer.validated_data["invoice_id"]
+#                 payment_method = serializer.validated_data["payment_method"]
+#                 amount = serializer.validated_data["amount"]
+#                 income_particular = serializer.validated_data["income_particular"]
+#                 received_from = serializer.validated_data["received_from"]
+#                 adjust_from_balance = serializer.validated_data["adjust_from_balance"]
+#                 with transaction.atomic():
+#                     if amount == invoice.total_amount:
+#                         invoice.paid_amount = invoice.total_amount
+#                         invoice.is_full_paid = True
+#                         invoice.status = "paid"
+#                         invoice.balance_due = 0
+#                         invoice.save(update_fields=[
+#                             "paid_amount", "is_full_paid", "status", "balance_due"])
+#                         full_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
+#                             name="full")
+#                         transaction_obj = Transaction.objects.create(
+#                             amount=invoice.paid_amount,
+#                             transaction_date=date.today(),
+#                             status="paid",
+#                             member=invoice.member,
+#                             invoice=invoice,
+#                             payment_method=payment_method
+#                         )
+#                         Payment.objects.create(
+#                             payment_amount=invoice.paid_amount,
+#                             payment_status="paid",
+#                             payment_date=date.today(),
+#                             invoice=invoice,
+#                             member=invoice.member,
+#                             payment_method=payment_method,
+#                             processed_by=request.user,
+#                             transaction=transaction_obj
+#                         )
+#                         sale_type, _ = SaleType.objects.get_or_create(
+#                             name=invoice.invoice_type.name)
+#                         sale_obj = Sale.objects.create(
+#                             sale_number=generate_unique_sale_number(),
+#                             sub_total=invoice.total_amount,
+#                             total_amount=invoice.paid_amount,
+#                             payment_status="paid",
+#                             sale_source_type=sale_type,
+#                             customer=invoice.member,
+#                             payment_method=payment_method,
+#                             invoice=invoice
+#                         )
+#                         Income.objects.create(
+#                             receivable_amount=invoice.total_amount,
+#                             final_receivable=sale_obj.total_amount,
+#                             actual_received=invoice.paid_amount,
+#                             reaming_due=0,
+#                             particular=income_particular,
+#                             received_from_type=received_from,
+#                             receiving_type=full_receiving_type,
+#                             member=invoice.member,
+#                             received_by=payment_method,
+#                             sale=sale_obj,
+#                             discounted_amount=invoice.discount,
+#                             discount_name=invoice.promo_code
+#                         )
+#                         return Response(
+#                             {
+#                                 "code": 200,
+#                                 "status": "success",
+#                                 "message": "Invoice payment successful",
+#                                 "data": {
+#                                     "invoice_id": invoice.id
+#                                 }
+#                             }, status=status.HTTP_200_OK
+#                         )
+#                     elif amount < invoice.total_amount and amount != 0:
+#                         payment_amount = amount
+#                         if adjust_from_balance:
+#                             member_account = MemberAccount.objects.get(
+#                                 member=invoice.member)
+#                             member_account_balance = member_account.balance
+#                             remaining_payment = invoice.total_amount - payment_amount
+#                             if member_account_balance >= remaining_payment:
+#                                 payment_amount = amount + remaining_payment
+#                                 member_account.balance = member_account.balance - remaining_payment
+#                                 member_account.save(update_fields=["balance"])
+#                             else:
+#                                 payment_amount = amount + member_account_balance
+#                                 member_account.balance = 0
+#                                 member_account.save(update_fields=["balance"])
+
+#                         invoice.paid_amount = payment_amount
+#                         if invoice.paid_amount == invoice.total_amount:
+#                             invoice.is_full_paid = True
+#                             invoice.status = "paid"
+#                             invoice.balance_due = 0
+#                         else:
+#                             invoice.is_full_paid = False
+#                             invoice.status = "partial_paid"
+#                             invoice.balance_due = invoice.total_amount - invoice.paid_amount
+#                         invoice_full_paid = invoice.is_full_paid
+#                         invoice_status = invoice.status
+#                         invoice_due = invoice.balance_due
+#                         invoice.save(update_fields=[
+#                             "paid_amount", "is_full_paid", "status", "balance_due"])
+#                         if invoice_full_paid:
+#                             full_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
+#                                 name="full")
+#                         else:
+#                             full_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
+#                                 name="partial")
+#                         transaction_obj = Transaction.objects.create(
+#                             amount=amount,
+#                             transaction_date=date.today(),
+#                             status=invoice_status,
+#                             member=invoice.member,
+#                             invoice=invoice,
+#                             payment_method=payment_method
+#                         )
+#                         payment_obj = Payment.objects.create(
+#                             payment_amount=amount,
+#                             payment_status=invoice_status,
+#                             payment_date=date.today(),
+#                             invoice=invoice,
+#                             member=invoice.member,
+#                             payment_method=payment_method,
+#                             processed_by=request.user,
+#                             transaction=transaction_obj
+#                         )
+#                         sale_type, _ = SaleType.objects.get_or_create(
+#                             name=invoice.invoice_type.name)
+#                         sale_obj = Sale.objects.create(
+#                             sale_number=generate_unique_sale_number(),
+#                             sub_total=invoice.total_amount,
+#                             total_amount=invoice.paid_amount,
+#                             payment_status=invoice_status,
+#                             sale_source_type=sale_type,
+#                             customer=invoice.member,
+#                             payment_method=payment_method,
+#                             invoice=invoice,
+#                             due_date=date.today()
+#                         )
+#                         Income.objects.create(
+#                             receivable_amount=invoice.total_amount,
+#                             final_receivable=sale_obj.total_amount,
+#                             actual_received=amount,
+#                             reaming_due=invoice_due,
+#                             particular=income_particular,
+#                             received_from_type=received_from,
+#                             receiving_type=full_receiving_type,
+#                             member=invoice.member,
+#                             received_by=payment_method,
+#                             sale=sale_obj,
+#                             discounted_amount=invoice.discount,
+#                             discount_name=invoice.promo_code
+#                         )
+#                         due_obj = Due.objects.create(
+#                             original_amount=invoice.total_amount,
+#                             due_amount=invoice_due,
+#                             paid_amount=payment_amount,
+#                             due_date=date.today(),
+#                             member=invoice.member,
+#                             invoice=invoice,
+#                             payment=payment_obj,
+#                             transaction=transaction_obj
+#                         )
+#                         MemberDue.objects.create(
+#                             amount_due=due_obj.due_amount,
+#                             due_date=date.today(),
+#                             amount_paid=due_obj.paid_amount,
+#                             payment_date=date.today(),
+#                             member=invoice.member,
+#                             due_reference=due_obj
+#                         )
+#                         log_activity_task.delay_on_commit(
+#                             request_data_activity_log(request),
+#                             verb="Creation",
+#                             severity_level="info",
+#                             description="User paid an invoice",
+#                         )
+#                         return Response(
+#                             {
+#                                 "code": 200,
+#                                 "status": "success",
+#                                 "message": "Invoice payment successful",
+#                                 "data": {
+#                                     "invoice_id": invoice.id
+#                                 }
+#                             }, status=status.HTTP_200_OK
+#                         )
+#                     else:
+#                         payment_amount = 0
+#                         if adjust_from_balance:
+#                             member_account = MemberAccount.objects.get(
+#                                 member=invoice.member)
+#                             member_account_balance = member_account.balance
+#                             if member_account_balance >= invoice.total_amount:
+#                                 payment_amount = invoice.total_amount
+#                                 member_account.balance = member_account_balance - invoice.total_amount
+#                                 invoice.is_full_paid = True
+#                                 invoice.status = "paid"
+#                                 invoice.balance_due = 0
+#                             else:
+#                                 payment_amount = member_account_balance
+#                                 member_account.balance = 0
+#                                 invoice.is_full_paid = False
+#                                 invoice.balance_due = invoice.total_amount - payment_amount
+#                                 if payment_amount != 0:
+#                                     invoice.status = "partial_paid"
+#                                 else:
+#                                     invoice.status = "due"
+#                         member_account.save(update_fields=["balance"])
+#                         invoice.paid_amount = payment_amount
+#                         invoice_status = invoice.status
+#                         invoice_is_full_paid = invoice.is_full_paid
+#                         invoice.save(update_fields=[
+#                             "paid_amount", "is_full_paid", "status", "balance_due"])
+#                         if invoice_is_full_paid:
+#                             full_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
+#                                 name="full")
+#                         else:
+#                             full_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
+#                                 name="partial")
+
+#                         transaction_obj = Transaction.objects.create(
+#                             amount=payment_amount,
+#                             transaction_date=date.today(),
+#                             status=invoice_status,
+#                             member=invoice.member,
+#                             invoice=invoice,
+#                             payment_method=payment_method
+#                         )
+#                         payment_obj = Payment.objects.create(
+#                             payment_amount=payment_amount,
+#                             payment_status=invoice_status,
+#                             payment_date=date.today(),
+#                             invoice=invoice,
+#                             member=invoice.member,
+#                             payment_method=payment_method,
+#                             processed_by=request.user,
+#                             transaction=transaction_obj
+#                         )
+#                         sale_type, _ = SaleType.objects.get_or_create(
+#                             name=invoice.invoice_type.name)
+#                         sale_obj = Sale.objects.create(
+#                             sale_number=generate_unique_sale_number(),
+#                             sub_total=invoice.total_amount,
+#                             total_amount=invoice.paid_amount,
+#                             payment_status=invoice_status,
+#                             sale_source_type=sale_type,
+#                             customer=invoice.member,
+#                             payment_method=payment_method,
+#                             invoice=invoice,
+#                             due_date=date.today()
+#                         )
+#                         Income.objects.create(
+#                             receivable_amount=invoice.total_amount,
+#                             final_receivable=sale_obj.total_amount,
+#                             actual_received=invoice.paid_amount,
+#                             reaming_due=invoice.balance_due,
+#                             particular=income_particular,
+#                             received_from_type=received_from,
+#                             receiving_type=full_receiving_type,
+#                             member=invoice.member,
+#                             received_by=payment_method,
+#                             sale=sale_obj,
+#                             discounted_amount=invoice.discount,
+#                             discount_name=invoice.promo_code
+#                         )
+#                         due_obj = Due.objects.create(
+#                             original_amount=invoice.total_amount,
+#                             due_amount=invoice.balance_due,
+#                             paid_amount=invoice.paid_amount,
+#                             due_date=date.today(),
+#                             member=invoice.member,
+#                             invoice=invoice,
+#                             payment=payment_obj,
+#                             transaction=transaction_obj
+#                         )
+#                         MemberDue.objects.create(
+#                             amount_due=due_obj.due_amount,
+#                             due_date=date.today(),
+#                             amount_paid=due_obj.paid_amount,
+#                             payment_date=date.today(),
+#                             member=invoice.member,
+#                             due_reference=due_obj
+#                         )
+#                         log_activity_task.delay_on_commit(
+#                             request_data_activity_log(request),
+#                             verb="Creation",
+#                             severity_level="info",
+#                             description="User paid an invoice",
+#                         )
+#                         return Response(
+#                             {
+#                                 "code": 200,
+#                                 "status": "success",
+#                                 "message": "Invoice payment successful",
+#                                 "data": {
+#                                     "invoice_id": invoice.id
+#                                 }
+#                             }, status=status.HTTP_200_OK
+#                         )
+
+#             else:
+#                 log_activity_task.delay_on_commit(
+#                     request_data_activity_log(request),
+#                     verb="Creation",
+#                     severity_level="info",
+#                     description="User tried to pay an invoice but faced an error",
+#                 )
+#                 return Response({
+#                     "code": 400,
+#                     "status": "failed",
+#                     "message": "Bad request",
+#                     "errors": serializer.errors
+#                 }, status=status.HTTP_400_BAD_REQUEST)
+#         except Exception as e:
+#             logger.exception(str(e))
+#             log_activity_task.delay_on_commit(
+#                 request_data_activity_log(request),
+#                 verb="Creation",
+#                 severity_level="info",
+#                 description="User tried to pay an invoice but faced an error",
+#             )
+#             return Response({
+#                 "code": 500,
+#                 "status": "failed",
+#                 "message": "Something went wrong.",
+#                 "errors": {
+#                     "server_error": [str(e)]
+#                 }
+#             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 class InvoicePaymentView(APIView):
     permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
 
     def post(self, request):
-        try:
-            serializer = serializers.InvoicePaymentSerializer(
-                data=request.data)
-            if serializer.is_valid():
-                invoice = serializer.validated_data["invoice_id"]
-                payment_method = serializer.validated_data["payment_method"]
-                amount = serializer.validated_data["amount"]
-                income_particular = serializer.validated_data["income_particular"]
-                received_from = serializer.validated_data["received_from"]
-                adjust_from_balance = serializer.validated_data["adjust_from_balance"]
-                with transaction.atomic():
-                    if amount == invoice.total_amount:
-                        invoice.paid_amount = invoice.total_amount
-                        invoice.is_full_paid = True
-                        invoice.status = "paid"
-                        invoice.balance_due = 0
-                        invoice.save(update_fields=[
-                            "paid_amount", "is_full_paid", "status", "balance_due"])
-                        full_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
-                            name="full")
-                        transaction_obj = Transaction.objects.create(
-                            amount=invoice.paid_amount,
-                            transaction_date=date.today(),
-                            status="paid",
-                            member=invoice.member,
-                            invoice=invoice,
-                            payment_method=payment_method
-                        )
-                        Payment.objects.create(
-                            payment_amount=invoice.paid_amount,
-                            payment_status="paid",
-                            payment_date=date.today(),
-                            invoice=invoice,
-                            member=invoice.member,
-                            payment_method=payment_method,
-                            processed_by=request.user,
-                            transaction=transaction_obj
-                        )
-                        sale_type, _ = SaleType.objects.get_or_create(
-                            name=invoice.invoice_type.name)
-                        sale_obj = Sale.objects.create(
-                            sale_number=generate_unique_sale_number(),
-                            sub_total=invoice.total_amount,
-                            total_amount=invoice.paid_amount,
-                            payment_status="paid",
-                            sale_source_type=sale_type,
-                            customer=invoice.member,
-                            payment_method=payment_method,
-                            invoice=invoice
-                        )
-                        Income.objects.create(
-                            receivable_amount=invoice.total_amount,
-                            final_receivable=sale_obj.total_amount,
-                            actual_received=invoice.paid_amount,
-                            reaming_due=0,
-                            particular=income_particular,
-                            received_from_type=received_from,
-                            receiving_type=full_receiving_type,
-                            member=invoice.member,
-                            received_by=payment_method,
-                            sale=sale_obj,
-                            discounted_amount=invoice.discount,
-                            discount_name=invoice.promo_code
-                        )
-                        delete_all_financial_cache.delay()
-                        return Response(
-                            {
-                                "code": 200,
-                                "status": "success",
-                                "message": "Invoice payment successful",
-                                "data": {
-                                    "invoice_id": invoice.id
-                                }
-                            }, status=status.HTTP_200_OK
-                        )
-                    elif amount < invoice.total_amount and amount != 0:
-                        payment_amount = amount
-                        if adjust_from_balance:
-                            member_account = MemberAccount.objects.get(
-                                member=invoice.member)
-                            member_account_balance = member_account.balance
-                            remaining_payment = invoice.total_amount - payment_amount
-                            if member_account_balance >= remaining_payment:
-                                payment_amount = amount + remaining_payment
-                                member_account.balance = member_account.balance - remaining_payment
-                                member_account.save(update_fields=["balance"])
-                            else:
-                                payment_amount = amount + member_account_balance
-                                member_account.balance = 0
-                                member_account.save(update_fields=["balance"])
-
-                        invoice.paid_amount = payment_amount
-                        if invoice.paid_amount == invoice.total_amount:
-                            invoice.is_full_paid = True
-                            invoice.status = "paid"
-                            invoice.balance_due = 0
-                        else:
-                            invoice.is_full_paid = False
-                            invoice.status = "partial_paid"
-                            invoice.balance_due = invoice.total_amount - invoice.paid_amount
-                        invoice_full_paid = invoice.is_full_paid
-                        invoice_status = invoice.status
-                        invoice_due = invoice.balance_due
-                        invoice.save(update_fields=[
-                            "paid_amount", "is_full_paid", "status", "balance_due"])
-                        if invoice_full_paid:
-                            full_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
-                                name="full")
-                        else:
-                            full_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
-                                name="partial")
-                        transaction_obj = Transaction.objects.create(
-                            amount=amount,
-                            transaction_date=date.today(),
-                            status=invoice_status,
-                            member=invoice.member,
-                            invoice=invoice,
-                            payment_method=payment_method
-                        )
-                        payment_obj = Payment.objects.create(
-                            payment_amount=amount,
-                            payment_status=invoice_status,
-                            payment_date=date.today(),
-                            invoice=invoice,
-                            member=invoice.member,
-                            payment_method=payment_method,
-                            processed_by=request.user,
-                            transaction=transaction_obj
-                        )
-                        sale_type, _ = SaleType.objects.get_or_create(
-                            name=invoice.invoice_type.name)
-                        sale_obj = Sale.objects.create(
-                            sale_number=generate_unique_sale_number(),
-                            sub_total=invoice.total_amount,
-                            total_amount=invoice.paid_amount,
-                            payment_status=invoice_status,
-                            sale_source_type=sale_type,
-                            customer=invoice.member,
-                            payment_method=payment_method,
-                            invoice=invoice,
-                            due_date=date.today()
-                        )
-                        Income.objects.create(
-                            receivable_amount=invoice.total_amount,
-                            final_receivable=sale_obj.total_amount,
-                            actual_received=amount,
-                            reaming_due=invoice_due,
-                            particular=income_particular,
-                            received_from_type=received_from,
-                            receiving_type=full_receiving_type,
-                            member=invoice.member,
-                            received_by=payment_method,
-                            sale=sale_obj,
-                            discounted_amount=invoice.discount,
-                            discount_name=invoice.promo_code
-                        )
-                        due_obj = Due.objects.create(
-                            original_amount=invoice.total_amount,
-                            due_amount=invoice_due,
-                            paid_amount=payment_amount,
-                            due_date=date.today(),
-                            member=invoice.member,
-                            invoice=invoice,
-                            payment=payment_obj,
-                            transaction=transaction_obj
-                        )
-                        MemberDue.objects.create(
-                            amount_due=due_obj.due_amount,
-                            due_date=date.today(),
-                            amount_paid=due_obj.paid_amount,
-                            payment_date=date.today(),
-                            member=invoice.member,
-                            due_reference=due_obj
-                        )
-                        log_activity_task.delay_on_commit(
-                            request_data_activity_log(request),
-                            verb="Creation",
-                            severity_level="info",
-                            description="User paid an invoice",
-                        )
-                        delete_all_financial_cache.delay()
-                        return Response(
-                            {
-                                "code": 200,
-                                "status": "success",
-                                "message": "Invoice payment successful",
-                                "data": {
-                                    "invoice_id": invoice.id
-                                }
-                            }, status=status.HTTP_200_OK
-                        )
-                    else:
-                        payment_amount = 0
-                        if adjust_from_balance:
-                            member_account = MemberAccount.objects.get(
-                                member=invoice.member)
-                            member_account_balance = member_account.balance
-                            if member_account_balance >= invoice.total_amount:
-                                payment_amount = invoice.total_amount
-                                member_account.balance = member_account_balance - invoice.total_amount
-                                invoice.is_full_paid = True
-                                invoice.status = "paid"
-                                invoice.balance_due = 0
-                            else:
-                                payment_amount = member_account_balance
-                                member_account.balance = 0
-                                invoice.is_full_paid = False
-                                invoice.balance_due = invoice.total_amount - payment_amount
-                                if payment_amount != 0:
-                                    invoice.status = "partial_paid"
-                                else:
-                                    invoice.status = "due"
-                        member_account.save(update_fields=["balance"])
-                        invoice.paid_amount = payment_amount
-                        invoice_status = invoice.status
-                        invoice_is_full_paid = invoice.is_full_paid
-                        invoice.save(update_fields=[
-                            "paid_amount", "is_full_paid", "status", "balance_due"])
-                        if invoice_is_full_paid:
-                            full_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
-                                name="full")
-                        else:
-                            full_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
-                                name="partial")
-
-                        transaction_obj = Transaction.objects.create(
-                            amount=payment_amount,
-                            transaction_date=date.today(),
-                            status=invoice_status,
-                            member=invoice.member,
-                            invoice=invoice,
-                            payment_method=payment_method
-                        )
-                        payment_obj = Payment.objects.create(
-                            payment_amount=payment_amount,
-                            payment_status=invoice_status,
-                            payment_date=date.today(),
-                            invoice=invoice,
-                            member=invoice.member,
-                            payment_method=payment_method,
-                            processed_by=request.user,
-                            transaction=transaction_obj
-                        )
-                        sale_type, _ = SaleType.objects.get_or_create(
-                            name=invoice.invoice_type.name)
-                        sale_obj = Sale.objects.create(
-                            sale_number=generate_unique_sale_number(),
-                            sub_total=invoice.total_amount,
-                            total_amount=invoice.paid_amount,
-                            payment_status=invoice_status,
-                            sale_source_type=sale_type,
-                            customer=invoice.member,
-                            payment_method=payment_method,
-                            invoice=invoice,
-                            due_date=date.today()
-                        )
-                        Income.objects.create(
-                            receivable_amount=invoice.total_amount,
-                            final_receivable=sale_obj.total_amount,
-                            actual_received=invoice.paid_amount,
-                            reaming_due=invoice.balance_due,
-                            particular=income_particular,
-                            received_from_type=received_from,
-                            receiving_type=full_receiving_type,
-                            member=invoice.member,
-                            received_by=payment_method,
-                            sale=sale_obj,
-                            discounted_amount=invoice.discount,
-                            discount_name=invoice.promo_code
-                        )
-                        due_obj = Due.objects.create(
-                            original_amount=invoice.total_amount,
-                            due_amount=invoice.balance_due,
-                            paid_amount=invoice.paid_amount,
-                            due_date=date.today(),
-                            member=invoice.member,
-                            invoice=invoice,
-                            payment=payment_obj,
-                            transaction=transaction_obj
-                        )
-                        MemberDue.objects.create(
-                            amount_due=due_obj.due_amount,
-                            due_date=date.today(),
-                            amount_paid=due_obj.paid_amount,
-                            payment_date=date.today(),
-                            member=invoice.member,
-                            due_reference=due_obj
-                        )
-                        log_activity_task.delay_on_commit(
-                            request_data_activity_log(request),
-                            verb="Creation",
-                            severity_level="info",
-                            description="User paid an invoice",
-                        )
-                        delete_all_financial_cache.delay()
-                        return Response(
-                            {
-                                "code": 200,
-                                "status": "success",
-                                "message": "Invoice payment successful",
-                                "data": {
-                                    "invoice_id": invoice.id
-                                }
-                            }, status=status.HTTP_200_OK
-                        )
-
-            else:
-                log_activity_task.delay_on_commit(
-                    request_data_activity_log(request),
-                    verb="Creation",
-                    severity_level="info",
-                    description="User tried to pay an invoice but faced an error",
-                )
-                return Response({
+        serializer = serializers.InvoicePaymentSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {
                     "code": 400,
                     "status": "failed",
                     "message": "Bad request",
-                    "errors": serializer.errors
-                }, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            logger.exception(str(e))
-            log_activity_task.delay_on_commit(
-                request_data_activity_log(request),
-                verb="Creation",
-                severity_level="info",
-                description="User tried to pay an invoice but faced an error",
+                    "errors": serializer.errors,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
             )
-            return Response({
-                "code": 500,
-                "status": "failed",
-                "message": "Something went wrong.",
-                "errors": {
-                    "server_error": [str(e)]
-                }
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        invoice = serializer.validated_data["invoice_id"]
+        payment_method = serializer.validated_data["payment_method"]
+        amount = serializer.validated_data["amount"]
+        income_particular = serializer.validated_data["income_particular"]
+        received_from = serializer.validated_data["received_from"]
+        adjust_from_balance = serializer.validated_data["adjust_from_balance"]
+
+        result = process_invoice_payment(
+            invoice,
+            payment_method,
+            amount,
+            income_particular,
+            received_from,
+            adjust_from_balance,
+            request.user,
+            request,
+        )
+
+        if result["status"] == "success":
+            return Response(
+                {
+                    "code": 200,
+                    "status": "success",
+                    "message": "Invoice payment successful",
+                    "data": {"invoice_id": result["invoice_id"]},
+                },
+                status=status.HTTP_200_OK,
+            )
+        else:
+            return Response(
+                {
+                    "code": 500,
+                    "status": "failed",
+                    "message": "Something went wrong",
+                    "errors": {"server_error": [result["error"]]},
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
 
 
 class IncomeParticularView(APIView):
@@ -518,15 +572,12 @@ class IncomeParticularView(APIView):
 
     def get(self, request):
         try:
-            # implement caching
-            data = cache.get("active_income_particulars")
-            if not data:
-                income_particular = IncomeParticular.objects.filter(
-                    is_active=True)
-                serializer = serializers.IncomeParticularSerializer(
-                    income_particular, many=True)
-                data = serializer.data
-                cache.set("active_income_particulars", data, 60 * 30)
+          
+            income_particular = IncomeParticular.objects.filter(
+                is_active=True)
+            serializer = serializers.IncomeParticularSerializer(
+                income_particular, many=True)
+            data = serializer.data
 
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
@@ -657,12 +708,7 @@ class InvoiceShowView(APIView):
 
     def get(self, request):
         try:
-            query_items = sorted(request.query_params.items())
-            query_string = urlencode(query_items) if query_items else "default"
-            cache_key = f"invoices::{query_string}"
-            cached_data = cache.get(cache_key)
-            if cached_data:
-                return Response(cached_data, status=200)
+            
             # hit db if miss
             queryset = Invoice.active_objects.select_related(
                 "invoice_type", "generated_by", "member", "restaurant", "event"
@@ -709,7 +755,6 @@ class InvoiceShowView(APIView):
                 "message": "List of all invoices",
                 "data": serializer.data
             }, status=200)
-            cache.set(cache_key, final_response.data, timeout=60*30)
             return final_response
         except Exception as e:
             logger.exception(str(e))
@@ -756,7 +801,6 @@ class InvoiceShowView(APIView):
                         for sale in invoice.sale_invoice.all():
                             Income.objects.filter(
                                 sale=sale).update(is_active=False)
-                delete_all_financial_cache.delay()
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),
                     verb="delete",
@@ -838,55 +882,6 @@ class InvoiceSpecificView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    # def delete(self, request, id):
-    #     try:
-    #         with transaction.atomic():
-    #             invoice = Invoice.active_objects.prefetch_related(
-    #                 "transaction_invoice", "payment_invoice", "sale_invoice", "due_invoice", "invoice_items", "due_invoice__member_due_due_reference").select_for_update().get(pk=id)
-    #             invoice.is_active = False
-    #             invoice.save(update_fields=["is_active"])
-    #             invoice.transaction_invoice.all().update(is_active=False)
-    #             invoice.payment_invoice.all().update(is_active=False)
-    #             invoice.sale_invoice.all().update(is_active=False)
-    #             invoice.due_invoice.all().update(is_active=False)
-    #             invoice.invoice_items.all().update(is_active=False)
-    #             for due in invoice.due_invoice.all():
-    #                 MemberDue.objects.filter(
-    #                     due_reference=due).update(is_active=False)
-    #             for sale in invoice.sale_invoice.all():
-    #                 Income.objects.filter(sale=sale).update(is_active=False)
-
-    #             delete_all_financial_cache.delay()
-    #             log_activity_task.delay_on_commit(
-    #                 request_data_activity_log(request),
-    #                 verb="delete",
-    #                 severity_level="info",
-    #                 description="user deleted a single invoice",
-    #             )
-    #             return Response({
-    #                 "code": 200,
-    #                 "status": "success",
-    #                 "message": "Invoice deleted successfully",
-    #                 "data": {
-    #                     "invoice": id
-    #                 }
-    #             }, status=200)
-    #     except Exception as e:
-    #         logger.exception(str(e))
-    #         log_activity_task.delay_on_commit(
-    #             request_data_activity_log(request),
-    #             verb="delete",
-    #             severity_level="info",
-    #             description="user tried to delete a single invoice and faced error",
-    #         )
-    #         return Response({
-    #             "code": 500,
-    #             "status": "failed",
-    #             "message": "Something went wrong",
-    #             "errors": {
-    #                 "server_error": [str(e)]
-    #             }
-    #         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def delete(self, request, id):
         try:
@@ -914,7 +909,6 @@ class InvoiceSpecificView(APIView):
                 for sale in invoice.sale_invoice.all():
                     Income.objects.filter(sale=sale).update(is_active=False)
 
-                delete_all_financial_cache.delay()
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),
                     verb="delete",
@@ -957,182 +951,227 @@ class InvoiceSpecificView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    # def patch(self, request, id):
+    #     try:
+    #         is_exist = Invoice.active_objects.filter(pk=id).exists()
+    #         if not is_exist:
+    #             return Response({
+    #                 "code": 404,
+    #                 "status": "failed",
+    #                 "message": "No invoice found with this id.",
+    #                 "errors": {
+    #                     "invoice": ["No invoice found with this id."]
+    #                 }
+    #             }, status=404)
+    #         serializer = serializers.InvoiceUpdateSerializer(data=request.data)
+    #         if serializer.is_valid():
+    #             paid_amount = serializer.validated_data["paid_amount"]
+    #             payment_method = serializer.validated_data["payment_method"]
+    #             with transaction.atomic():
+    #                 invoice = Invoice.active_objects.get(pk=id)
+    #                 if invoice.status == "paid":
+    #                     invoice.balance_due = invoice.total_amount - paid_amount
+    #                     invoice.total_amount = total_amount
+    #                     invoice.paid_amount = paid_amount
+    #                     invoice.save(update_fields=[
+    #                                  "balance_due", "total_amount", "paid_amount"])
+    #                     log_activity_task.delay_on_commit(
+    #                         request_data_activity_log(request),
+    #                         verb="Update",
+    #                         severity_level="info",
+    #                         description="User Updated an invoice. ",
+    #                     )
+    #                     return Response({
+    #                         "code": 200,
+    #                         "status": "success",
+    #                         "message": "Invoice updated successfully",
+    #                         "data": serializers.InvoiceForViewSerializer(invoice).data
+    #                     }, status=200)
+
+    #                 full_income_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
+    #                     name="full")
+    #                 partial_income_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
+    #                     name="partial")
+    #                 paid_amount = invoice.paid_amount
+    #                 total_amount = invoice.total_amount
+    #                 due_amount = invoice.balance_due
+    #                 if paid_amount == total_amount:
+    #                     income_receiving_type = full_income_receiving_type
+    #                 else:
+    #                     income_receiving_type = partial_income_receiving_type
+    #                 invoice.balance_due = due_amount
+    #                 invoice.paid_amount = paid_amount
+    #                 invoice.total_amount = total_amount
+    #                 if total_amount == paid_amount:
+    #                     invoice.status = "paid"
+    #                 else:
+    #                     invoice.status = invoice.status
+    #                 invoice.save(update_fields=[
+    #                              "balance_due", "paid_amount", "total_amount", "status"])
+    #                 Transaction.objects.filter(
+    #                     invoice=invoice).update(is_active=False)
+    #                 transaction_obj = Transaction.objects.create(
+    #                     amount=invoice.paid_amount,
+    #                     member=invoice.member,
+    #                     invoice=invoice,
+    #                     payment_method=payment_method,
+    #                     notes="The transaction has been made after updating an invoice."
+    #                 )
+    #                 Payment.objects.filter(
+    #                     invoice=invoice).update(is_active=False)
+    #                 payment_obj = Payment.objects.create(
+    #                     payment_amount=paid_amount,
+    #                     payment_status=invoice.status,
+    #                     notes="This payment has been made after updating an invoice.",
+    #                     transaction=transaction_obj,
+    #                     invoice=invoice,
+    #                     member=invoice.member,
+    #                     payment_method=payment_method,
+    #                     processed_by=request.user
+    #                 )
+    #                 due_date = datetime.today()
+    #                 old_sale_ref = Sale.active_objects.select_related(
+    #                     "sale_source_type").filter(invoice=invoice).first()
+    #                 sale_type = old_sale_ref.sale_source_type
+    #                 Sale.objects.filter(
+    #                     invoice=invoice).update(is_active=False)
+    #                 sale_obj = Sale.objects.create(sale_number=generate_unique_sale_number(),
+    #                                                sub_total=invoice.total_amount,
+    #                                                total_amount=invoice.total_amount,
+    #                                                payment_status=invoice.status,
+    #                                                due_date=due_date,
+    #                                                notes="This sale has been created after updating an invoice.",
+    #                                                sale_source_type=sale_type,
+    #                                                customer=invoice.member,
+    #                                                payment_method=payment_method,
+    #                                                invoice=invoice
+    #                                                )
+    #                 old_income_ref = Income.objects.select_related(
+    #                     "particular", "received_from_type").filter(sale=old_sale_ref).first()
+    #                 income_particular = old_income_ref.particular
+    #                 received_from = old_income_ref.received_from_type
+    #                 Income.objects.filter(
+    #                     sale=old_sale_ref).update(is_active=False)
+    #                 Income.objects.create(
+    #                     receivable_amount=invoice.total_amount,
+    #                     final_receivable=invoice.total_amount,
+    #                     actual_received=invoice.paid_amount,
+    #                     reaming_due=invoice.balance_due,
+    #                     particular=income_particular,
+    #                     received_from_type=received_from,
+    #                     member=invoice.member,
+    #                     received_by=payment_method,
+    #                     sale=sale_obj,
+    #                     receiving_type=income_receiving_type)
+    #                 Due.objects.filter(
+    #                     invoice=invoice).update(is_active=False)
+    #                 old_due_ref = Due.objects.filter(invoice=invoice).first()
+    #                 MemberDue.objects.filter(
+    #                     due_reference=old_due_ref).update(is_active=False)
+    #                 if due_amount > 0:  # it has due
+    #                     due_obj = Due.objects.create(
+    #                         original_amount=invoice.total_amount,
+    #                         due_amount=invoice.balance_due,
+    #                         paid_amount=invoice.paid_amount,
+    #                         due_date=datetime.today(),
+    #                         payment_status=invoice.status,
+    #                         member=invoice.member,
+    #                         invoice=invoice,
+    #                         payment=payment_obj,
+    #                         transaction=transaction_obj,
+    #                     )
+    #                     MemberDue.objects.create(
+    #                         amount_due=due_obj.due_amount,
+    #                         due_date=datetime.today(),
+    #                         amount_paid=invoice.paid_amount,
+    #                         payment_date=datetime.today(),
+    #                         notes="This due has been created when a invoice was updated.",
+    #                         member=invoice.member,
+    #                         due_reference=due_obj
+    #                     )
+    #                 log_activity_task.delay_on_commit(
+    #                     request_data_activity_log(request),
+    #                     verb="Update",
+    #                     severity_level="info",
+    #                     description="User Updated an invoice. ",
+    #                 )
+    #                 return Response({
+    #                     "code": 200,
+    #                     "status": "success",
+    #                     "message": "Invoice updated successfully",
+    #                     "data": serializers.InvoiceForViewSerializer(invoice).data
+    #                 }, status=200)
+    #         else:
+    #             return Response({
+    #                 "code": 400,
+    #                 "status": "failed",
+    #                 "message": "Bad request.",
+    #                 "errors": serializer.errors
+    #             }, status=404)
+
+    #     except Exception as e:
+    #         logger.exception(str(e))
+    #         log_activity_task.delay_on_commit(
+    #             request_data_activity_log(request),
+    #             verb="Update",
+    #             severity_level="info",
+    #             description="User Updated an invoice and faced an error. ",
+    #         )
+    #         return Response({
+    #             "code": 500,
+    #             "status": "failed",
+    #             "message": "Something went wrong",
+    #             "errors": {
+    #                 "server_error": [str(e)]
+    #             }
+    #         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     def patch(self, request, id):
         try:
-            is_exist = Invoice.active_objects.filter(pk=id).exists()
-            if not is_exist:
-                return Response({
-                    "code": 404,
-                    "status": "failed",
-                    "message": "No invoice found with this id.",
-                    "errors": {
-                        "invoice": ["No invoice found with this id."]
-                    }
-                }, status=404)
+            # Validate incoming data
             serializer = serializers.InvoiceUpdateSerializer(data=request.data)
-            if serializer.is_valid():
-                balance_due = serializer.validated_data["balance_due"]
-                paid_amount = serializer.validated_data["paid_amount"]
-                total_amount = serializer.validated_data["total_amount"]
-                payment_method = serializer.validated_data["payment_method"]
-                with transaction.atomic():
-                    invoice = Invoice.active_objects.get(pk=id)
-                    if invoice.status == "unpaid":
-                        invoice.balance_due = balance_due
-                        invoice.total_amount = total_amount
-                        invoice.save(update_fields=[
-                                     "balance_due",  "total_amount"])
-                        delete_all_financial_cache.delay()
-                        log_activity_task.delay_on_commit(
-                            request_data_activity_log(request),
-                            verb="Update",
-                            severity_level="info",
-                            description="User Updated an invoice. ",
-                        )
-                        return Response({
-                            "code": 200,
-                            "status": "success",
-                            "message": "Invoice updated successfully",
-                            "data": serializers.InvoiceForViewSerializer(invoice).data
-                        }, status=200)
-
-                    full_income_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
-                        name="full")
-                    partial_income_receiving_type, _ = IncomeReceivingType.objects.get_or_create(
-                        name="partial")
-                    paid_amount = paid_amount
-                    total_amount = total_amount
-                    due_amount = balance_due
-                    if paid_amount == total_amount:
-                        income_receiving_type = full_income_receiving_type
-                    else:
-                        income_receiving_type = partial_income_receiving_type
-                    invoice.balance_due = due_amount
-                    invoice.paid_amount = paid_amount
-                    invoice.total_amount = total_amount
-                    if total_amount == paid_amount:
-                        invoice.status = "paid"
-                    else:
-                        invoice.status = invoice.status
-                    invoice.save(update_fields=[
-                                 "balance_due", "paid_amount", "total_amount", "status"])
-                    Transaction.objects.filter(
-                        invoice=invoice).update(is_active=False)
-                    transaction_obj = Transaction.objects.create(
-                        amount=invoice.paid_amount,
-                        member=invoice.member,
-                        invoice=invoice,
-                        payment_method=payment_method,
-                        notes="The transaction has been made after updating an invoice."
-                    )
-                    Payment.objects.filter(
-                        invoice=invoice).update(is_active=False)
-                    payment_obj = Payment.objects.create(
-                        payment_amount=paid_amount,
-                        payment_status=invoice.status,
-                        notes="This payment has been made after updating an invoice.",
-                        transaction=transaction_obj,
-                        invoice=invoice,
-                        member=invoice.member,
-                        payment_method=payment_method,
-                        processed_by=request.user
-                    )
-                    due_date = datetime.today()
-                    old_sale_ref = Sale.active_objects.select_related(
-                        "sale_source_type").filter(invoice=invoice).first()
-                    sale_type = old_sale_ref.sale_source_type
-                    Sale.objects.filter(
-                        invoice=invoice).update(is_active=False)
-                    sale_obj = Sale.objects.create(sale_number=generate_unique_sale_number(),
-                                                   sub_total=invoice.total_amount,
-                                                   total_amount=invoice.total_amount,
-                                                   payment_status=invoice.status,
-                                                   due_date=due_date,
-                                                   notes="This sale has been created after updating an invoice.",
-                                                   sale_source_type=sale_type,
-                                                   customer=invoice.member,
-                                                   payment_method=payment_method,
-                                                   invoice=invoice
-                                                   )
-                    old_income_ref = Income.objects.select_related(
-                        "particular", "received_from_type").filter(sale=old_sale_ref).first()
-                    income_particular = old_income_ref.particular
-                    received_from = old_income_ref.received_from_type
-                    Income.objects.filter(
-                        sale=old_sale_ref).update(is_active=False)
-                    Income.objects.create(
-                        receivable_amount=invoice.total_amount,
-                        final_receivable=invoice.total_amount,
-                        actual_received=invoice.paid_amount,
-                        reaming_due=invoice.balance_due,
-                        particular=income_particular,
-                        received_from_type=received_from,
-                        member=invoice.member,
-                        received_by=payment_method,
-                        sale=sale_obj,
-                        receiving_type=income_receiving_type)
-                    Due.objects.filter(
-                        invoice=invoice).update(is_active=False)
-                    old_due_ref = Due.objects.filter(invoice=invoice).first()
-                    MemberDue.objects.filter(
-                        due_reference=old_due_ref).update(is_active=False)
-                    if due_amount > 0:  # it has due
-                        due_obj = Due.objects.create(
-                            original_amount=invoice.total_amount,
-                            due_amount=invoice.balance_due,
-                            paid_amount=invoice.paid_amount,
-                            due_date=datetime.today(),
-                            payment_status=invoice.status,
-                            member=invoice.member,
-                            invoice=invoice,
-                            payment=payment_obj,
-                            transaction=transaction_obj,
-                        )
-                        MemberDue.objects.create(
-                            amount_due=due_obj.due_amount,
-                            due_date=datetime.today(),
-                            amount_paid=invoice.paid_amount,
-                            payment_date=datetime.today(),
-                            notes="This due has been created when a invoice was updated.",
-                            member=invoice.member,
-                            due_reference=due_obj
-                        )
-                    delete_all_financial_cache.delay()
-                    log_activity_task.delay_on_commit(
-                        request_data_activity_log(request),
-                        verb="Update",
-                        severity_level="info",
-                        description="User Updated an invoice. ",
-                    )
-                    return Response({
-                        "code": 200,
-                        "status": "success",
-                        "message": "Invoice updated successfully",
-                        "data": serializers.InvoiceForViewSerializer(invoice).data
-                    }, status=200)
-            else:
+            if not serializer.is_valid():
                 return Response({
                     "code": 400,
                     "status": "failed",
                     "message": "Bad request.",
                     "errors": serializer.errors
-                }, status=404)
+                }, status=400)
+
+            # Call the service function
+            result = update_invoice(
+                invoice_id=id,
+                validated_data=serializer.validated_data,
+                user=request.user,
+                request=request
+            )
+
+            # Handle service response
+            if result.get("status") == "success":
+                return Response({
+                    "code": 200,
+                    "status": "success",
+                    "message": "Invoice updated successfully",
+                    "data": serializers.InvoiceForViewSerializer(result["invoice"]).data
+                }, status=200)
+
+            elif result.get("status") == "error":
+                return Response({
+                    "code": 500,
+                    "status": "failed",
+                    "message": "Something went wrong",
+                    "errors": {"server_error": [result.get("error")]}
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            else:  # Not found
+                return Response(result, status=404)
 
         except Exception as e:
-            logger.exception(str(e))
-            log_activity_task.delay_on_commit(
-                request_data_activity_log(request),
-                verb="Update",
-                severity_level="info",
-                description="User Updated an invoice and faced an error. ",
-            )
             return Response({
                 "code": 500,
                 "status": "failed",
-                "message": "Something went wrong",
-                "errors": {
-                    "server_error": [str(e)]
-                }
+                "message": "Server error",
+                "errors": {"server_error": [str(e)]}
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -1168,8 +1207,7 @@ class InvoiceCustomDeleteView(APIView):
                         for sale in invoice.sale_invoice.all():
                             Income.objects.filter(
                                 sale=sale).update(is_active=False)
-                if deleted_count > 0:
-                    delete_all_financial_cache.delay()
+                
                 return Response({
                     "code": 200,
                     "status": "success",
@@ -1208,14 +1246,7 @@ class IncomeView(APIView):
 
     def get(self, request):
         try:
-            query_items = sorted(request.query_params.items())
-            query_string = urlencode(query_items) if query_items else "default"
-            cache_key = f"income::{query_string}"
-            cached_data = cache.get(cache_key)
-            if cached_data:
-                return Response(cached_data, status=200)
-
-            # hit db if miss
+           
             data = Income.active_objects.filter(is_active=True).select_related(
                 "particular", "received_from_type", "receiving_type", "member", "received_by", "sale").order_by("id")
             paginator = CustomPageNumberPagination()
@@ -1231,7 +1262,6 @@ class IncomeView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
-            cache.set(cache_key, final_response.data, timeout=60*30)
             return final_response
         except Exception as e:
             logger.exception(str(e))
@@ -1256,11 +1286,7 @@ class IncomeSpecificView(APIView):
 
     def get(self, request, id):
         try:
-            cache_key = f"specific_income::{id}"
-            cached_data = cache.get(cache_key)
-            if cached_data:
-                return Response(cached_data, status=200)
-            # hit db if miss
+            
             queryset = Income.objects.select_related(
                 "sale", "particular", "received_from_type", "receiving_type", "member", "received_by").filter(is_active=True).order_by("id")
             queryset = get_object_or_404(queryset, pk=id)
@@ -1274,7 +1300,6 @@ class IncomeSpecificView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
-            cache.set(cache_key, final_response.data, timeout=60*30)
             return final_response
         except Exception as e:
             logger.exception(str(e))
@@ -1299,13 +1324,7 @@ class SalesView(APIView):
 
     def get(self, request):
         try:
-            query_items = sorted(request.query_params.items())
-            query_string = urlencode(query_items) if query_items else "default"
-            cache_key = f"sales::{query_string}"
-            cached_data = cache.get(cache_key)
-            if cached_data:
-                return Response(cached_data, status=200)
-
+            
             # hit db if miss
             data = Sale.active_objects.filter(is_active=True).select_related(
                 "sale_source_type", "customer", "payment_method", "invoice").order_by("id")
@@ -1328,7 +1347,6 @@ class SalesView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
-            cache.set(cache_key, final_response.data, timeout=60*30)
             return final_response
         except Exception as e:
             logger.exception(str(e))
@@ -1353,11 +1371,7 @@ class SalesSpecificView(APIView):
 
     def get(self, request, id):
         try:
-            cache_key = f"specific_sale::{id}"
-            cached_data = cache.get(cache_key)
-            if cached_data:
-                return Response(cached_data, status=200)
-            # hit db if miss
+            
             data = get_object_or_404(Sale.active_objects.select_related(
                 "sale_source_type", "customer", "payment_method", "invoice", "invoice__member",
                 "invoice__invoice_type",
@@ -1380,7 +1394,6 @@ class SalesSpecificView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
-            cache.set(cache_key, final_response.data, timeout=60*30)
             return final_response
         except Exception as e:
             logger.exception(str(e))
@@ -1405,14 +1418,7 @@ class TransactionView(APIView):
 
     def get(self, request):
         try:
-            query_items = sorted(request.query_params.items())
-            query_string = urlencode(query_items) if query_items else "default"
-            cache_key = f"transactions::{query_string}"
-            cached_data = cache.get(cache_key)
-            if cached_data:
-                return Response(cached_data, status=200)
 
-            # hit db if miss
             data = Transaction.active_objects.select_related(
                 "member", "invoice", "payment_method").order_by("id")
             paginator = CustomPageNumberPagination()
@@ -1434,7 +1440,6 @@ class TransactionView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
-            cache.set(cache_key, final_response.data, timeout=60*30)
             return final_response
         except Exception as e:
             logger.exception(str(e))
@@ -1459,12 +1464,7 @@ class TransactionSpecificView(APIView):
 
     def get(self, request, id):
         try:
-            cache_key = f"specific_transactions::{id}"
-            cached_data = cache.get(cache_key)
-            if cached_data:
-                return Response(cached_data, status=200)
-
-            # hit db if miss
+            
             data = get_object_or_404(Transaction.active_objects.select_related(
                 "member", "invoice", "payment_method", "invoice__invoice_type", "invoice__generated_by", "invoice__member", "invoice__restaurant", "invoice__event"), pk=id)
             serializer = serializers.TransactionSpecificSerializer(
@@ -1483,7 +1483,6 @@ class TransactionSpecificView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
-            cache.set(cache_key, final_response.data, timeout=60*30)
             return final_response
         except Exception as e:
             logger.exception(str(e))
@@ -1508,12 +1507,7 @@ class PaymentView(APIView):
 
     def get(self, request):
         try:
-            query_items = sorted(request.query_params.items())
-            query_string = urlencode(query_items) if query_items else "default"
-            cache_key = f"payments::{query_string}"
-            cached_data = cache.get(cache_key)
-            if cached_data:
-                return Response(cached_data, status=200)
+            
 
             # hit db if miss
             data = Payment.active_objects.select_related(
@@ -1537,7 +1531,6 @@ class PaymentView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
-            cache.set(cache_key, final_response.data, timeout=60*30)
             return final_response
         except Exception as e:
             logger.exception(str(e))
@@ -1562,12 +1555,8 @@ class PaymentSpecificView(APIView):
 
     def get(self, request, id):
         try:
-            cache_key = f"specific_payments::{id}"
-            cached_data = cache.get(cache_key)
-            if cached_data:
-                return Response(cached_data, status=200
-                                )
-            # hti dib is miss
+            
+                                
             data = get_object_or_404(Payment.active_objects.select_related(
                 "invoice", "member", "payment_method", "processed_by", "transaction", "invoice__invoice_type",
                 "invoice__generated_by",
@@ -1594,7 +1583,6 @@ class PaymentSpecificView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
-            cache.set(cache_key, final_response.data, timeout=60*30)
             return final_response
         except Exception as e:
             logger.exception(str(e))
@@ -1619,13 +1607,7 @@ class DueView(APIView):
 
     def get(self, request):
         try:
-            query_items = sorted(request.query_params.items())
-            query_string = urlencode(query_items) if query_items else "default"
-            cache_key = f"dues::{query_string}"
-            cached_data = cache.get(cache_key)
-            if cached_data:
-                return Response(cached_data, status=200)
-            # hit db if miss
+            
             data = Due.active_objects.select_related(
                 "member", "invoice", "payment", "transaction").order_by("id")
             paginator = CustomPageNumberPagination()
@@ -1647,7 +1629,6 @@ class DueView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
-            cache.set(cache_key, final_response.data, timeout=60*30)
             return final_response
         except Exception as e:
             logger.exception(str(e))
@@ -1672,11 +1653,7 @@ class DueSpecificView(APIView):
 
     def get(self, request, id):
         try:
-            cache_key = f"specific_dues::{id}"
-            cached_data = cache.get(cache_key)
-            if cached_data:
-                return Response(cached_data, status=200)
-            # hit db if miss
+            
             data = get_object_or_404(Due.active_objects.select_related(
                 "member", "invoice", "payment", "transaction", "invoice__invoice_type",
                 "invoice__generated_by",
@@ -1708,7 +1685,6 @@ class DueSpecificView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
-            cache.set(cache_key, final_response.data, timeout=60*30)
             return final_response
         except Exception as e:
             logger.exception(str(e))
@@ -1733,13 +1709,7 @@ class MemberDueView(APIView):
 
     def get(self, request):
         try:
-            query_items = sorted(request.query_params.items())
-            query_string = urlencode(query_items) if query_items else "default"
-            cache_key = f"member_dues::{query_string}"
-            cached_data = cache.get(cache_key)
-            if cached_data:
-                return Response(cached_data, status=200)
-            # hit db if miss
+            
             data = MemberDue.active_objects.select_related(
                 "member", "due_reference").order_by("id")
             paginator = CustomPageNumberPagination()
@@ -1761,7 +1731,6 @@ class MemberDueView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
-            cache.set(cache_key, final_response.data, timeout=60*30)
             return final_response
         except Exception as e:
             logger.exception(str(e))
@@ -1852,7 +1821,6 @@ class MemberDueView(APIView):
                             received_by=payment_method,
                             sale=sale
                         )
-                        delete_all_financial_cache.delay()
                         return Response({
                             "code": 200,
                             "status": "success",
@@ -1988,7 +1956,6 @@ class MemberDueView(APIView):
                                 received_by=payment_method,
                                 sale=sale
                             )
-                    delete_all_financial_cache.delay()
                     return Response({
                         "code": 200,
                         "status": "success",
@@ -2027,11 +1994,7 @@ class MemberDueSpecificView(APIView):
 
     def get(self, request, id):
         try:
-            cache_key = f"specific_member_due::{id}"
-            cached_data = cache.get(cache_key)
-            if cached_data:
-                return Response(cached_data, status=200)
-            # hit db if miss
+            
             data = get_object_or_404(MemberDue.active_objects.select_related(
                 "member", "due_reference", "due_reference__invoice",
                 "due_reference__member", "due_reference__payment", "due_reference__transaction", "due_reference__transaction"), pk=id)
@@ -2051,7 +2014,6 @@ class MemberDueSpecificView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
-            cache.set(cache_key, final_response.data, timeout=60*30)
             return final_response
         except Exception as e:
             logger.exception(str(e))
@@ -2076,14 +2038,8 @@ class MemberAccountView(APIView):
 
     def get(self, request):
         try:
-            query_items = sorted(request.query_params.items())
-            query_string = urlencode(query_items) if query_items else "default"
-            cache_key = f"member_accounts::{query_string}"
-            cached_data = cache.get(cache_key)
-            if cached_data:
-                return Response(cached_data, status=200)
+            
 
-            # hit db if miss
             data = MemberAccount.active_objects.select_related(
                 "member").order_by("id")
             paginator = CustomPageNumberPagination()
@@ -2105,7 +2061,6 @@ class MemberAccountView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
-            cache.set(cache_key, final_response.data, timeout=60*30)
             return final_response
         except Exception as e:
             logger.exception(str(e))
@@ -2130,11 +2085,7 @@ class MemberAccountSpecificSpecificView(APIView):
 
     def get(self, request, id):
         try:
-            cache_key = f"specific_member_account::{id}"
-            cached_data = cache.get(cache_key)
-            if cached_data:
-                return Response(cached_data, status=200)
-            # hit db if miss
+            
             data = get_object_or_404(MemberAccount.active_objects.select_related(
                 "member"), member__member_ID=id)
             serializer = serializers.MemberAccountSerializer(
@@ -2153,7 +2104,6 @@ class MemberAccountSpecificSpecificView(APIView):
                     "data": serializer.data
                 }, status=status.HTTP_200_OK
             )
-            cache.set(cache_key, final_response.data, timeout=60*30)
             return final_response
         except Exception as e:
             logger.exception(str(e))
@@ -2189,7 +2139,6 @@ class MemberAccountRechargeView(APIView):
                     member_account.balance += amount
                     member_account.save(update_fields=["balance"])
 
-                    delete_member_accounts_cache.delay()
                     return Response({
                         "code": 200,
                         "status": "success",
@@ -2464,7 +2413,6 @@ class LoungeUploadExcelView(APIView):
                         severity_level="info",
                         description="User uploaded an excel file",
                     )
-                    delete_all_financial_cache.delay()
                     return Response({
                         "code": 201,
                         "status": "success",
@@ -2735,7 +2683,6 @@ class OthersUploadExcelView(APIView):
                         severity_level="info",
                         description="User uploaded an excel file",
                     )
-                    delete_all_financial_cache.delay()
                     return Response({
                         "code": 201,
                         "status": "success",
