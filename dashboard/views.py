@@ -10,9 +10,11 @@ from restaurant.models import Restaurant
 from product.models import Product
 from event.models import Event
 from django.db.models import Count, Q
-
-
+from account.models import GroupModel
+from django.contrib.auth import get_user_model
 import logging
+from django.utils.timezone import now
+from activity_log.models import ActivityLog
 logger = logging.getLogger("myapp")
 
 
@@ -156,6 +158,52 @@ class DashboardPieChartView(APIView):
                 "status": "success",
                 "message": "chart data",
                 "data": data
+            }, status=200)
+
+        except Exception as e:
+            logger.exception(str(e))
+            log_activity_task.delay_on_commit(
+                request_data_activity_log(request),
+                verb="Error while viewing all users",
+                severity_level="error",
+                description="Error while viewing all users",
+            )
+            return Response({
+                "code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "message": "Error occurred",
+                "status": "failed",
+                'errors': {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class DashBoardKPICard(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            User = get_user_model()
+            today = now().date()
+            group_count = GroupModel.objects.all().count()
+            user_count = User.objects.all().count()
+            unique_users_today = (
+                ActivityLog.objects
+                .filter(timestamp__date=today)  # filter by today's date
+                .values("user")                 # group by user
+                .exclude(user=None)             # ignore null users if needed
+                .distinct()                     # ensure uniqueness
+                .count()                        # count distinct users
+            )
+            return Response({
+                "code": 200,
+                "status": "success",
+                "message": "All dashboard card data",
+                "data": {
+                    "group_count": group_count,
+                    "user_count": user_count,
+                    "active_user_today": unique_users_today
+                }
             }, status=200)
 
         except Exception as e:
