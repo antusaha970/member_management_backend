@@ -187,12 +187,11 @@ class IncomeSerializer(serializers.ModelSerializer):
 class SaleSerializer(serializers.ModelSerializer):
     sale_source_type = serializers.StringRelatedField()
     customer = serializers.SerializerMethodField()
-    payment_method = serializers.StringRelatedField()
     invoice = serializers.StringRelatedField()
 
     class Meta:
         model = Sale
-        fields = "__all__"
+        fields = ["id","sale_number","is_active", "sale_source_type", "customer", "invoice", "total_amount","sub_total","sales_date","due_date","payment_status"]
 
     def get_customer(self, obj):
         return obj.customer.member_ID
@@ -218,7 +217,7 @@ class SaleSpecificSerializer(serializers.ModelSerializer):
     sale_source_type = serializers.StringRelatedField()
     customer = serializers.SerializerMethodField()
     payment_method = serializers.StringRelatedField()
-    invoice = InvoiceForViewSerializer()
+    invoice = serializers.StringRelatedField()
 
     class Meta:
         model = Sale
