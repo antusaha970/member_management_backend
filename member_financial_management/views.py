@@ -32,14 +32,14 @@ class PaymentMethodView(APIView):
 
     def get(self, request):
         try:
-            # Cache check
-            data = cache.get("active_payment_methods")
-            if not data:
-                payment_methods = PaymentMethod.objects.filter(is_active=True)
-                serializer = serializers.PaymentMethodSerializer(
-                    payment_methods, many=True)
-                data = serializer.data
-                cache.set("active_payment_methods", data, 60 * 30)
+           
+        
+            payment_methods = PaymentMethod.objects.filter(is_active=True)
+            fields_param = request.query_params.get("fields")
+            fields = fields_param.split(",") if fields_param else None
+            serializer = serializers.PaymentMethodSerializer(
+                payment_methods, many=True, fields=fields)
+            data = serializer.data
 
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
@@ -76,7 +76,6 @@ class PaymentMethodView(APIView):
             if serializer.is_valid():
                 serializer.save()
                 # Invalidate cache delete
-                cache.delete("active_payment_methods")
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),
                     verb="Creation",
@@ -575,8 +574,10 @@ class IncomeParticularView(APIView):
           
             income_particular = IncomeParticular.objects.filter(
                 is_active=True)
+            fields_param = request.query_params.get("fields")
+            fields = fields_param.split(",") if fields_param else None
             serializer = serializers.IncomeParticularSerializer(
-                income_particular, many=True)
+                income_particular, many=True, fields=fields)
             data = serializer.data
 
             log_activity_task.delay_on_commit(
@@ -665,13 +666,13 @@ class IncomeReceivedFromView(APIView):
     def get(self, request):
         try:
             # implement caching
-            data = cache.get("active_income_receiving_options")
-            if not data:
-                data = IncomeReceivingOption.objects.filter(is_active=True)
-                serializer = serializers.IncomeReceivingOptionSerializer(
-                    data, many=True)
-                data = serializer.data
-                cache.set("active_income_receiving_options", data, 60*30)
+            
+            data = IncomeReceivingOption.objects.filter(is_active=True)
+            fields_param = request.query_params.get("fields")
+            fields = fields_param.split(",") if fields_param else None
+            serializer = serializers.IncomeReceivingOptionSerializer(
+                data, many=True, fields=fields)
+            data = serializer.data
 
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
@@ -718,6 +719,9 @@ class InvoiceShowView(APIView):
                 Prefetch("invoice_items__facility"),
                 Prefetch("invoice_items__event_tickets"),
             ).order_by("id")
+            # fields query param
+            fields_param = request.query_params.get("fields")
+            fields = fields_param.split(",") if fields_param else None
 
             # get query params
             is_full_paid = self.request.query_params.get("is_full_paid")
@@ -742,7 +746,7 @@ class InvoiceShowView(APIView):
             paginated_queryset = paginator.paginate_queryset(
                 queryset, request, view=self)
             serializer = serializers.InvoiceForViewSerializer(
-                paginated_queryset, many=True)
+                paginated_queryset, many=True, fields=fields)
             log_activity_task.delay_on_commit(
                 request_data_activity_log(request),
                 verb="View",

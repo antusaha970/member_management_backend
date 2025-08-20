@@ -14,7 +14,7 @@ SILKY_META = False
 # Define production hosts
 ALLOWED_HOSTS = ["*"]
 
-# Use PostgreSQL in production
+# # Use PostgreSQL in production
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',

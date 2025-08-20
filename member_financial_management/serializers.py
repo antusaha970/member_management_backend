@@ -9,6 +9,25 @@ import os
 import pdb
 
 
+
+class DynamicFieldsModelSerializer(serializers.ModelSerializer):
+    """
+    A ModelSerializer that takes an additional `fields` argument
+    to control which fields should be displayed.
+    """
+    def __init__(self, *args, **kwargs):
+        fields = kwargs.pop('fields', None)
+        super().__init__(*args, **kwargs)
+
+        if fields is not None:
+            allowed = set(fields)
+            existing = set(self.fields.keys())
+            for field_name in existing - allowed:
+                self.fields.pop(field_name)
+
+
+
+
 class InvoiceSerializer(serializers.ModelSerializer):
     invoice_type = serializers.CharField()
     generated_by = serializers.CharField()
@@ -20,7 +39,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-class PaymentMethodSerializer(serializers.ModelSerializer):
+class PaymentMethodSerializer(DynamicFieldsModelSerializer):
     class Meta:
         model = PaymentMethod
         fields = "__all__"
@@ -66,7 +85,7 @@ class InvoicePaymentSerializer(serializers.Serializer):
         return attrs
 
 
-class IncomeParticularSerializer(serializers.ModelSerializer):
+class IncomeParticularSerializer(DynamicFieldsModelSerializer):
     class Meta:
         model = IncomeParticular
         fields = "__all__"
@@ -79,7 +98,7 @@ class IncomeParticularSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
-class IncomeReceivingOptionSerializer(serializers.ModelSerializer):
+class IncomeReceivingOptionSerializer(DynamicFieldsModelSerializer):
     class Meta:
         model = IncomeReceivingOption
         fields = "__all__"
@@ -133,7 +152,8 @@ class InvoiceItemSerializer(serializers.ModelSerializer):
         ]
 
 
-class InvoiceForViewSerializer(serializers.ModelSerializer):
+
+class InvoiceForViewSerializer(DynamicFieldsModelSerializer):
     invoice_type = serializers.StringRelatedField()
     generated_by = serializers.StringRelatedField()
     member = serializers.StringRelatedField()
@@ -144,6 +164,8 @@ class InvoiceForViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Invoice
         fields = "__all__"
+
+
 
 
 class IncomeSerializer(serializers.ModelSerializer):
