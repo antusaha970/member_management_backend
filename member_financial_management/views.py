@@ -1331,7 +1331,7 @@ class SalesView(APIView):
             
             # hit db if miss
             data = Sale.active_objects.filter(is_active=True).select_related(
-                "sale_source_type", "customer", "payment_method", "invoice").order_by("id")
+                "sale_source_type", "customer", "invoice").order_by("id")
             paginator = CustomPageNumberPagination()
             paginated_queryset = paginator.paginate_queryset(
                 data, request=request, view=self)
@@ -1377,11 +1377,7 @@ class SalesSpecificView(APIView):
         try:
             
             data = get_object_or_404(Sale.active_objects.select_related(
-                "sale_source_type", "customer", "payment_method", "invoice", "invoice__member",
-                "invoice__invoice_type",
-                "invoice__restaurant",
-                "invoice__event",
-                "invoice__generated_by"), pk=id)
+                "sale_source_type", "customer", "payment_method"), pk=id)
             serializer = serializers.SaleSpecificSerializer(
                 data)
             log_activity_task.delay_on_commit(
