@@ -8198,90 +8198,89 @@ paths:
               schema:
                 $ref: "#/components/schemas/InternalServerError"
   /api/product/v1/products/categories/{id}/:
-   patch:
-    summary: Update a product category
-    description: Update an existing product category by ID.
-    parameters:
-      - name: id
-        in: path
-        required: true
-        description: ID of the category to update
-        schema:
-          type: integer
-    requestBody:
-      required: true
-      content:
-        application/json:
+    patch:
+      summary: Update a product category
+      description: Update an existing product category by ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the category to update
           schema:
-            type: object
-            properties:
-              name:
-                type: string
-                maxLength: 255
-                example: "Updated Electronics"
-              is_active:
-                type: boolean
-                example: false
-            required:
-              - name
-    responses:
-      "200":
-        description: "200"
+            type: integer
+      requestBody:
+        required: true
         content:
           application/json:
             schema:
               type: object
               properties:
-                code:
-                  type: integer
-                  example: 200
-                status:
+                name:
                   type: string
-                  example: Success
-                message:
-                  type: string
-                  example: Product category updated successfully
-                data:
-                  type: object
-                  properties:
-                    id:
-                      type: integer
-                      example: 1
-                    name:
-                      type: string
-                      example: "Updated Electronics"
-      "400":
-        description: "Bad Request"
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/BadRequestResponse"
-      "401":
-        description: "Unauthorized"
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UnauthorizedError" 
-   delete:
-    summary: Delete a product category
-    description: Delete a specific product category by its ID.
-    parameters:
-      - name: id
-        in: path
-        required: true
-        description: ID of the category to delete
-        schema:
-          type: integer
-    responses:
-      "204":
-        description: "204"
-      "401":
-        description: Unauthorized
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UnauthorizedError"
-     
+                  maxLength: 255
+                  example: "Updated Electronics"
+                is_active:
+                  type: boolean
+                  example: false
+              required:
+                - name
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 200
+                  status:
+                    type: string
+                    example: Success
+                  message:
+                    type: string
+                    example: Product category updated successfully
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 1
+                      name:
+                        type: string
+                        example: "Updated Electronics"
+        "400":
+          description: "Bad Request"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "401":
+          description: "Unauthorized"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+    delete:
+      summary: Delete a product category
+      description: Delete a specific product category by its ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the category to delete
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: "204"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
 
   /api/product/v1/products/brands/:
     post:
@@ -11748,6 +11747,105 @@ paths:
           required: false
       summary: Get all choices
       description: Get all available choices from all available choices
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                  status:
+                    type: string
+                  message:
+                    type: string
+                  data:
+                    type: object
+
+  /api/dashboard/v1/dashboard_cards/:
+    get:
+      summary: Get dashboard cards data.
+      description: Get dashboard cards data.
+      parameters:
+        - name: created_at
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: created_at_after
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: created_at_before
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                  status:
+                    type: string
+                  message:
+                    type: string
+                  data:
+                    type: object
+
+  /api/dashboard/v1/membership_chart/:
+    get:
+      summary: Get membership chart data
+      description: Get membership chart data
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                  status:
+                    type: string
+                  message:
+                    type: string
+                  data:
+                    type: object
+  /api/dashboard/v1/membership_chart/pie_chart/:
+    get:
+      summary: Get membership pie chart data
+      description: Get membership pie chart data
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                  status:
+                    type: string
+                  message:
+                    type: string
+                  data:
+                    type: object
+
+  /api/dashboard/v1/dashboard_cards/kpi/:
+    get:
+      summary: Get dashboard KPI cards data.
+      description: Get dashboard KPI cards data.
       responses:
         "200":
           description: "200"
