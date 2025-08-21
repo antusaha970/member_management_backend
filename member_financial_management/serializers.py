@@ -241,7 +241,7 @@ class TransactionSerializer(serializers.ModelSerializer):
 
 
 class TransactionSpecificSerializer(serializers.ModelSerializer):
-    invoice = InvoiceForViewSerializer()
+    invoice = serializers.StringRelatedField()
     payment_method = serializers.StringRelatedField()
     member = serializers.SerializerMethodField()
 
@@ -272,11 +272,11 @@ class PaymentSerializer(serializers.ModelSerializer):
 
 
 class PaymentSpecificSerializer(serializers.ModelSerializer):
-    invoice = InvoiceSerializer()
+    invoice = serializers.StringRelatedField()
     member = serializers.SerializerMethodField()
     payment_method = serializers.StringRelatedField()
     processed_by = serializers.SerializerMethodField()
-    transaction = TransactionSerializer()
+    transaction = serializers.StringRelatedField()
 
     class Meta:
         model = Payment
