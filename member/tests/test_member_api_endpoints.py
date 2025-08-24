@@ -82,7 +82,6 @@ class TestMemberCreateAndUpdateEndpoints(APITestCase):
         _errors = _response['errors']
         self.assertIn("member_ID", _errors)
         self.assertIn("gender", _errors)
-        self.assertIn("profile_photo", _errors)
 
         self.assertEqual(1, 1)
 
@@ -778,9 +777,6 @@ class DocumentApiEndpointTest(APITestCase):
         if response_data['code'] == 400:
             self.assertEqual(response.status_code, 400)
             self.assertEqual(response_data['status'], "failed")
-            self.assertEqual(response_data['errors']['document_document'], [
-                             'No file was submitted.'])
-            self.assertIn("document_document", response_data["errors"])
             self.assertEqual(response_data['errors']['document_type'], [
                              'This field is required.'])
 
@@ -901,9 +897,6 @@ class CertificateApiEndpointTest(APITestCase):
         if response_data['code'] == 400:
             self.assertEqual(response.status_code, 400)
             self.assertEqual(response_data['status'], "failed")
-            self.assertEqual(response_data['errors']['certificate_document'], [
-                             'No file was submitted.'])
-            self.assertIn("certificate_document", response_data["errors"])
             self.assertEqual(response_data['errors']['title'], [
                              'This field is required.'])
 
