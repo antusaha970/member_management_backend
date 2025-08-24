@@ -2028,7 +2028,7 @@ class MemberSpecialDayView(APIView):
                 log_request(request, "Updating member special days failed", "error",
                             "A user tried to update member special days but made an invalid request")
                 # delete cache for specific view member details
-                delete_members_specific_cache.delay(instance.id)
+                delete_members_specific_cache.delay(member.member_ID)
                 return Response({
                     "code": 400,
                     "status": "failed",
