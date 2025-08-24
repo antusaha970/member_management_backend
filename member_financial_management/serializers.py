@@ -203,7 +203,7 @@ class IncomeSpecificSerializer(serializers.ModelSerializer):
     receiving_type = serializers.StringRelatedField()
     member = serializers.SerializerMethodField()
     received_by = serializers.StringRelatedField()
-    sale = SaleSerializer()
+    sale = serializers.StringRelatedField()
 
     class Meta:
         model = Income
