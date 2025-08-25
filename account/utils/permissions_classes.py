@@ -2,32 +2,12 @@ from account.permissions import HasCustomPermission
 
 
 class RegisterUserPermission(HasCustomPermission):
-    required_permission = "/reg"
+    required_permission = "employee_onboarding"
 
 
-class GroupCreatePermission(HasCustomPermission):
-    required_permission = "group_create"
-
-
-class GroupEditPermission(HasCustomPermission):
-    required_permission = "group_edit"
-
-
-class GroupViewPermission(HasCustomPermission):
-    required_permission = "/groups"
-
-
-class GroupDeletePermission(HasCustomPermission):
-    required_permission = "group_delete"
-
-
-class GroupUserManagementPermission(HasCustomPermission):
-    required_permission = "group_management"
-
-
-class CustomPermissionSetPermission(HasCustomPermission):
-    required_permission = "/permissions"
+class GroupPermissionManagement(HasCustomPermission):
+    required_permission = "group_permission_management"
 
 
 class ViewAllUserPermission(HasCustomPermission):
-    required_permission = "/users"
+    required_permission = "view_all_users"

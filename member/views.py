@@ -8,7 +8,7 @@ from rest_framework import status
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from .models import Member, Email, MembersFinancialBasics, InstituteName, Certificate, MemberHistory, CompanionInformation, Documents
-from .utils.permission_classes import ViewMemberPermission, AddMemberPermission, UpdateMemberPermission, DeleteMemberPermission
+from .utils.permission_classes import MemberManagementPermission
 import logging
 from activity_log.tasks import log_activity_task
 from activity_log.utils.functions import request_data_activity_log
@@ -39,13 +39,13 @@ class MemberView(APIView):
 
     def get_permissions(self):
         if self.request.method == "POST":
-            return [AddMemberPermission()]
+            return [MemberManagementPermission()]
         elif self.request.method == "PATCH":
-            return [UpdateMemberPermission()]
+            return [MemberManagementPermission()]
         elif self.request.method == "DELETE":
-            return [DeleteMemberPermission()]
+            return [MemberManagementPermission()]
         elif self.request.method == "GET":
-            return [ViewMemberPermission()]
+            return [MemberManagementPermission()]
         else:
             return [IsAuthenticated()]
 
@@ -456,7 +456,7 @@ class MemberView(APIView):
 
 
 class MemberListView(APIView):
-    permission_classes = [IsAuthenticated, ViewMemberPermission]
+    permission_classes = [IsAuthenticated, MemberManagementPermission]
 
     def get(self, request):
         try:
@@ -560,7 +560,7 @@ class MemberListView(APIView):
 
 
 class MemberIdView(APIView):
-    permission_classes = [IsAuthenticated, AddMemberPermission]
+    permission_classes = [IsAuthenticated, MemberManagementPermission]
 
     def post(self, request):
         try:
@@ -610,9 +610,9 @@ class MemberContactNumberView(APIView):
 
     def get_permissions(self):
         if self.request.method == "POST":
-            return [IsAuthenticated(), AddMemberPermission()]
+            return [IsAuthenticated(), MemberManagementPermission()]
         elif self.request.method == "PATCH":
-            return [IsAuthenticated(), UpdateMemberPermission()]
+            return [IsAuthenticated(), MemberManagementPermission()]
         else:
             return [IsAuthenticated()]
 
@@ -720,9 +720,9 @@ class MemberEmailAddressView(APIView):
 
     def get_permissions(self):
         if self.request.method == "POST":
-            return [AddMemberPermission()]
+            return [MemberManagementPermission()]
         elif self.request.method == "PATCH":
-            return [UpdateMemberPermission()]
+            return [MemberManagementPermission()]
         else:
             return [IsAuthenticated()]
 
@@ -837,9 +837,9 @@ class MemberAddressView(APIView):
 
     def get_permissions(self):
         if self.request.method == "POST":
-            return [AddMemberPermission()]
+            return [MemberManagementPermission()]
         elif self.request.method == "PATCH":
-            return [UpdateMemberPermission()]
+            return [MemberManagementPermission()]
         else:
             return [IsAuthenticated()]
 
@@ -949,9 +949,9 @@ class MemberSpouseView(APIView):
 
     def get_permissions(self):
         if self.request.method == "POST":
-            return [AddMemberPermission()]
+            return [MemberManagementPermission()]
         elif self.request.method == "PATCH":
-            return [UpdateMemberPermission()]
+            return [MemberManagementPermission()]
         else:
             return [IsAuthenticated()]
 
@@ -1093,9 +1093,9 @@ class MemberDescendsView(APIView):
 
     def get_permissions(self):
         if self.request.method == "POST":
-            return [AddMemberPermission()]
+            return [MemberManagementPermission()]
         elif self.request.method == "PATCH":
-            return [UpdateMemberPermission()]
+            return [MemberManagementPermission()]
         else:
             return [IsAuthenticated()]
 
@@ -1239,9 +1239,9 @@ class MemberJobView(APIView):
 
     def get_permissions(self):
         if self.request.method == "POST":
-            return [AddMemberPermission()]
+            return [MemberManagementPermission()]
         elif self.request.method == "PATCH":
-            return [UpdateMemberPermission()]
+            return [MemberManagementPermission()]
         else:
             return [IsAuthenticated()]
 
@@ -1354,9 +1354,9 @@ class MemberEmergencyContactView(APIView):
 
     def get_permissions(self):
         if self.request.method == "POST":
-            return [AddMemberPermission()]
+            return [MemberManagementPermission()]
         elif self.request.method == "PATCH":
-            return [UpdateMemberPermission()]
+            return [MemberManagementPermission()]
         else:
             return [IsAuthenticated()]
 
@@ -1471,9 +1471,9 @@ class MemberCompanionView(APIView):
 
     def get_permissions(self):
         if self.request.method == "POST":
-            return [AddMemberPermission()]
+            return [MemberManagementPermission()]
         elif self.request.method == "PATCH":
-            return [UpdateMemberPermission()]
+            return [MemberManagementPermission()]
         else:
             return [IsAuthenticated()]
 
@@ -1605,9 +1605,9 @@ class MemberDocumentView(APIView):
 
     def get_permissions(self):
         if self.request.method == "POST":
-            return [AddMemberPermission()]
+            return [MemberManagementPermission()]
         elif self.request.method == "PATCH":
-            return [UpdateMemberPermission()]
+            return [MemberManagementPermission()]
         else:
             return [IsAuthenticated()]
 
@@ -1771,9 +1771,9 @@ class AddMemberIDview(APIView):
 
     def get_permissions(self):
         if self.request.method == "POST":
-            return [AddMemberPermission()]
+            return [MemberManagementPermission()]
         elif self.request.method == "PATCH":
-            return [UpdateMemberPermission()]
+            return [MemberManagementPermission()]
         else:
             return [IsAuthenticated()]
 
@@ -1817,7 +1817,7 @@ class AddMemberIDview(APIView):
 
 
 class MemberHistoryView(APIView):
-    permission_classes = [IsAuthenticated, ViewMemberPermission]
+    permission_classes = [IsAuthenticated, MemberManagementPermission]
 
     def get(self, request):
         try:
@@ -1888,7 +1888,7 @@ class MemberHistoryView(APIView):
 
 
 class MemberSingleHistoryView(APIView):
-    permission_classes = [IsAuthenticated, ViewMemberPermission]
+    permission_classes = [IsAuthenticated, MemberManagementPermission]
 
     def get(self, request, member_ID):
         try:
@@ -1950,9 +1950,9 @@ class MemberSpecialDayView(APIView):
 
     def get_permissions(self):
         if self.request.method == "POST":
-            return [AddMemberPermission()]
+            return [MemberManagementPermission()]
         elif self.request.method == "PATCH":
-            return [UpdateMemberPermission()]
+            return [MemberManagementPermission()]
         else:
             return [IsAuthenticated()]
 
@@ -2067,9 +2067,9 @@ class MemberCertificateView(APIView):
 
     def get_permissions(self):
         if self.request.method == "POST":
-            return [AddMemberPermission()]
+            return [MemberManagementPermission()]
         elif self.request.method == "PATCH":
-            return [UpdateMemberPermission()]
+            return [MemberManagementPermission()]
         else:
             return [IsAuthenticated()]
 
@@ -2192,7 +2192,7 @@ class MemberCertificateView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class MemberIDListView(APIView):
-    permission_classes = [IsAuthenticated, ViewMemberPermission]
+    permission_classes = [IsAuthenticated, MemberManagementPermission]
 
     def get(self, request):
         try:

@@ -28,7 +28,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
 from rest_framework_simplejwt.exceptions import InvalidToken
 from django.utils.datastructures import MultiValueDict
-from .utils.permissions_classes import RegisterUserPermission, GroupViewPermission, GroupCreatePermission, GroupDeletePermission, GroupEditPermission, GroupUserManagementPermission, CustomPermissionSetPermission, ViewAllUserPermission
+from .utils.permissions_classes import RegisterUserPermission,GroupPermissionManagement, ViewAllUserPermission
 from activity_log.utils.functions import request_data_activity_log
 from .utils.rate_limiting_classes import LoginRateThrottle
 from django.core.cache import cache
@@ -742,7 +742,7 @@ class UserView(APIView):
 
 
 class CustomPermissionView(APIView):
-    permission_classes = [IsAuthenticated, CustomPermissionSetPermission]
+    permission_classes = [IsAuthenticated, GroupPermissionManagement]
 
     def post(self, request):
         try:
@@ -839,11 +839,11 @@ class GroupPermissionView(APIView):
     def get_permissions(self):
 
         if self.request.method == "POST":
-            return [GroupCreatePermission()]
+            return [GroupPermissionManagement()]
         elif self.request.method == "GET":
-            return [GroupViewPermission()]
+            return [GroupPermissionManagement()]
         elif self.request.method == "DELETE":
-            return [GroupDeletePermission()]
+            return [GroupPermissionManagement()]
         else:
             return [IsAuthenticated()]
 
@@ -997,11 +997,11 @@ class GroupPermissionView(APIView):
 class GroupPermissionViewV2(APIView):
     def get_permissions(self):
         if self.request.method == "POST":
-            return [GroupCreatePermission()]
+            return [GroupPermissionManagement()]
         elif self.request.method == "GET":
-            return [GroupViewPermission()]
+            return [GroupPermissionManagement()]
         elif self.request.method == "DELETE":
-            return [GroupDeletePermission()]
+            return [GroupPermissionManagement()]
         else:
             return [IsAuthenticated()]
 
@@ -1047,9 +1047,9 @@ class SpecificGroupPermissionView(APIView):
 
     def get_permissions(self):
         if self.request.method == "DELETE":
-            return [GroupDeletePermission()]
+            return [GroupPermissionManagement()]
         elif self.request.method == "PATCH":
-            return [GroupEditPermission()]
+            return [GroupPermissionManagement()]
         else:
             return [IsAuthenticated()]
 
@@ -1146,9 +1146,9 @@ class SpecificGroupPermissionViewV2(APIView):
 
     def get_permissions(self):
         if self.request.method == "DELETE":
-            return [GroupDeletePermission()]
+            return [GroupPermissionManagement()]
         elif self.request.method == "PATCH":
-            return [GroupEditPermission()]
+            return [GroupPermissionManagement()]
         else:
             return [IsAuthenticated()]
 
@@ -1206,7 +1206,7 @@ class SpecificGroupPermissionViewV2(APIView):
 
 class AssignGroupPermissionView(APIView):
     permission_classes = [IsAuthenticated,
-                          GroupUserManagementPermission]
+                          GroupPermissionManagement]
 
     def post(self, request):
         try:
@@ -1469,7 +1469,7 @@ class AssignGroupPermissionView(APIView):
 
 class AssignGroupPermissionViewV2(APIView):
     permission_classes = [IsAuthenticated,
-                          GroupUserManagementPermission]
+                          GroupPermissionManagement]
 
     def post(self, request):
         try:
@@ -1804,7 +1804,7 @@ class GetUserPermissionsView(APIView):
 
 
 class GroupDetailsView(APIView):
-    permission_classes = [IsAuthenticated, GroupViewPermission]
+    permission_classes = [IsAuthenticated, GroupPermissionManagement]
 
     def get(self, request, id):
         try:
