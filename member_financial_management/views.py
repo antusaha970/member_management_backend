@@ -1,3 +1,5 @@
+from .services.invoices.invoice_payment import process_invoice_payment
+from .services.invoices.update_invoice_func import update_invoice
 from django.core.cache import cache
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
@@ -23,8 +25,6 @@ import pandas as pd
 from django.http import Http404
 from .utils.permission_classes import MemberFinancialManagementPermission
 logger = logging.getLogger("myapp")
-from .services.invoices.update_invoice_func import update_invoice
-from .services.invoices.invoice_payment import process_invoice_payment
 
 
 class PaymentMethodView(APIView):
@@ -32,8 +32,7 @@ class PaymentMethodView(APIView):
 
     def get(self, request):
         try:
-           
-        
+
             payment_methods = PaymentMethod.objects.filter(is_active=True)
             fields_param = request.query_params.get("fields")
             fields = fields_param.split(",") if fields_param else None
@@ -516,7 +515,6 @@ class InvoicePaymentView(APIView):
             )
 
 
-
 class IncomeParticularView(APIView):
     permission_classes = [IsAuthenticated, MemberFinancialManagementPermission]
 
@@ -571,7 +569,7 @@ class IncomeParticularView(APIView):
 
     def get(self, request):
         try:
-          
+
             income_particular = IncomeParticular.objects.filter(
                 is_active=True)
             fields_param = request.query_params.get("fields")
@@ -666,7 +664,7 @@ class IncomeReceivedFromView(APIView):
     def get(self, request):
         try:
             # implement caching
-            
+
             data = IncomeReceivingOption.objects.filter(is_active=True)
             fields_param = request.query_params.get("fields")
             fields = fields_param.split(",") if fields_param else None
@@ -709,7 +707,7 @@ class InvoiceShowView(APIView):
 
     def get(self, request):
         try:
-            
+
             # hit db if miss
             queryset = Invoice.active_objects.select_related(
                 "invoice_type", "generated_by", "member", "restaurant", "event"
@@ -718,7 +716,7 @@ class InvoiceShowView(APIView):
                 Prefetch("invoice_items__products"),
                 Prefetch("invoice_items__facility"),
                 Prefetch("invoice_items__event_tickets"),
-            ).order_by("id")
+            ).order_by("-id")
             # fields query param
             fields_param = request.query_params.get("fields")
             fields = fields_param.split(",") if fields_param else None
@@ -885,7 +883,6 @@ class InvoiceSpecificView(APIView):
                     "server_error": [str(e)]
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
     def delete(self, request, id):
         try:
@@ -1211,7 +1208,7 @@ class InvoiceCustomDeleteView(APIView):
                         for sale in invoice.sale_invoice.all():
                             Income.objects.filter(
                                 sale=sale).update(is_active=False)
-                
+
                 return Response({
                     "code": 200,
                     "status": "success",
@@ -1250,9 +1247,9 @@ class IncomeView(APIView):
 
     def get(self, request):
         try:
-           
+
             data = Income.active_objects.filter(is_active=True).select_related(
-                "particular", "received_from_type", "receiving_type", "member", "received_by", "sale").order_by("id")
+                "particular", "received_from_type", "receiving_type", "member", "received_by", "sale").order_by("-id")
             paginator = CustomPageNumberPagination()
             paginated_queryset = paginator.paginate_queryset(
                 data, request=request, view=self)
@@ -1290,7 +1287,7 @@ class IncomeSpecificView(APIView):
 
     def get(self, request, id):
         try:
-            
+
             queryset = Income.objects.select_related(
                 "sale", "particular", "received_from_type", "receiving_type", "member", "received_by").filter(is_active=True).order_by("id")
             queryset = get_object_or_404(queryset, pk=id)
@@ -1328,10 +1325,10 @@ class SalesView(APIView):
 
     def get(self, request):
         try:
-            
+
             # hit db if miss
             data = Sale.active_objects.filter(is_active=True).select_related(
-                "sale_source_type", "customer", "invoice").order_by("id")
+                "sale_source_type", "customer", "invoice").order_by("-id")
             paginator = CustomPageNumberPagination()
             paginated_queryset = paginator.paginate_queryset(
                 data, request=request, view=self)
@@ -1375,7 +1372,7 @@ class SalesSpecificView(APIView):
 
     def get(self, request, id):
         try:
-            
+
             data = get_object_or_404(Sale.active_objects.select_related(
                 "sale_source_type", "customer", "payment_method"), pk=id)
             serializer = serializers.SaleSpecificSerializer(
@@ -1420,7 +1417,7 @@ class TransactionView(APIView):
         try:
 
             data = Transaction.active_objects.select_related(
-                "member", "invoice", "payment_method").order_by("id")
+                "member", "invoice", "payment_method").order_by("-id")
             paginator = CustomPageNumberPagination()
             paginated_queryset = paginator.paginate_queryset(
                 data, request=request, view=self)
@@ -1464,7 +1461,7 @@ class TransactionSpecificView(APIView):
 
     def get(self, request, id):
         try:
-            
+
             data = get_object_or_404(Transaction.active_objects.select_related(
                 "member", "invoice", "payment_method", "invoice__invoice_type", "invoice__generated_by", "invoice__member", "invoice__restaurant", "invoice__event"), pk=id)
             serializer = serializers.TransactionSpecificSerializer(
@@ -1507,11 +1504,10 @@ class PaymentView(APIView):
 
     def get(self, request):
         try:
-            
 
             # hit db if miss
             data = Payment.active_objects.select_related(
-                "invoice", "member", "payment_method", "processed_by", "transaction").order_by("id")
+                "invoice", "member", "payment_method", "processed_by", "transaction").order_by("-id")
             paginator = CustomPageNumberPagination()
             paginated_queryset = paginator.paginate_queryset(
                 data, request=request, view=self)
@@ -1555,8 +1551,7 @@ class PaymentSpecificView(APIView):
 
     def get(self, request, id):
         try:
-            
-                                
+
             data = get_object_or_404(Payment.active_objects.select_related(
                 "invoice", "member", "payment_method", "processed_by", "transaction", "invoice__invoice_type",
                 "invoice__generated_by",
@@ -1607,9 +1602,9 @@ class DueView(APIView):
 
     def get(self, request):
         try:
-            
+
             data = Due.active_objects.select_related(
-                "member", "invoice", "payment", "transaction").order_by("id")
+                "member", "invoice", "payment", "transaction").order_by("-id")
             paginator = CustomPageNumberPagination()
             paginated_queryset = paginator.paginate_queryset(
                 data, request=request, view=self)
@@ -1653,7 +1648,7 @@ class DueSpecificView(APIView):
 
     def get(self, request, id):
         try:
-            
+
             data = get_object_or_404(Due.active_objects.select_related(
                 "member", "invoice", "payment", "transaction", "invoice__invoice_type",
                 "invoice__generated_by",
@@ -1709,9 +1704,9 @@ class MemberDueView(APIView):
 
     def get(self, request):
         try:
-            
+
             data = MemberDue.active_objects.select_related(
-                "member", "due_reference").order_by("id")
+                "member", "due_reference").order_by("-id")
             paginator = CustomPageNumberPagination()
             paginated_queryset = paginator.paginate_queryset(
                 data, request=request, view=self)
@@ -1994,7 +1989,7 @@ class MemberDueSpecificView(APIView):
 
     def get(self, request, id):
         try:
-            
+
             data = get_object_or_404(MemberDue.active_objects.select_related(
                 "member", "due_reference", "due_reference__invoice",
                 "due_reference__member", "due_reference__payment", "due_reference__transaction", "due_reference__transaction"), pk=id)
@@ -2038,10 +2033,9 @@ class MemberAccountView(APIView):
 
     def get(self, request):
         try:
-            
 
             data = MemberAccount.active_objects.select_related(
-                "member").order_by("id")
+                "member").order_by("-id")
             paginator = CustomPageNumberPagination()
             paginated_queryset = paginator.paginate_queryset(
                 data, request=request, view=self)
@@ -2085,7 +2079,7 @@ class MemberAccountSpecificSpecificView(APIView):
 
     def get(self, request, id):
         try:
-            
+
             data = get_object_or_404(MemberAccount.active_objects.select_related(
                 "member"), member__member_ID=id)
             serializer = serializers.MemberAccountSerializer(
