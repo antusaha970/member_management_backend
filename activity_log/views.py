@@ -26,13 +26,13 @@ class ActivityLogAPIView(APIView):
 
             if not activity_logs.exists():
                 log_request(request, "No activity logs found for this user",
-                            "error", "No activity logs found for this user")
+                            "info", "No activity logs found for this user")
                 return Response({
-                    "code": status.HTTP_404_NOT_FOUND,
+                    "code": status.HTTP_200_OK,
                     "message": "No activity logs found for this user.",
                     "status": "failed",
                     "data": []
-                }, status=status.HTTP_404_NOT_FOUND)
+                }, status=status.HTTP_200_OK)
             query_items = sorted(request.query_params.items())
             query_string = urlencode(query_items) if query_items else "default"
             cache_key = f"single_activity_logs::{query_string}_user_{user.id}"
@@ -105,7 +105,7 @@ class AllUserActivityLogAPIView(APIView):
                 "data": serializer.data
             }, status=200)
 
-            cache.set(cache_key, final_response.data, 60*10)
+            # cache.set(cache_key, final_response.data, 60*10)
             return final_response
 
         except Exception as e:
