@@ -12,7 +12,6 @@ class SecondaryRouter:
         return None
 
     def allow_relation(self, obj1, obj2, **hints):
-        # Relation যদি secondary DB apps এর মধ্যে হয় → allow
         if (obj1._meta.app_label in self.SECONDARY_APPS and
             obj2._meta.app_label in self.SECONDARY_APPS):
             return True
