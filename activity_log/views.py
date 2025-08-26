@@ -105,7 +105,7 @@ class AllUserActivityLogAPIView(APIView):
                 "data": serializer.data
             }, status=200)
 
-            cache.set(cache_key, final_response.data, 60*10)
+            # cache.set(cache_key, final_response.data, 60*10)
             return final_response
 
         except Exception as e:
