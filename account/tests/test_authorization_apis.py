@@ -13,7 +13,7 @@ from django.conf import settings
 
 from rest_framework.authtoken.models import Token
 from unittest.mock import patch
-from account.utils.permissions_classes import RegisterUserPermission,CustomPermissionSetPermission, GroupCreatePermission, GroupDeletePermission, GroupEditPermission, GroupUserManagementPermission, GroupViewPermission
+from account.utils.permissions_classes import RegisterUserPermission, GroupPermissionManagement
 from random import randint
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -30,7 +30,7 @@ class CustomPermissionAPITest(TestCase):
         # API endpoint
         self.url = "/api/account/v1/authorization/custom_permission_name/"
         
-    @patch.object(CustomPermissionSetPermission, "has_permission", return_value=True)
+    @patch.object(GroupPermissionManagement, "has_permission", return_value=True)
     def test_create_permission_success(self, mock_permissions):
         admin = self.client.force_authenticate(user=self.admin_user)
         # print(admin.is_superuser)
@@ -57,7 +57,7 @@ class CustomPermissionAPITest(TestCase):
         response = self.client.post(self.url, data)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertIn("errors", response.data)
-    @patch.object(CustomPermissionSetPermission, "has_permission", return_value=True)
+    @patch.object(GroupPermissionManagement, "has_permission", return_value=True)
     def test_create_permission_duplicate_name(self, mock_permissions):
         """Test that duplicate permission names are not allowed"""
         self.client.force_authenticate(user=self.admin_user)
@@ -66,7 +66,7 @@ class CustomPermissionAPITest(TestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("errors", response.data)
         self.assertIn("name", response.data["errors"])
-    @patch.object(CustomPermissionSetPermission, "has_permission", return_value=True)
+    @patch.object(GroupPermissionManagement, "has_permission", return_value=True)
     def test_create_permission_empty_name(self, mock_permissions):
         """Test that an empty permission name is not allowed"""
         self.client.force_authenticate(user=self.admin_user)
@@ -76,7 +76,7 @@ class CustomPermissionAPITest(TestCase):
         self.assertIn("errors", response.data)
         self.assertIn("name", response.data["errors"])
 
-    @patch.object(CustomPermissionSetPermission, "has_permission", return_value=True)
+    @patch.object(GroupPermissionManagement, "has_permission", return_value=True)
     def test_get_all_permissions(self, mock_permissions):
         """Test fetching all permissions and check response data structure"""
         self.client.force_authenticate(user=self.admin_user)
@@ -116,7 +116,7 @@ class CustomGroupModel(TestCase):
 
         self.url = "/api/account/v1/authorization/group_permissions/"
 
-    @patch.object(GroupCreatePermission, "has_permission", return_value=True)
+    @patch.object(GroupPermissionManagement, "has_permission", return_value=True)
     def test_create_group_success(self, mock_permissions):
         """Ensure that an admin user can create a group with permissions"""
         self.client.force_authenticate(user=self.admin_user)
@@ -146,7 +146,7 @@ class CustomGroupModel(TestCase):
         response = self.client.post(self.url, data, format="json")
         self.assertEqual(response.status_code, 403)
 
-    @patch.object(GroupCreatePermission, "has_permission", return_value=True)
+    @patch.object(GroupPermissionManagement, "has_permission", return_value=True)
     def test_create_group_with_long_name(self, mock_permissions):
         """ Ensure group name does not exceed max length"""
         self.client.force_authenticate(user=self.admin_user)
@@ -157,7 +157,7 @@ class CustomGroupModel(TestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("errors", response.data)
 
-    @patch.object(GroupViewPermission, "has_permission", return_value=True)
+    @patch.object(GroupPermissionManagement, "has_permission", return_value=True)
     def test_get_groups(self, mock_permissions):
         """ Test fetching groups for a user"""
         self.client.force_authenticate(user=self.normal_user)
@@ -165,7 +165,7 @@ class CustomGroupModel(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue("data" in response.data)
 
-    @patch.object(GroupEditPermission, "has_permission", return_value=True)
+    @patch.object(GroupPermissionManagement, "has_permission", return_value=True)
     def test_patch_group(self, mock_permissions):
         """Test updating a group"""
         self.client.force_authenticate(user=self.admin_user)
@@ -179,7 +179,7 @@ class CustomGroupModel(TestCase):
         self.groupname.refresh_from_db()
         self.assertEqual(self.groupname.name, "updated_moderator")
 
-    @patch.object(GroupDeletePermission, "has_permission", return_value=True)
+    @patch.object(GroupPermissionManagement, "has_permission", return_value=True)
     def test_delete_group(self, mock_permissions):
         """ Test deleting a group"""
         self.client.force_authenticate(user=self.admin_user)
@@ -208,7 +208,7 @@ class AssignGroupUserAPIsTEST(APITestCase):
             username=admin_username, password=admin_password, email=admin_email)
         self.token = RefreshToken.for_user(self.admin)
 
-    @patch.object(GroupUserManagementPermission, "has_permission", return_value=True)
+    @patch.object(GroupPermissionManagement, "has_permission", return_value=True)
     def test_assign_group_user_post_method_with_valid_data(self, mock_permission):
         """
         Endpoint: "/api/account/v1/authorization/assign_group_user/"
@@ -243,7 +243,7 @@ class AssignGroupUserAPIsTEST(APITestCase):
         self.assertEqual(group_name, _group_name)
         self.assertEqual(_user_id, self.user.id)
 
-    @patch.object(GroupUserManagementPermission, "has_permission", return_value=True)
+    @patch.object(GroupPermissionManagement, "has_permission", return_value=True)
     def test_assign_group_user_get_method_with_valid_data(self, mock_permissions):
         """
             Endpoint: "/api/account/v1/authorization/assign_group_user/"
@@ -258,7 +258,7 @@ class AssignGroupUserAPIsTEST(APITestCase):
         self.assertEqual(_response.status_code, status.HTTP_200_OK)
         self.assertIn('data', _response.json())
 
-    @patch.object(GroupUserManagementPermission, "has_permission", return_value=False)
+    @patch.object(GroupPermissionManagement, "has_permission", return_value=False)
     def test_assign_group_user_get_method_with_invalid_data(self, mock_permission):
         """
             Endpoint: "/api/account/v1/authorization/assign_group_user/"
@@ -275,7 +275,7 @@ class AssignGroupUserAPIsTEST(APITestCase):
         self.assertEqual(_response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertNotIn('data', _response.json())
 
-    @patch.object(GroupUserManagementPermission, "has_permission", return_value=True)
+    @patch.object(GroupPermissionManagement, "has_permission", return_value=True)
     def test_assign_group_user_delete_method_with_valid_data(self):
         """
         Endpoint: "/api/account/v1/authorization/assign_group_user/"
@@ -306,7 +306,7 @@ class AssignGroupUserAPIsTEST(APITestCase):
         self.assertFalse(AssignGroupPermission.objects.filter(
             user=self.user, group=group).exists())
 
-    @patch.object(GroupUserManagementPermission, "has_permission", return_value=True)
+    @patch.object(GroupPermissionManagement, "has_permission", return_value=True)
     def test_assign_group_user_delete_method_with_valid_data(self, mock_permission):
         """
         Endpoint: "/api/account/v1/authorization/assign_group_user/"
@@ -334,7 +334,7 @@ class AssignGroupUserAPIsTEST(APITestCase):
         # assert
         self.assertEqual(_response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    @patch.object(GroupUserManagementPermission, "has_permission", return_value=True)
+    @patch.object(GroupPermissionManagement, "has_permission", return_value=True)
     def test_assign_group_user_patch_method_with_valid_data(self, mock_permission):
         """
         Endpoint: "/api/account/v1/authorization/assign_group_user/"
