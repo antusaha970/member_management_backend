@@ -467,7 +467,7 @@ class ProductCategoryDetailView(APIView):
        
 class ProductView(APIView):
     def get_permissions(self):
-        if self.request.method == "POST":
+        if self.request.method == "POST" or self.request.method == "GET":
             return [IsAuthenticated(), ProductManagementPermission()]
         else:
             return [IsAuthenticated()]
