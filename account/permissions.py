@@ -28,6 +28,6 @@ class HasCustomPermission(BasePermission):
                         user_permissions.add(perm.name)
 
             cache.set(cache_key, list(user_permissions),
-                      timeout=60*30)  # 1 hour
+                      timeout=60*5)  # 1 hour
 
         return self.required_permission in user_permissions
