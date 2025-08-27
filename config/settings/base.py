@@ -162,6 +162,11 @@ CACHES = {
     }
 }
 
+# Create logs directory if not exists
+LOG_DIR = os.path.join(BASE_DIR, 'logs')
+if not os.path.exists(LOG_DIR):
+    os.makedirs(LOG_DIR)
+
 ### LOGGER settings ###
 LOGGING = {
     'version': 1,
