@@ -960,6 +960,7 @@ class GroupPermissionView(APIView):
                 severity_level="info",
                 description="Deleted a group",
             )
+            clear_user_permissions_cache()
             return Response({
                 "code": status.HTTP_200_OK,
                 "message": "Operation successful",
@@ -1046,12 +1047,10 @@ class SpecificGroupPermissionView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get_permissions(self):
-        if self.request.method == "DELETE":
-            return [GroupPermissionManagement()]
-        elif self.request.method == "PATCH":
-            return [GroupPermissionManagement()]
-        else:
-            return [IsAuthenticated()]
+        if self.request.method in ["DELETE", "PATCH"]:
+            return [IsAuthenticated(), GroupPermissionManagement()]
+        return [IsAuthenticated()]
+
 
     def patch(self, request, group_id):
         """Update a group with required permissions at least one permission"""
@@ -1063,6 +1062,8 @@ class SpecificGroupPermissionView(APIView):
                 serializer.save()
                 # after updating the group delete the permissions cache
                 clear_user_permissions_cache()
+                pdb.set_trace()
+
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),
                     verb="Updated a group",
@@ -1106,6 +1107,8 @@ class SpecificGroupPermissionView(APIView):
 
     def delete(self, request, group_id):
         """Delete a group"""
+        print("DELETE view entered")
+        pdb.set_trace()
         try:
             group = get_object_or_404(GroupModel, pk=group_id)
             group.delete()
