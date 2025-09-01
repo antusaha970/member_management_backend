@@ -24,6 +24,7 @@ from django.utils.decorators import method_decorator
 from member_financial_management.utils.permission_classes import MemberFinancialManagementPermission
 import logging
 logger = logging.getLogger("myapp")
+from .tasks import delete_events_cache, delete_event_venues_cache
 # Create your views here.
 
 
@@ -35,20 +36,14 @@ class EventVenueView(APIView):
             return [IsAuthenticated()]
 
     def post(self, request):
-        """
-        Creates a new event venue instance and logs an activity.
-        Args:
-            request (Request): The request containing the data for the new event venue instance.
-        Returns:
-            Response: The response containing the new event venue instance's id, street address and city
-        """
+        
         try:
             data = request.data
             serializer = serializers.EventVenueSerializer(data=data)
             if serializer.is_valid():
 
                 venue_instance = serializer.save()
-                cache.delete_pattern("event_venues::*")
+            
                 street_address = serializer.validated_data["street_address"]
                 city = serializer.validated_data["city"]
                 log_activity_task.delay_on_commit(
@@ -57,8 +52,8 @@ class EventVenueView(APIView):
                     severity_level="info",
                     description="Venue created successfully for register a event",
                 )
-                # delete the cache for venues
-
+                # Delete the cache for event venues
+                delete_event_venues_cache.delay()
                 return Response({
                     "code": 201,
                     "message": "Venue created successfully",
@@ -101,11 +96,7 @@ class EventVenueView(APIView):
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def get(self, request):
-        """
-        Retrieves a list of all event venues and logs an activity.
-        Returns:
-            Response: The response containing the list of event venues.
-        """
+    
         try:
             query_items = sorted(request.query_params.items())
             query_string = urlencode(query_items) if query_items else "default"
@@ -160,32 +151,26 @@ class EventVenueView(APIView):
 
 class EventView(APIView):
     def get_permissions(self):
-        if self.request.method == "POST":
+        if self.request.method in ["POST", "GET"]:
             return [IsAuthenticated(), EventManagementPermission()]
         else:
             return [IsAuthenticated()]
 
     def post(self, request):
-        """
-        Creates a new event instance and logs an activity.
-        Args:
-            request (Request): The request containing the data for the new event instance.
-        Returns:
-            Response: The response containing the new event instance's id and title
-        """
+       
         try:
             data = request.data
             serializer = serializers.EventSerializer(data=data)
             if serializer.is_valid():
                 event_instance = serializer.save()
-                # delete the cache for events
-                cache.delete_pattern("events::*")
                 event_title = serializer.validated_data["title"]
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),
                     verb="Event created successfully",
                     severity_level="info",
                     description="Event created successfully for register a event",)
+                # delete the cache for events
+                delete_events_cache.delay()
                 return Response({
                     "code": 201,
                     "message": "Event created successfully",
@@ -225,11 +210,7 @@ class EventView(APIView):
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def get(self, request):
-        """
-        Retrieves a list of all events and logs an activity.
-        Returns:
-            Response: The response containing the list of events.
-        """
+       
         try:
             query_items = sorted(request.query_params.items())
             query_string = urlencode(query_items) if query_items else "default"
@@ -261,7 +242,7 @@ class EventView(APIView):
                 "status": "success",
                 "data": data
             })
-            cache.set(cache_key, final_response.data, timeout=60*30)
+            cache.set(cache_key, final_response.data, timeout=60*10)#cache for 10 minutes
             return final_response
         except Exception as e:
             logger.exception(str(e))
@@ -288,19 +269,12 @@ class EventDetailView(APIView):
             return [IsAuthenticated()]
 
     def get(self, request, event_id):
-        """
-        Retrieves a specific event by its event_id and logs an activity.
-        Args:
-            request (Request): The request object.
-            event_id (int): The event_id of the event to retrieve.
-        Returns:
-            Response: The response containing the event details.
-        """
+        
         try:
-            cache_key = f"event_details::{event_id}"
-            cached_response = cache.get(cache_key)
-            if cached_response:
-                return Response(cached_response, status=200)
+            # cache_key = f"event_details::{event_id}"
+            # cached_response = cache.get(cache_key)
+            # if cached_response:
+            #     return Response(cached_response, status=200)
             event = Event.objects.select_related("organizer", "venue")\
                                  .prefetch_related("event_media")\
                                  .get(pk=event_id)
@@ -318,7 +292,7 @@ class EventDetailView(APIView):
                 "data": serializer.data
             }, status=status.HTTP_200_OK)
             # Cache the response
-            cache.set(cache_key, final_response.data, timeout=60 * 30)
+            # cache.set(cache_key, final_response.data, timeout=60 * 30)
             return final_response
         except Event.DoesNotExist:
             log_activity_task.delay_on_commit(
@@ -359,13 +333,7 @@ class EventTicketView(APIView):
             return [IsAuthenticated()]
 
     def post(self, request):
-        """
-        Creates a new event ticket and logs an activity.
-        Args:
-            request (Request): The request containing the data for the new event ticket instance.
-        Returns:
-            Response: The response containing the event ticket id and name.
-        """
+        
         try:
             data = request.data
             serializer = serializers.EventTicketSerializer(data=data)
@@ -477,13 +445,7 @@ class EventMediaView(APIView):
             return [IsAuthenticated()]
 
     def post(self, request):
-        """
-        Creates a new event media and logs an activity.
-        Args:
-            request (Request): The request containing the data for the new event media instance.
-        Returns:
-            Response: The response containing the event media id and name.
-        """
+       
         try:
             data = request.data
             serializer = serializers.EventMediaSerializer(data=data)
@@ -541,20 +503,14 @@ class EventFeeView(APIView):
             return [IsAuthenticated()]
 
     def post(self, request):
-        """
-        Creates a new event fee and logs an activity.
-        Args:
-            request (Request): The request containing the data for the new event fee instance.
-        Returns:
-            Response: The response containing the event fee id and fee.
-        """
+        
         try:
             data = request.data
             serializer = serializers.EventFeeSerializer(data=data)
             if serializer.is_valid():
                 fee_instance = serializer.save()
                 # delete the cache for event fees
-                cache.delete_pattern("event_fees::*")
+                # cache.delete_pattern("event_fees::*")
                 event_fee = serializer.validated_data["fee"]
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),
@@ -599,18 +555,14 @@ class EventFeeView(APIView):
                 }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def get(self, request):
-        """
-        Retrieves a list of all event fees and logs an activity.
-        Returns:
-            Response: The response containing the list of event fees.
-        """
+        
         try:
-            query_items = sorted(request.query_params.items())
-            query_string = urlencode(query_items) if query_items else "default"
-            cache_key = f"event_fees::{query_string}"
-            cached_response = cache.get(cache_key)
-            if cached_response:
-                return Response(cached_response, status=200)
+            # query_items = sorted(request.query_params.items())
+            # query_string = urlencode(query_items) if query_items else "default"
+            # cache_key = f"event_fees::{query_string}"
+            # cached_response = cache.get(cache_key)
+            # if cached_response:
+            #     return Response(cached_response, status=200)
             event_fees = EventFee.objects.filter(is_active=True).order_by('id')
             # Implement pagination
             paginator = CustomPageNumberPagination()
@@ -632,7 +584,7 @@ class EventFeeView(APIView):
                 "data": data
             })
             # Cache the data
-            cache.set(cache_key, final_response.data, timeout=60 * 30)
+            # cache.set(cache_key, final_response.data, timeout=60 * 30)
             return final_response
         except Exception as e:
             logger.exception(str(e))
@@ -660,10 +612,10 @@ class EventTicketDetailView(APIView):
 
     def get(self, request, ticket_id):
         try:
-            cache_key = f"event_ticket_details::{ticket_id}"
-            cached_response = cache.get(cache_key)
-            if cached_response:
-                return Response(cached_response, status=200)
+            # cache_key = f"event_ticket_details::{ticket_id}"
+            # cached_response = cache.get(cache_key)
+            # if cached_response:
+            #     return Response(cached_response, status=200)
             event_ticket = EventTicket.objects.select_related(
                 'event').get(pk=ticket_id)
             serializer = serializers.EventTicketViewSerializer(event_ticket)
@@ -680,7 +632,7 @@ class EventTicketDetailView(APIView):
                 "data": serializer.data
             }, status=status.HTTP_200_OK)
             # Cache the response
-            cache.set(cache_key, final_response.data, timeout=60 * 30)
+            # cache.set(cache_key, final_response.data, timeout=60 * 30)
             return final_response
         except EventTicket.DoesNotExist:
             log_activity_task.delay_on_commit(
@@ -723,13 +675,7 @@ class EventTicketBuyView(APIView):
             return [IsAuthenticated()]
 
     def post(self, request):
-        """
-        Creates an invoice for an event ticket purchase.
-        Args:
-            request (Request): The request containing the data for the invoice instance.
-        Returns:
-            Response: The response containing the created invoice and a success message.
-        """
+        
         try:
             data = request.data
             serializer = serializers.EventTicketBuySerializer(data=data)

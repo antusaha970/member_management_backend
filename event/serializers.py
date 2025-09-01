@@ -183,8 +183,8 @@ class EventSerializer(serializers.Serializer):
 class EventOrganizerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Member
-        fields = ['member_ID']  # Only return the needed field
-        
+        fields = ['member_ID','first_name','last_name','membership_type']  # Only return the needed field
+
 
 class EventViewSerializer(serializers.ModelSerializer):
     venue = EventVenueViewSerializer(read_only=True)
