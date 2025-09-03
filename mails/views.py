@@ -76,7 +76,7 @@ class SetMailConfigurationAPIView(APIView):
     def get(self, request):
         try:
             user = request.user
-            configs = SMTPConfiguration.objects.filter(user=user)
+            configs = SMTPConfiguration.objects.filter()
             serializer = serializers.SMTPConfigurationSerializerForView(
                 configs, many=True)
             return Response({
@@ -106,7 +106,7 @@ class SetMailConfigurationAPIView(APIView):
     def put(self, request, id):
         try:
             user = request.user
-            instance = SMTPConfiguration.objects.get(pk=id, user=user)
+            instance = SMTPConfiguration.objects.get(pk=id)
             serializer = serializers.SMTPConfigurationSerializer(
                 data=request.data)
             if serializer.is_valid():
@@ -156,7 +156,7 @@ class SetMailConfigurationAPIView(APIView):
     def delete(self, request, id):
         try:
             user = request.user
-            instance = SMTPConfiguration.objects.get(pk=id, user=user)
+            instance = SMTPConfiguration.objects.get(pk=id)
             with transaction.atomic():
                 instance.delete()
             return Response({
@@ -237,7 +237,7 @@ class EmailComposeView(APIView):
         try:
             user = request.user
             paginator = CustomPageNumberPagination()
-            composes = EmailCompose.objects.filter(user=user).order_by('id')
+            composes = EmailCompose.objects.filter().order_by('id')
             paginated_qs = paginator.paginate_queryset(
                 composes, request, view=self)
             serializer = serializers.EmailComposeViewSerializer(
@@ -273,7 +273,7 @@ class EmailComposeDetailView(APIView):
     def patch(self, request, id):
         try:
             user = request.user
-            instance = EmailCompose.objects.get(pk=id, user=user)
+            instance = EmailCompose.objects.get(pk=id)
             serializer = serializers.EmailComposeUpdateSerializer(
                 data=request.data)
             if serializer.is_valid():
@@ -323,7 +323,7 @@ class EmailComposeDetailView(APIView):
     def delete(self, request, id):
         try:
             user = request.user
-            instance = EmailCompose.objects.get(pk=id, user=user)
+            instance = EmailCompose.objects.get(pk=id)
             with transaction.atomic():
                 attachments = EmailAttachment.objects.filter(
                     email_compose=instance)
@@ -364,7 +364,7 @@ class EmailComposeDetailView(APIView):
     def get(self, request, id):
         try:
             user = request.user
-            composes = get_object_or_404(EmailCompose, pk=id, user=user)
+            composes = get_object_or_404(EmailCompose, pk=id)
             serializer = serializers.EmailComposeViewSerializer(
                 composes)
             return Response({
@@ -520,7 +520,7 @@ class EmailGroupDetailView(APIView):
     def patch(self, request, group_id):
         try:
             email_group = EmailGroup.objects.get(
-                id=group_id, user=request.user)
+                id=group_id)
             serializer = serializers.EmailGroupSerializer(
                 email_group, data=request.data, partial=True)
             if serializer.is_valid():
@@ -589,7 +589,7 @@ class EmailGroupDetailView(APIView):
     def delete(self, request, group_id):
         try:
             email_group = EmailGroup.objects.get(
-                id=group_id, user=request.user)
+                id=group_id)
             email_group.delete()
             log_request(request, "Delete Email Group", "info",
                         "User deleted email group successfully")
@@ -1108,7 +1108,8 @@ class OutboxView(APIView):
     def get(self, request):
         try:
             query_params = request.query_params
-            outbox = Outbox.objects.select_related('email_compose').all().order_by('id')
+            outbox = Outbox.objects.select_related(
+                'email_compose').all().order_by('id')
 
             if query_params:
                 outbox = OutboxFilter(query_params, queryset=outbox).qs
