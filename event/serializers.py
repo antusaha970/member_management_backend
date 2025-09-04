@@ -125,6 +125,13 @@ class EventFeeSerializer(serializers.Serializer):
             raise serializers.ValidationError("Membership type does not exist.")
         return membership_type_instance
 
+    def validate(self, attrs):
+        event = attrs.get('event')
+        membership_type = attrs.get('membership_type')
+        if EventFee.objects.filter(event=event, membership_type=membership_type).exists():
+            raise serializers.ValidationError("Fee for this event and membership type already exists.")
+        return attrs
+    
     def create(self, validated_data):
         fee = EventFee.objects.create(**validated_data)
         return fee
