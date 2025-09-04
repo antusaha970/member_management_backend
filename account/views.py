@@ -28,7 +28,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
 from rest_framework_simplejwt.exceptions import InvalidToken
 from django.utils.datastructures import MultiValueDict
-from .utils.permissions_classes import RegisterUserPermission,GroupPermissionManagement, ViewAllUserPermission
+from .utils.permissions_classes import RegisterUserPermission, GroupPermissionManagement, ViewAllUserPermission
 from activity_log.utils.functions import request_data_activity_log
 from .utils.rate_limiting_classes import LoginRateThrottle
 from django.core.cache import cache
@@ -1051,7 +1051,6 @@ class SpecificGroupPermissionView(APIView):
             return [IsAuthenticated(), GroupPermissionManagement()]
         return [IsAuthenticated()]
 
-
     def patch(self, request, group_id):
         """Update a group with required permissions at least one permission"""
         try:
@@ -1740,6 +1739,14 @@ class GetUserPermissionsView(APIView):
     def get(self, request):
         try:
             user = request.user
+            cache_key = f"specific_user_permissions::{user.id}"
+            cached_data = cache.get(cache_key)
+            if cached_data:
+                response = Response(cached_data, status=status.HTTP_200_OK)
+                response = add_no_cache_header_in_response(response)
+                response['X-Cache'] = 'HIT'
+                return response
+
             data = AssignGroupPermission.objects.select_related(
                 "user").prefetch_related("group", "group__permission").filter(user=user)
             users_data = []
@@ -1788,6 +1795,8 @@ class GetUserPermissionsView(APIView):
                 status=status.HTTP_200_OK)
             # add no cache header to response
             response = add_no_cache_header_in_response(response)
+            cache.set(cache_key, response.data, 60)
+            response['X-Cache'] = 'MISS'
             return response
         except Exception as e:
             logger.exception(str(e))
