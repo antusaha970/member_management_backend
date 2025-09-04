@@ -62,9 +62,10 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'silk.middleware.SilkyMiddleware',
+    # 'silk.middleware.SilkyMiddleware',
     # Custom
-    'account.middleware.JWTMiddleware'
+    'account.middleware.JWTMiddleware',
+    'core.middleware.MaxUploadSizeMiddleware',
 ]
 
 # URL & WSGI
@@ -166,6 +167,14 @@ CACHES = {
 LOG_DIR = os.path.join(BASE_DIR, 'logs')
 if not os.path.exists(LOG_DIR):
     os.makedirs(LOG_DIR)
+
+
+
+FILE_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024      # 50MB per file
+DATA_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024      # 50MB total per request
+
+
+
 
 ### LOGGER settings ###
 LOGGING = {
