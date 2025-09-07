@@ -10111,6 +10111,41 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UnauthorizedError"
+  
+  /api/member/v1/members/list/ids/:
+    get:
+      summary: Get all member List IDs
+      description: Get all member List IDs
+      security:
+        - TokenAuth: []
+        
+            
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: 200
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+                    example: Showing all avaiable member list ids
+                  data:
+                    type: array
+                    items:
+                      type: object
+                required:
+                  - code
+                  - status
+                  - message
+                  - data
 
   /api/member_financial/v1/lounge/upload/excel/:
     post:
