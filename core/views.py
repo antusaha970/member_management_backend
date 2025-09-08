@@ -16,7 +16,7 @@ class MembershipTypeView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get_permissions(self):
-        if self.request.method == "POST":
+        if self.request.method in ["POST","GET"]:
             return [MemberManagementPermission()]
         else:
             return [IsAuthenticated()]
@@ -71,7 +71,7 @@ class InstituteNameView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get_permissions(self):
-        if self.request.method == "POST":
+        if self.request.method in ["POST","GET"]:
             return [MemberManagementPermission()]
         else:
             return [IsAuthenticated()]
@@ -127,10 +127,9 @@ class InstituteNameView(APIView):
 
 
 class GenderView(APIView):
-    permission_classes = [IsAuthenticated]
 
     def get_permissions(self):
-        if self.request.method == "POST":
+        if self.request.method in ["POST","GET"]:
             return [MemberManagementPermission()]
         else:
             return [IsAuthenticated()]
@@ -183,10 +182,8 @@ class GenderView(APIView):
 
 class MembershipStatusChoiceView(APIView):
 
-    permission_classes = [IsAuthenticated]
-
     def get_permissions(self):
-        if self.request.method == "POST":
+        if self.request.method in ["POST","GET"]:
             return [MemberManagementPermission()]
         else:
             return [IsAuthenticated()]
@@ -239,10 +236,9 @@ class MembershipStatusChoiceView(APIView):
 
 
 class MaritalStatusChoiceView(APIView):
-    permission_classes = [IsAuthenticated]
 
     def get_permissions(self):
-        if self.request.method == "POST":
+        if self.request.method in ["POST","GET"]:
             return [MemberManagementPermission()]
         else:
             return [IsAuthenticated()]
@@ -295,10 +291,9 @@ class MaritalStatusChoiceView(APIView):
 
 
 class EmploymentTypeChoiceView(APIView):
-    permission_classes = [IsAuthenticated]
 
     def get_permissions(self):
-        if self.request.method == "POST":
+        if self.request.method in ["POST","GET"]:
             return [MemberManagementPermission()]
         else:
             return [IsAuthenticated()]
@@ -351,10 +346,9 @@ class EmploymentTypeChoiceView(APIView):
 
 
 class EmailTypeChoiceView(APIView):
-    permission_classes = [IsAuthenticated]
 
     def get_permissions(self):
-        if self.request.method == "POST":
+        if self.request.method in ["POST", "GET"]:
             return [MemberManagementPermission()]
         else:
             return [IsAuthenticated()]
@@ -406,10 +400,9 @@ class EmailTypeChoiceView(APIView):
 
 
 class ContactTypeChoiceView(APIView):
-    permission_classes = [IsAuthenticated]
 
     def get_permissions(self):
-        if self.request.method == "POST":
+        if self.request.method in ["POST", "GET"]:
             return [MemberManagementPermission()]
         else:
             return [IsAuthenticated()]
@@ -462,10 +455,9 @@ class ContactTypeChoiceView(APIView):
 
 
 class AddressTypeChoiceView(APIView):
-    permission_classes = [IsAuthenticated]
 
     def get_permissions(self):
-        if self.request.method == "POST":
+        if self.request.method in ["POST", "GET"]:
             return [MemberManagementPermission()]
         else:
             return [IsAuthenticated()]
@@ -518,10 +510,9 @@ class AddressTypeChoiceView(APIView):
 
 
 class DocumentTypeChoiceView(APIView):
-    permission_classes = [IsAuthenticated]
 
     def get_permissions(self):
-        if self.request.method == "POST":
+        if self.request.method in ["POST", "GET"]:
             return [MemberManagementPermission()]
         else:
             return [IsAuthenticated()]
@@ -574,10 +565,9 @@ class DocumentTypeChoiceView(APIView):
 
 
 class SpouseStatusChoiceView(APIView):
-    permission_classes = [IsAuthenticated]
 
     def get_permissions(self):
-        if self.request.method == "POST":
+        if self.request.method in ["POST", "GET"]:
             return [MemberManagementPermission()]
         else:
             return [IsAuthenticated()]
@@ -630,10 +620,9 @@ class SpouseStatusChoiceView(APIView):
 
 
 class DescendantRelationChoiceView(APIView):
-    permission_classes = [IsAuthenticated]
 
     def get_permissions(self):
-        if self.request.method == "POST":
+        if self.request.method in ["POST", "GET"]:
             return [MemberManagementPermission()]
         else:
             return [IsAuthenticated()]
@@ -686,8 +675,9 @@ class DescendantRelationChoiceView(APIView):
 
 
 class AllChoicesView(APIView):
-    permission_classes = [IsAuthenticated]
 
+    permission_classes = [IsAuthenticated,MemberManagementPermission]
+    
     def get(self, request):
         try:
             cache_key = "all_choices_cache"
