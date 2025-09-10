@@ -9,10 +9,27 @@ on:
 jobs:
   testing:
     runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis:7-alpine # Lightweight version
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379 # Maps port 6379 on the service container to localhost:6379 on the runner
+
     strategy:
       max-parallel: 4
       matrix:
         python-version: [3.11]
+    env:
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      DEBUG: "False"
+      COOKIE_SECURE: "False"
+      REDIS_URL_DEV: ${{ secrets.REDIS_URL_DEV }}
 
     steps:
       - uses: actions/checkout@v4
