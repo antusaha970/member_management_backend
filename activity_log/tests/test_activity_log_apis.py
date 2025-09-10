@@ -77,7 +77,7 @@ class TestForActivityLog(APITestCase):
             "/api/activity_log/v1/activity/user_activity/")
 
         # assert
-        self.assertEqual(_response.status_code, 404)
+        self.assertEqual(_response.status_code, 200)
         _response = _response.json()
 
         data = _response.get("data")

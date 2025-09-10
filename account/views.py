@@ -1061,7 +1061,6 @@ class SpecificGroupPermissionView(APIView):
                 serializer.save()
                 # after updating the group delete the permissions cache
                 clear_user_permissions_cache()
-                pdb.set_trace()
 
                 log_activity_task.delay_on_commit(
                     request_data_activity_log(request),
@@ -1107,7 +1106,7 @@ class SpecificGroupPermissionView(APIView):
     def delete(self, request, group_id):
         """Delete a group"""
         print("DELETE view entered")
-        pdb.set_trace()
+
         try:
             group = get_object_or_404(GroupModel, pk=group_id)
             group.delete()
