@@ -3500,6 +3500,54 @@ paths:
                   - status
                   - message
                   - data
+    delete:
+      summary: Delete member contact numbers
+      description: Delete member contact numbers for a specific member.
+      security:
+        - TokenAuth: []
+      parameters:
+        - name: member_ID
+          in: path
+          required: true
+          schema: 
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  example: 10
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: number
+                    example: 201
+                  status: 
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Member contact number deleted"
+                  data:
+                    type: array
+                    items:
+                        type: object
+                required:
+                  - code
+                  - status
+                  - message
+                  - data
+
+
 
   /api/member/v1/members/email_address/:
     post:

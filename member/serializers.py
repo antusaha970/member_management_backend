@@ -610,6 +610,10 @@ class MemberAddressSerializer(serializers.Serializer):
         return results
 
 
+class MemberAddressDeleteSerializer(serializers.Serializer):
+    id = serializers.PrimaryKeyRelatedField(queryset=Address.objects.all())
+
+
 class MemberSpouseSerializer(serializers.Serializer):
     spouse_name = serializers.CharField(max_length=100)
     contact_number = serializers.CharField(max_length=20, required=False)
