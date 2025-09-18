@@ -496,6 +496,10 @@ class MemberEmailAddressSerializer(serializers.Serializer):
         return results
 
 
+class MemberEmailAddressDeleteSerializer(serializers.Serializer):
+    id = serializers.PrimaryKeyRelatedField(queryset=Email.objects.all())
+
+
 class AddressSerializer(serializers.Serializer):
     address_type = serializers.PrimaryKeyRelatedField(
         queryset=AddressTypeChoice.objects.all(), required=False)
