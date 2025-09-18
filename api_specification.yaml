@@ -3638,6 +3638,27 @@ paths:
                   - message
                   - data
 
+    delete:
+      summary: Delete member email addresses
+      description: Delete member email address for a specific member
+      security:
+        - TokenAuth: []
+      parameters:
+        - name: member_ID
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  example: 10
+
   /api/member/v1/members/address/:
     post:
       summary: Add member address
@@ -10111,15 +10132,14 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UnauthorizedError"
-  
+
   /api/member/v1/members/list/ids/:
     get:
       summary: Get all member List IDs
       description: Get all member List IDs
       security:
         - TokenAuth: []
-        
-            
+
       responses:
         "200":
           description: "200"

@@ -405,6 +405,11 @@ class MemberContactNumberSerializer(serializers.Serializer):
         return results
 
 
+class MemberContactNumberDeleteSerializer(serializers.Serializer):
+    id = serializers.PrimaryKeyRelatedField(
+        queryset=ContactNumber.objects.all())
+
+
 class EmailAddressSerializer(serializers.Serializer):
     email_type = serializers.PrimaryKeyRelatedField(
         queryset=EmailTypeChoice.objects.all(), required=False)
