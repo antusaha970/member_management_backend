@@ -5251,6 +5251,276 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UnauthorizedError"
+  
+  /api/member/v1/members/certificate/{id}/:
+    delete:
+        security:
+          - TokenAuth: []
+        parameters:
+          
+          - name: id
+            in: path
+            description: delete specific certificate by id
+            schema:
+              type: integer
+            required: true
+        summary: delete member certificate
+        description: delete member certificate
+        requestBody:
+         content:
+          application/json:
+            schema:
+                type: object
+                properties:
+                    member_ID:
+                        type: string
+                        example: BM0001-DIU
+          
+        responses:
+          '200':
+            description: "200"
+            content:
+              application/json:
+                schema:
+                    type: object
+                    properties:
+                      code: 
+                        type: integer
+                        example: 200
+                      status: 
+                        type: string
+                        example: success
+                      message:
+                        type: string
+                        example: Member certificate successfully deleted 
+                      
+                    required:
+                      - code
+                      - status
+                      - message
+          '400':
+            description: "400"
+            content:
+              application/json:
+                schema:
+                    $ref: "#/components/schemas/BadRequestResponse"
+  
+  /api/member/v1/members/documents/{id}/:
+    delete:
+        security:
+          - TokenAuth: []
+        parameters:
+          
+          - name: id
+            in: path
+            description: delete specific document by id
+            schema:
+              type: integer
+            required: true
+        summary: delete member document
+        description: delete member document
+        requestBody:
+         content:
+          application/json:
+            schema:
+                type: object
+                properties:
+                    member_ID:
+                        type: string
+                        example: BM0001-DIU
+          
+        responses:
+          '200':
+            description: "200"
+            content:
+              application/json:
+                schema:
+                    type: object
+                    properties:
+                      code: 
+                        type: integer
+                        example: 200
+                      status: 
+                        type: string
+                        example: success
+                      message:
+                        type: string
+                        example: Member document successfully deleted 
+                      
+                    required:
+                      - code
+                      - status
+                      - message
+          '400':
+            description: "400"
+            content:
+              application/json:
+                schema:
+                    $ref: "#/components/schemas/BadRequestResponse"
+  
+  /api/member/v1/members/companion/{id}/:
+    delete:
+        security:
+          - TokenAuth: []
+        parameters:
+          
+          - name: id
+            in: path
+            description: delete specific companion by id
+            schema:
+              type: integer
+            required: true
+        summary: delete member companion
+        description: delete member companion
+        requestBody:
+         content:
+          application/json:
+            schema:
+                type: object
+                properties:
+                    member_ID:
+                        type: string
+                        example: BM0001-DIU
+          
+        responses:
+          '200':
+            description: "200"
+            content:
+              application/json:
+                schema:
+                    type: object
+                    properties:
+                      code: 
+                        type: integer
+                        example: 200
+                      status: 
+                        type: string
+                        example: success
+                      message:
+                        type: string
+                        example: Member companion successfully deleted 
+                      
+                    required:
+                      - code
+                      - status
+                      - message
+          '400':
+            description: "400"
+            content:
+              application/json:
+                schema:
+                    $ref: "#/components/schemas/BadRequestResponse"
+  
+  /api/member/v1/members/spouse/{id}/:
+    delete:
+        security:
+          - TokenAuth: []
+        parameters:
+          
+          - name: id
+            in: path
+            description: delete specific spouse by id
+            schema:
+              type: integer
+            required: true
+        summary: delete member spouse
+        description: delete member spouse
+        requestBody:
+         content:
+          application/json:
+            schema:
+                type: object
+                properties:
+                    member_ID:
+                        type: string
+                        example: BM0001-DIU
+          
+        responses:
+          '200':
+            description: "200"
+            content:
+              application/json:
+                schema:
+                    type: object
+                    properties:
+                      code: 
+                        type: integer
+                        example: 200
+                      status: 
+                        type: string
+                        example: success
+                      message:
+                        type: string
+                        example: Member spouse successfully deleted 
+                      
+                    required:
+                      - code
+                      - status
+                      - message
+          '400':
+            description: "400"
+            content:
+              application/json:
+                schema:
+                    $ref: "#/components/schemas/BadRequestResponse"
+  
+  /api/member/v1/members/descendants/{id}/:
+    delete:
+        security:
+          - TokenAuth: []
+        parameters:
+          
+          - name: id
+            in: path
+            description: delete specific descendant by id
+            schema:
+              type: integer
+            required: true
+        summary: delete member descendant
+        description: delete member descendant
+        requestBody:
+         content:
+          application/json:
+            schema:
+                type: object
+                properties:
+                    member_ID:
+                        type: string
+                        example: BM0001-DIU
+          
+        responses:
+          '200':
+            description: "200"
+            content:
+              application/json:
+                schema:
+                    type: object
+                    properties:
+                      code: 
+                        type: integer
+                        example: 200
+                      status: 
+                        type: string
+                        example: success
+                      message:
+                        type: string
+                        example: Member descendant successfully deleted 
+                      
+                    required:
+                      - code
+                      - status
+                      - message
+          '400':
+            description: "400"
+            content:
+              application/json:
+                schema:
+                    $ref: "#/components/schemas/BadRequestResponse"
+  
+  
+  
+  
+  
   /api/member/v1/members/emails/:
     post:
       summary: Bulk emails sending to all members

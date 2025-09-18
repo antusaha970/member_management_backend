@@ -1088,6 +1088,55 @@ class MemberSpouseView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+class MemberSpouseDeleteView(APIView):
+    permission_classes = [IsAuthenticated, MemberManagementPermission]
+
+    def delete(self, request, pk):
+        try:
+            data = request.data
+            member_ID = data.get("member_ID")
+            spouse = models.Spouse.objects.filter(pk=pk, member__member_ID=member_ID).first()
+            if not spouse:
+                # activity log
+                log_request(request, "Member spouse deleted failed", "error",
+                            "user tried to delete member spouse but made an invalid request")
+                return Response({
+                    "code": 404,
+                    "status": "failed",
+                    "message": "Member spouse does not exist",
+                    "errors": {
+                        "spouse_id": ["Member spouse does not exist"]
+                    }
+                }, status=status.HTTP_404_NOT_FOUND)
+            # delete spouse
+            spouse.delete()
+
+            # activity log
+            log_request(request, "Member spouse deleted successfully",
+                        "info", "user tried to delete member spouse and succeeded")
+            delete_members_specific_cache.delay(member_ID)
+            return Response({
+                "code": 200,
+                "status": "success",
+                "message": "Member spouse deleted successfully"
+            }, status=status.HTTP_200_OK)
+         
+        except Exception as e:
+            logger.exception(str(e))
+
+            # activity log
+            log_request(request, "Member spouse deleted failed", "error",
+                        "user tried to delete member spouse but made an invalid request")
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 class MemberDescendsView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -1224,6 +1273,54 @@ class MemberDescendsView(APIView):
             # activity log
             log_request(request, "Member descendants updated failed", "error",
                         "user tried to update member descendants but made an invalid request")
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class MemberDescendantsDeleteView(APIView):
+    permission_classes = [IsAuthenticated, MemberManagementPermission]
+
+    def delete(self, request, pk):
+        try:
+            data = request.data
+            member_ID = data.get("member_ID")
+            descendant = models.Descendant.objects.filter(pk=pk, member__member_ID=member_ID).first()
+            if not descendant:
+                # activity log
+                log_request(request, "Member descendant deleted failed", "error",
+                            "user tried to delete member descendant but made an invalid request")
+                return Response({
+                    "code": 404,
+                    "status": "failed",
+                    "message": "Member descendant does not exist",
+                    "errors": {
+                        "descendant_id": ["Member descendant does not exist"]
+                    }
+                }, status=status.HTTP_404_NOT_FOUND)
+            # delete descendant
+            descendant.delete()
+
+            # activity log
+            log_request(request, "Member descendant deleted successfully",
+                        "info", "user tried to delete member descendant and succeeded")
+            delete_members_specific_cache.delay(member_ID)
+            return Response({
+                "code": 200,
+                "status": "success",
+                "message": "Member descendant deleted successfully"
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.exception(str(e))
+            # activity log
+            log_request(request, "Member descendant deleted failed", "error",
+                        "user tried to delete member descendant but made an invalid request")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -1599,6 +1696,50 @@ class MemberCompanionView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+class MemberCompanionDeleteView(APIView):
+    permission_classes = [IsAuthenticated, MemberManagementPermission]
+
+    def delete(self, request, pk):
+        try:
+            data = request.data
+            member_ID = data.get("member_ID")
+            companion = models.CompanionInformation.objects.filter(pk=pk, member__member_ID=member_ID).first()
+
+            if not companion:
+                log_request(request, "Member companion deletion failed", "error",
+                            "A user tried to delete a member companion but it was not found.")
+                return Response({
+                    "code": 404,
+                    "status": "failed",
+                    "message": "Member companion not found",
+                    "errors": {
+                        "companion_id": ["Member companion does not exist"]
+                    }
+                }, status=status.HTTP_404_NOT_FOUND)
+
+            companion.delete()
+            # activity log
+            log_request(request, "Member companion deleted successfully",
+                        "info", "A user deleted a member companion successfully.")
+            delete_members_specific_cache.delay(member_ID)
+            return Response({
+                "code": 200,
+                "status": "success",
+                "message": "Member companion deleted successfully"
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.exception(str(e))
+            log_request(request, "Member companion deletion failed", "error",
+                        "A user tried to delete a member companion but an error occurred.")
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class MemberDocumentView(APIView):
     permission_classes = [IsAuthenticated]
@@ -1756,6 +1897,54 @@ class MemberDocumentView(APIView):
             # activity log
             log_request(request, "Member documents updated failed", "error",
                         "user tried to update member documents but made an invalid request")
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class MemberDocumentDeleteView(APIView):
+    permission_classes = [IsAuthenticated, MemberManagementPermission]
+
+    def delete(self, request, pk):
+        try:
+            data = request.data
+            member_ID = data.get("member_ID")
+            document = models.Documents.objects.filter(pk=pk, member__member_ID=member_ID).first()
+            if not document:
+                log_request(request, "Member document deletion failed", "error",
+                            "A user tried to delete a member document but it was not found.")
+                return Response({
+                    "code": 404,
+                    "status": "failed",
+                    "message": "Document not found",
+                    "errors": {
+                        "document": ["Document not found"]
+                    }
+                }, status=status.HTTP_404_NOT_FOUND)
+                # activity log
+            # success log for deletion
+            document.delete()
+            log_request(request, "Member document deleted", "info",
+                            "A user has successfully deleted a member document.")
+            # delete cache for specific view member details
+            delete_members_specific_cache.delay(member_ID)
+            return Response({
+                "code": 200,
+                "status": "success",
+                "message": "Document has been deleted successfully"
+            }, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            logger.exception(str(e))
+
+            # activity log
+            log_request(request, "Member document deletion failed", "error",
+                        "A user tried to delete a member document but made an invalid request")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -2191,6 +2380,54 @@ class MemberCertificateView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    
+class MemberCertificateDeleteView(APIView):
+    permission_classes = [IsAuthenticated, MemberManagementPermission]
+
+    def delete(self, request, pk):
+        try:
+            data = request.data
+            member_ID = data.get('member_ID')
+            certificate = Certificate.objects.filter(pk=pk, member__member_ID=member_ID).first()
+
+            if not certificate:
+                log_request(request, "Member certificate deletion failed", "error",
+                            "A user tried to delete a member certificate but it was not found.")
+                return Response({
+                    "code": 404,
+                    "status": "failed",
+                    "message": "Certificate not found",
+                    "errors": {
+                        "certificate": ["Certificate not found by this ID"]
+                    }
+                }, status=status.HTTP_404_NOT_FOUND)
+
+            certificate.delete()
+            # activity log
+            log_request(request, "Member certificate deleted", "info",
+                        "A user has successfully deleted a member certificate.")
+            # delete cache for specific view member details
+            delete_members_specific_cache.delay(member_ID)
+            return Response({
+                "code": 200,
+                "status": "success",
+                "message": "Certificate deleted successfully"
+            }, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            logger.exception(str(e))
+            # activity log
+            log_request(request, "Member certificate deletion failed", "error",
+                        "A user tried to delete a member certificate but an error occurred.")
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
 class MemberIDListView(APIView):
     permission_classes = [IsAuthenticated, MemberManagementPermission]
 
