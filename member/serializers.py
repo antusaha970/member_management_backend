@@ -1002,6 +1002,10 @@ class MemberJobSerializer(serializers.Serializer):
         return results
 
 
+class MemberJobDeleteSerializer(serializers.Serializer):
+    id = serializers.PrimaryKeyRelatedField(queryset=Profession.objects.all())
+
+
 class MemberEmergencyContactDataSerializer(serializers.Serializer):
     contact_name = serializers.CharField(max_length=100)
     contact_number = serializers.CharField(max_length=20)
