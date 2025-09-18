@@ -1101,6 +1101,11 @@ class MemberEmergencyContactSerializer(serializers.Serializer):
         return results
 
 
+class MemberEmergencyContactDeleteSerializer(serializers.Serializer):
+    id = serializers.PrimaryKeyRelatedField(
+        queryset=EmergencyContact.objects.all())
+
+
 class MemberCompanionInformationSerializer(serializers.Serializer):
     member_ID = serializers.CharField(max_length=200)
     companion_name = serializers.CharField(max_length=100)

@@ -4600,6 +4600,54 @@ paths:
                   - message
                   - data
 
+    delete:
+      summary: Delete member Emgergency contact
+      description: Delete member Emergency contact for a specific member.
+      security:
+        - TokenAuth: []
+      parameters:
+        - name: member_ID
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  example: 10
+
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: number
+                    example: 200
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Member contact number added"
+                  data:
+                    type: array
+                    items:
+                      type: object
+                required:
+                  - code
+                  - status
+                  - message
+                  - data
+
   /api/member/v1/members/companion/:
     post:
       summary: Add member companion
