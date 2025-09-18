@@ -405,6 +405,11 @@ class MemberContactNumberSerializer(serializers.Serializer):
         return results
 
 
+class MemberContactNumberDeleteSerializer(serializers.Serializer):
+    id = serializers.PrimaryKeyRelatedField(
+        queryset=ContactNumber.objects.all())
+
+
 class EmailAddressSerializer(serializers.Serializer):
     email_type = serializers.PrimaryKeyRelatedField(
         queryset=EmailTypeChoice.objects.all(), required=False)
@@ -494,6 +499,10 @@ class MemberEmailAddressSerializer(serializers.Serializer):
                 })
 
         return results
+
+
+class MemberEmailAddressDeleteSerializer(serializers.Serializer):
+    id = serializers.PrimaryKeyRelatedField(queryset=Email.objects.all())
 
 
 class AddressSerializer(serializers.Serializer):
@@ -599,6 +608,10 @@ class MemberAddressSerializer(serializers.Serializer):
                 })
 
         return results
+
+
+class MemberAddressDeleteSerializer(serializers.Serializer):
+    id = serializers.PrimaryKeyRelatedField(queryset=Address.objects.all())
 
 
 class MemberSpouseSerializer(serializers.Serializer):
@@ -756,6 +769,11 @@ class MemberSpecialDaySerializer(serializers.Serializer):
                 })
 
         return results
+
+
+class MemberSpecialDayDeleteSerializer(serializers.Serializer):
+    id = serializers.PrimaryKeyRelatedField(
+        queryset=SpecialDay.objects.all())
 
 
 class MemberCertificateSerializer(serializers.Serializer):
@@ -989,6 +1007,10 @@ class MemberJobSerializer(serializers.Serializer):
         return results
 
 
+class MemberJobDeleteSerializer(serializers.Serializer):
+    id = serializers.PrimaryKeyRelatedField(queryset=Profession.objects.all())
+
+
 class MemberEmergencyContactDataSerializer(serializers.Serializer):
     contact_name = serializers.CharField(max_length=100)
     contact_number = serializers.CharField(max_length=20)
@@ -1082,6 +1104,11 @@ class MemberEmergencyContactSerializer(serializers.Serializer):
                 })
 
         return results
+
+
+class MemberEmergencyContactDeleteSerializer(serializers.Serializer):
+    id = serializers.PrimaryKeyRelatedField(
+        queryset=EmergencyContact.objects.all())
 
 
 class MemberCompanionInformationSerializer(serializers.Serializer):

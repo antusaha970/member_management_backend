@@ -3500,6 +3500,52 @@ paths:
                   - status
                   - message
                   - data
+    delete:
+      summary: Delete member contact numbers
+      description: Delete member contact numbers for a specific member.
+      security:
+        - TokenAuth: []
+      parameters:
+        - name: member_ID
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  example: 10
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: number
+                    example: 201
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Member contact number deleted"
+                  data:
+                    type: array
+                    items:
+                      type: object
+                required:
+                  - code
+                  - status
+                  - message
+                  - data
 
   /api/member/v1/members/email_address/:
     post:
@@ -3638,6 +3684,27 @@ paths:
                   - message
                   - data
 
+    delete:
+      summary: Delete member email addresses
+      description: Delete member email address for a specific member
+      security:
+        - TokenAuth: []
+      parameters:
+        - name: member_ID
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  example: 10
+
   /api/member/v1/members/address/:
     post:
       summary: Add member address
@@ -3746,6 +3813,53 @@ paths:
               required:
                 - member_ID
                 - data
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: number
+                    example: 200
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Member contact number added"
+                  data:
+                    type: array
+                    items:
+                      type: object
+                required:
+                  - code
+                  - status
+                  - message
+                  - data
+    delete:
+      summary: delete member address
+      description: delete member address for a specific member.
+      security:
+        - TokenAuth: []
+      parameters:
+        - name: member_ID
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  example: 10
+
       responses:
         "200":
           description: "200"
@@ -4262,6 +4376,105 @@ paths:
               schema:
                 $ref: "#/components/schemas/InternalServerError"
 
+    delete:
+      summary: delete member job information
+      description: delete member job information for a specific member
+
+      security:
+        - TokenAuth: []
+      parameters:
+        - name: member_ID
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  example: 10
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: Member job has been updated successfully
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      job_id:
+                        type: integer
+                        example: 1
+                    required:
+                      - job_id
+                required:
+                  - code
+                  - message
+                  - status
+                  - data
+        "201":
+          description: "201"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 201
+                  message:
+                    type: string
+                    example: Member job has been created successfully
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      job_id:
+                        type: integer
+                        example: 1
+                    required:
+                      - job_id
+                required:
+                  - code
+                  - message
+                  - status
+                  - data
+        "400":
+          description: "400"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "401":
+          description: "401"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+        "500":
+          description: "500"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InternalServerError"
+
   /api/member/v1/members/emergency_contact/:
     post:
       summary: Add member Emgergency contact
@@ -4360,6 +4573,54 @@ paths:
                 - contact_number
                 - relation_with_member
                 - member_ID
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: number
+                    example: 200
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Member contact number added"
+                  data:
+                    type: array
+                    items:
+                      type: object
+                required:
+                  - code
+                  - status
+                  - message
+                  - data
+
+    delete:
+      summary: Delete member Emgergency contact
+      description: Delete member Emergency contact for a specific member.
+      security:
+        - TokenAuth: []
+      parameters:
+        - name: member_ID
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  example: 10
+
       responses:
         "200":
           description: "200"
@@ -5012,6 +5273,102 @@ paths:
               required:
                 - member_ID
                 - data
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: Member Special Day has been updated successfully
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      special_day_id:
+                        type: integer
+                        example: 1
+                    required:
+                      - special_day_id
+                required:
+                  - code
+                  - message
+                  - status
+                  - data
+        "201":
+          description: "201"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 201
+                  message:
+                    type: string
+                    example: Member Special Day has been created successfully
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      special_day_ids:
+                        type: array
+                        items:
+                          type: integer
+                          example: 1,2
+                    required:
+                      - special_day_id
+                required:
+                  - code
+                  - message
+                  - status
+                  - data
+        "400":
+          description: "400"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "401":
+          description: "401"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+
+    delete:
+      parameters:
+        - name: member_ID
+          in: path
+          description: special day update by member_ID
+          schema:
+            type: string
+          required: true
+      summary: Delete special day of member
+      description: Delete specific  special day by a specific member
+      security:
+        - TokenAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  example: 10
+
       responses:
         "200":
           description: "200"
@@ -10381,15 +10738,14 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/UnauthorizedError"
-  
+
   /api/member/v1/members/list/ids/:
     get:
       summary: Get all member List IDs
       description: Get all member List IDs
       security:
         - TokenAuth: []
-        
-            
+
       responses:
         "200":
           description: "200"

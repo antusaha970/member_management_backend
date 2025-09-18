@@ -31,6 +31,7 @@ from .tasks import delete_member_model_dependencies
 from django.core.cache import cache
 from django.utils.http import urlencode
 from .tasks import delete_members_cache, delete_members_specific_cache
+from django.http import Http404
 logger = logging.getLogger("myapp")
 
 
@@ -714,6 +715,63 @@ class MemberContactNumberView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    def delete(self, request, member_ID):
+        try:
+            member = get_object_or_404(Member, member_ID=member_ID)
+            data = request.data
+            serializer = serializers.MemberContactNumberDeleteSerializer(
+                data=data)
+            if serializer.is_valid():
+                instance = serializer.validated_data['id']
+                instance.delete()
+
+                # activity log
+                log_request(request, "Member contact number deleted successfully",
+                            "info", "user tried to delete member contact number and succeeded")
+                delete_members_specific_cache.delay(member_ID)
+                return Response({
+                    "code": 200,
+                    "message": "Member contact number has been deleted successfully",
+                    "status": "success",
+
+                }, status=status.HTTP_200_OK)
+            else:
+                # activity log
+                log_request(request, "Member contact number delete failed", "error",
+                            "user tried to delete member contact number but made an invalid request")
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Invalid request",
+                    "errors": serializer.errors,
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        except Http404:
+            # activity log
+            log_request(request, "Member contact number delete failed", "error",
+                        "user tried to delete member contact number but made an invalid request")
+            return Response({
+                "code": 404,
+                "status": "failed",
+                "message": "Member does not exist",
+                "errors": {
+                    "member": ["Member does not exist"]
+                }
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.exception(str(e))
+            # activity log
+            log_request(request, "Member contact number delete failed", "error",
+                        "user tried to delete member contact number but made an invalid request")
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class MemberEmailAddressView(APIView):
     permission_classes = [IsAuthenticated]
@@ -831,6 +889,62 @@ class MemberEmailAddressView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    def delete(self, request, member_ID):
+        try:
+            member = get_object_or_404(Member, member_ID=member_ID)
+            data = request.data
+            serializer = serializers.MemberEmailAddressDeleteSerializer(
+                data=data)
+            if serializer.is_valid():
+                instance = serializer.validated_data['id']
+                print(instance)
+                instance.delete()
+                # activity log
+                log_request(request, "Member email address deleted successfully",
+                            "info", "user tried to delete member email address and succeeded")
+                delete_members_specific_cache.delay(member_ID)
+                return Response({
+                    "code": 200,
+                    "message": "Member Email address has been deleted successfully",
+                    "status": "success"
+                }, status=status.HTTP_200_OK)
+            else:
+                # activity log
+                log_request(request, "Member email address delete failed", "error",
+                            "user tried to delete member email address but made an invalid request")
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Invalid request",
+                    "errors": serializer.errors,
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Http404:
+            # activity log
+            log_request(request, "Member email address delete failed", "error",
+                        "user tried to delete member email address but made an invalid request")
+            return Response({
+                "code": 404,
+                "status": "failed",
+                "message": "Member does not exist",
+                "errors": {
+                    "member": ["Member does not exist"]
+                }
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        except Exception as e:
+            logger.exception(str(e))
+            # activity log
+            log_request(request, "Member email address delete failed", "error",
+                        "user tried to delete member email address but made an invalid request")
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class MemberAddressView(APIView):
     permission_classes = [IsAuthenticated]
@@ -934,6 +1048,62 @@ class MemberAddressView(APIView):
             # activity log
             log_request(request, "Member address updated failed", "error",
                         "user tried to update member address but made an invalid request")
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def delete(self, request, member_ID):
+        try:
+            member = get_object_or_404(Member, member_ID=member_ID)
+            data = request.data
+            serializer = serializers.MemberAddressDeleteSerializer(data=data)
+            if serializer.is_valid():
+                instance = serializer.validated_data['id']
+                instance.delete()
+                # activity log
+                log_request(request, "Member address deleted successfully",
+                            "info", "user tried to delete member address and succeeded")
+                delete_members_specific_cache.delay(member_ID)
+                return Response({
+                    "code": 200,
+                    "message": "Member address has been deleted successfully",
+                    "status": "success"
+                }, status=status.HTTP_200_OK)
+            else:
+
+                # activity log
+                log_request(request, "Member address deletion failed", "error",
+                            "user tried to delete member address but made an invalid request")
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Invalid request",
+                    "errors": serializer.errors,
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        except Http404:
+
+            # activity log
+            log_request(request, "Member address deletion failed", "error",
+                        "user tried to delete member address but made an invalid request")
+            return Response({
+                "code": 404,
+                "status": "failed",
+                "message": "Member does not exist",
+                "errors": {
+                    "member": ["Member does not exist"]
+                }
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.exception(str(e))
+            # activity log
+            log_request(request, "Member address deletion failed", "error",
+                        "user tried to delete member address but made an invalid request")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -1445,6 +1615,63 @@ class MemberJobView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    def delete(self, request, member_ID):
+        try:
+            member = get_object_or_404(Member, member_ID=member_ID)
+            data = request.data
+            serializer = serializers.MemberJobDeleteSerializer(data=data)
+            if serializer.is_valid():
+                instance = serializer.validated_data['id']
+                instance.delete()
+                # activity log
+                log_request(request, "Member job deleted successfully",
+                            "info", "user tried to delete member job and succeeded")
+                # delete cache for specific view member details
+                delete_members_specific_cache.delay(member_ID)
+                return Response({
+                    "code": 200,
+                    "message": "Member job has been deleted successfully",
+                    "status": "success"
+                }, status=status.HTTP_200_OK)
+            else:
+                # activity log
+                log_request(request, "Member job delete failed", "error",
+                            "user tried to delete member job but made an invalid request")
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Invalid request",
+                    "errors": serializer.errors,
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Http404:
+
+            # activity log
+            log_request(request, "Member job delete failed", "error",
+                        "user tried to delete member job but made an invalid request")
+            return Response({
+                "code": 404,
+                "status": "failed",
+                "message": "Member does not exist",
+                "errors": {
+                    "member": ["Member does not exist"]
+                }
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        except Exception as e:
+            logger.exception(str(e))
+
+            # activity log
+            log_request(request, "Member job delete failed", "error",
+                        "user tried to delete member job but made an invalid request")
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class MemberEmergencyContactView(APIView):
     permission_classes = [IsAuthenticated]
@@ -1553,6 +1780,66 @@ class MemberEmergencyContactView(APIView):
             # activity log
             log_request(request, "Member emergency contact updated failed", "error",
                         "user tried to update an emergency contact but made an invalid request")
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def delete(self, request, member_ID):
+        try:
+            member = get_object_or_404(Member, member_ID=member_ID)
+            data = request.data
+            serializer = serializers.MemberEmergencyContactDeleteSerializer(
+                data=data)
+            if serializer.is_valid():
+                instance = serializer.validated_data['id']
+                instance.delete()
+                # activity log
+                log_request(request, "Member emergency contact deleted successfully",
+                            "info", "user tried to delete an emergency contact and succeeded")
+                # delete cache for specific view member details
+                delete_members_specific_cache.delay(member_ID)
+                return Response({
+                    "code": 200,
+                    "message": "Member Emergency contact has been deleted successfully",
+                    "status": "success",
+
+                }, status=status.HTTP_200_OK)
+            else:
+
+                # activity log
+                log_request(request, "Member emergency contact deletion failed", "error",
+                            "user tried to delete an emergency contact but made an invalid request")
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Invalid request",
+                    "errors": serializer.errors,
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Http404:
+
+            # activity log
+            log_request(request, "Member emergency contact deletion failed", "error",
+                        "user tried to delete an emergency contact but made an invalid request")
+
+            return Response({
+                "code": 404,
+                "status": "failed",
+                "message": "Member does not exist",
+                "errors": {
+                    "member": ["Member does not exist"]
+                }
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.exception(str(e))
+
+            # activity log
+            log_request(request, "Member emergency contact deletion failed", "error",
+                        "user tried to delete an emergency contact but made an invalid request")
             return Response({
                 "code": 500,
                 "status": "failed",
@@ -2250,6 +2537,65 @@ class MemberSpecialDayView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    def delete(self, request, member_ID):
+        try:
+            member = get_object_or_404(Member, member_ID=member_ID)
+
+            data = request.data
+            serializer = serializers.MemberSpecialDayDeleteSerializer(
+                data=data)
+            if serializer.is_valid():
+                instance = serializer.validated_data['id']
+                instance.delete()
+
+                # activity log
+                log_request(request, "deleted member special days", "info",
+                            "A user has successfully deleted member special days.")
+                # delete cache for specific view member details
+                delete_members_specific_cache.delay(member_ID)
+                return Response({
+                    "code": 200,
+                    "message": "Member special day has been deleted successfully",
+                    "status": "success"
+                }, status=status.HTTP_200_OK)
+            else:
+                # activity log
+                log_request(request, "Deleting member special days failed", "error",
+                            "A user tried to delete member special days but made an invalid request")
+                # delete cache for specific view member details
+                delete_members_specific_cache.delay(member.member_ID)
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Invalid request",
+                    "errors": serializer.errors,
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Http404:
+            # activity log
+            log_request(request, "Deleting member special days failed", "error",
+                        "A user tried to delete member special days but made an invalid request")
+            return Response({
+                "code": 404,
+                "status": "failed",
+                "message": "Member not found",
+                "errors": {
+                    "member": ["Member not found by this member_ID"]
+                }
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.exception(str(e))
+            # activity log
+            log_request(request, "Deleting member special days failed", "error",
+                        "A user tried to Delete member special days but made an invalid request")
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class MemberCertificateView(APIView):
     permission_classes = [IsAuthenticated]
@@ -2428,6 +2774,7 @@ class MemberCertificateDeleteView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
+
 class MemberIDListView(APIView):
     permission_classes = [IsAuthenticated, MemberManagementPermission]
 
