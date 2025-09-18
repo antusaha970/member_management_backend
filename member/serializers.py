@@ -771,6 +771,11 @@ class MemberSpecialDaySerializer(serializers.Serializer):
         return results
 
 
+class MemberSpecialDayDeleteSerializer(serializers.Serializer):
+    id = serializers.PrimaryKeyRelatedField(
+        queryset=SpecialDay.objects.all())
+
+
 class MemberCertificateSerializer(serializers.Serializer):
     member_ID = serializers.CharField(max_length=200)
     title = serializers.CharField(max_length=100)

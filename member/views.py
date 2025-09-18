@@ -2348,6 +2348,65 @@ class MemberSpecialDayView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    def delete(self, request, member_ID):
+        try:
+            member = get_object_or_404(Member, member_ID=member_ID)
+
+            data = request.data
+            serializer = serializers.MemberSpecialDayDeleteSerializer(
+                data=data)
+            if serializer.is_valid():
+                instance = serializer.validated_data['id']
+                instance.delete()
+
+                # activity log
+                log_request(request, "deleted member special days", "info",
+                            "A user has successfully deleted member special days.")
+                # delete cache for specific view member details
+                delete_members_specific_cache.delay(member_ID)
+                return Response({
+                    "code": 200,
+                    "message": "Member special day has been deleted successfully",
+                    "status": "success"
+                }, status=status.HTTP_200_OK)
+            else:
+                # activity log
+                log_request(request, "Deleting member special days failed", "error",
+                            "A user tried to delete member special days but made an invalid request")
+                # delete cache for specific view member details
+                delete_members_specific_cache.delay(member.member_ID)
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Invalid request",
+                    "errors": serializer.errors,
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Http404:
+            # activity log
+            log_request(request, "Deleting member special days failed", "error",
+                        "A user tried to delete member special days but made an invalid request")
+            return Response({
+                "code": 404,
+                "status": "failed",
+                "message": "Member not found",
+                "errors": {
+                    "member": ["Member not found by this member_ID"]
+                }
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.exception(str(e))
+            # activity log
+            log_request(request, "Deleting member special days failed", "error",
+                        "A user tried to Delete member special days but made an invalid request")
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class MemberCertificateView(APIView):
     permission_classes = [IsAuthenticated]

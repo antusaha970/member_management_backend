@@ -5347,6 +5347,102 @@ paths:
               schema:
                 $ref: "#/components/schemas/UnauthorizedError"
 
+    delete:
+      parameters:
+        - name: member_ID
+          in: path
+          description: special day update by member_ID
+          schema:
+            type: string
+          required: true
+      summary: Delete special day of member
+      description: Delete specific  special day by a specific member
+      security:
+        - TokenAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  example: 10
+
+      responses:
+        "200":
+          description: "200"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: Member Special Day has been updated successfully
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      special_day_id:
+                        type: integer
+                        example: 1
+                    required:
+                      - special_day_id
+                required:
+                  - code
+                  - message
+                  - status
+                  - data
+        "201":
+          description: "201"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 201
+                  message:
+                    type: string
+                    example: Member Special Day has been created successfully
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      special_day_ids:
+                        type: array
+                        items:
+                          type: integer
+                          example: 1,2
+                    required:
+                      - special_day_id
+                required:
+                  - code
+                  - message
+                  - status
+                  - data
+        "400":
+          description: "400"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadRequestResponse"
+        "401":
+          description: "401"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnauthorizedError"
+
   /api/member/v1/members/certificate/:
     post:
       summary: Add certificate for a specific member
