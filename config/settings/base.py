@@ -169,11 +169,8 @@ if not os.path.exists(LOG_DIR):
     os.makedirs(LOG_DIR)
 
 
-
 FILE_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024      # 50MB per file
 DATA_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024      # 50MB total per request
-
-
 
 
 ### LOGGER settings ###
@@ -265,5 +262,10 @@ CELERY_BEAT_SCHEDULE = {
     "flush-activity-logs-every-10-min": {
         "task": "activity_log.tasks.flush_activity_logs",
         "schedule": crontab(minute="*/10"),
+    },
+    "delete-expired-activity-logs-daily": {
+        "task": "activity_log.tasks.delete_expired_activity_logs",
+        "schedule": crontab(minute=0, hour=0),  # Runs every day at 00:00
+
     },
 }
