@@ -121,4 +121,4 @@ def delete_expired_activity_logs():
         return f"{count} logs deleted"
     except Exception as e:
         print(e)
-        return f"Error: {e}"
+        return f"Error: {str(e)}"
