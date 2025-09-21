@@ -379,9 +379,10 @@ class MemberView(APIView):
                 
 
             elif restore:
-                print("member_id",member_id)
+                
                 member_history = get_object_or_404(MemberHistory, stored_member_id=member_id, transferred=True)
                 member = member_history.member
+                
 
             service = MemberDeleteActionService(request, member)
 
@@ -391,13 +392,17 @@ class MemberView(APIView):
             elif restore:
                 # Validate member_ID uniqueness before restore
                 is_exist = service.validate_member_ID(member_id)
-                if is_exist:
+                new_member_ID = request.query_params.get('new_member_ID', None)
+
+                if is_exist and not new_member_ID:
                     return Response({
                         "code": 400,
                         "status": "failed",
                         "message": "Member restore failed",
                         "errors": {"member_ID": ["Cannot restore member. member_ID already exists."]}
                     }, status=status.HTTP_400_BAD_REQUEST)
+                if new_member_ID:
+                    member_id = new_member_ID
                 result = service.restore(member_id)
             else:  # soft_delete
                 result = service.soft_delete()

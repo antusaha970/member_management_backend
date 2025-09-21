@@ -7,7 +7,7 @@ Email, Spouse, Certificate, SpecialDay,
 
 
 )
-from member.tasks import delete_members_cache, delete_member_model_dependencies,delete_permanent_member_model_dependencies_delay
+from member.tasks import delete_members_cache, delete_member_model_dependencies
 from ..utils.utility_functions import log_request
 
 class MemberDeleteActionService:
@@ -18,10 +18,35 @@ class MemberDeleteActionService:
 
     def hard_delete(self):
         with transaction.atomic():
-            # run celery task to delete any remaining dependencies
-            delete_permanent_member_model_dependencies_delay.delay_on_commit(self.member.member_ID)
-            
+           
+            ContactNumber.objects.filter(
+                member=self.member).delete()
+            Email.objects.filter(
+                member=self.member).delete()
+            Address.objects.filter(
+                member=self.member).delete()
+            Spouse.objects.filter(
+                member=self.member).delete()
+            Descendant.objects.filter(
+                member=self.member).delete()
+            Profession.objects.filter(
+                member=self.member).delete()
+            EmergencyContact.objects.filter(
+                member=self.member).delete()
+            CompanionInformation.objects.filter(
+                member=self.member).delete()
+            Documents.objects.filter(
+                member=self.member).delete()
+            Certificate.objects.filter(
+                member=self.member).delete()
+            SpecialDay.objects.filter(
+                member=self.member).delete()
+            MembersFinancialBasics.objects.filter(
+                member=self.member).delete()
+            MemberHistory.objects.filter(
+                member=self.member).delete()
             self.member.delete()
+           
             log_request(self.request, "Member hard delete success", "info",
                         "User successfully hard deleted a member")
             delete_members_cache.delay()
@@ -65,10 +90,10 @@ class MemberDeleteActionService:
                     "end_date": None,
                     "transferred": False,
                     "transferred_reason": "",
-                    # "stored_member_id": None
+                    "stored_member_id": ""
                 }
             )
-            Member.objects.filter(member_ID=member_id).update(
+            Member.objects.filter(member_ID=self.member_ID).update(
                 status=0,
                 is_active=True,
                 member_ID=member_id
