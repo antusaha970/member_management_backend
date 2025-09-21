@@ -15,14 +15,15 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',  # Main DB
-    },
-    'secondary': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'secondary_db.sqlite3',  # Secondary DB
     }
+    # ,
+    # 'secondary': {
+    #     'ENGINE': 'django.db.backends.sqlite3',
+    #     'NAME': BASE_DIR / 'secondary_db.sqlite3',  # Secondary DB
+    # }
 }
 
-DATABASE_ROUTERS = ['core.db_router.SecondaryRouter']
+# DATABASE_ROUTERS = ['core.db_router.SecondaryRouter']
 
 
 
