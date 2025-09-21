@@ -1,5 +1,5 @@
 from celery import shared_task
-from .models import Member
+from .models import Member, MemberHistory, MembersFinancialBasics
 from django.db import transaction
 from .models import ContactNumber, Email, Address, Spouse, Descendant, Profession, EmergencyContact, CompanionInformation, Documents, Certificate, SpecialDay
 from django.core.cache import cache
@@ -58,3 +58,38 @@ def delete_members_specific_cache(member_id):
     except Exception as e:
         return str(e)
 
+@shared_task
+def delete_permanent_member_model_dependencies_delay(member_ID):
+    try:
+        member = Member.objects.get(member_ID=member_ID)
+        with transaction.atomic():
+            ContactNumber.objects.filter(
+                member=member).delete()
+            Email.objects.filter(
+                member=member).delete()
+            Address.objects.filter(
+                member=member).delete()
+            Spouse.objects.filter(
+                member=member).delete()
+            Descendant.objects.filter(
+                member=member).delete()
+            Profession.objects.filter(
+                member=member).delete()
+            EmergencyContact.objects.filter(
+                member=member).delete()
+            CompanionInformation.objects.filter(
+                member=member).delete()
+            Documents.objects.filter(
+                member=member).delete()
+            Certificate.objects.filter(
+                member=member).delete()
+            SpecialDay.objects.filter(
+                member=member).delete()
+            MembersFinancialBasics.objects.filter(
+                member=member).delete()
+            MemberHistory.objects.filter(
+                member=member).delete()
+            return {"status": "success"}
+
+    except Exception as e:
+        return {"error": str(e)}

@@ -10,15 +10,20 @@ os.makedirs(SILKY_PYTHON_PROFILER_RESULT_PATH, exist_ok=True)
 # Allow all hosts
 ALLOWED_HOSTS = ["*"]
 
-# SQLite for development
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',  # Main DB
+    },
+    'secondary': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'secondary_db.sqlite3',  # Secondary DB
     }
 }
 
-# database connection
+DATABASE_ROUTERS = ['core.db_router.SecondaryRouter']
+
 
 
 # Email settings (use console backend for development)

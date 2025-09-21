@@ -335,10 +335,10 @@ class MemberHistory(models.Model):
     end_date = models.DateTimeField(blank=True, null=True)
     transferred = models.BooleanField(default=False)
     transferred_reason = models.TextField(blank=True, null=True, default="")
-    stored_member_id = models.CharField(max_length=200)
+    stored_member_id = models.CharField(max_length=200,default="")  # to store old member ID
     # relation
     member = models.ForeignKey(
-        Member, related_name="history", on_delete=models.RESTRICT)
+        Member, related_name="history", on_delete=models.RESTRICT, null=True, blank=True)
     # record keeping
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

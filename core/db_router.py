@@ -1,5 +1,14 @@
+
+from django.apps import apps
+
+SYSTEM_APPS = [
+    'admin', 'auth', 'contenttypes', 'sessions', 'messages', 'staticfiles'
+]
+
 class SecondaryRouter:
-    SECONDARY_APPS = ['product', 'facility']
+    SECONDARY_APPS = ['product', 'facility','member','core']
+    # SECONDARY_APPS = [app.label for app in apps.get_app_configs() if app.label not in SYSTEM_APPS]
+
 
     def db_for_read(self, model, **hints):
         if model._meta.app_label in self.SECONDARY_APPS:

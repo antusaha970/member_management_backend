@@ -26,19 +26,13 @@ DATABASES = {
         'PORT': env("DB_PORT"),
     }
 }
-
+# local database for testing
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.sqlite3',
 #         'NAME': BASE_DIR / 'db.sqlite3',  # Main DB
-#     },
-#     'secondary': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'secondary_db.sqlite3',  # Secondary DB
 #     }
 # }
-
-# DATABASE_ROUTERS = ['product.db_router.SecondaryRouter']
 
 # Email settings for production
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
