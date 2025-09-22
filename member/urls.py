@@ -66,8 +66,8 @@ urlpatterns = [
     path('v1/members/deleted/list/', views.DeletedMemberListView.as_view(),
          name="member_deleted_list_view"),
 
-    path('v1/members/bulk_delete/', views.MemberBulkDeleteView.as_view(),
-         name="member_bulk_delete_view"),
+    path('v1/members/bulk_delete/all/', views.MembersBulkDeleteView.as_view(),
+         name="member_bulk_view"),
 
     path('v1/members/hard_delete/<int:pk>/', views.MemberHardSingleDeleteView.as_view(),
          name="member_hard_delete_view"),

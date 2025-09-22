@@ -164,6 +164,77 @@ class MemberView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     
+    def delete(self, request, member_id):
+
+        try:
+            member = Member.objects.only(
+                "id", "member_ID", "status").get(member_ID=member_id)
+            if member.status == 2:
+                # activity log
+                log_request(request, "Member delete failed", "info",
+                            "user tried to delete member but made an invalid request")
+                return Response({
+                    "code": 400,
+                    "status": "failed",
+                    "message": "Member is already deleted",
+                }, status=status.HTTP_400_BAD_REQUEST)
+            member_ID = member.member_ID
+            with transaction.atomic():
+                MemberHistory.objects.filter(member=member).update(
+                    end_date=timezone.now(),
+                    transferred_reason="deleted",
+                    transferred=True
+                )
+
+                Member.objects.filter(member_ID=member.member_ID).update(
+                    member_ID=None,
+                    status=2,
+                    is_active=False
+                )
+
+                delete_member_model_dependencies.delay_on_commit(member.id)
+
+                # activity log
+                log_request(request, "Member delete success", "info",
+                            "user tried to delete a member and succeeded")
+                # cache delete
+                delete_members_cache.delay()
+                return Response({
+                    "code": 204,
+                    'message': "member deleted",
+                    'status': "success",
+                    'data': {
+                        'member_ID': member_ID,
+                    }
+                }, status=status.HTTP_204_NO_CONTENT)
+
+        except Member.DoesNotExist:
+            # activity log
+            log_request(request, "Member delete failed", "error",
+                        "user tried to delete member but made an invalid request")
+            return Response({
+                "code": 404,
+                "status": "failed",
+                "message": "Member not found",
+                "errors": {
+                    "member": ["Member not found by this member_ID"]
+                }
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        except Exception as server_error:
+            logger.exception(str(server_error))
+            # activity log
+            log_request(request, "Member delete failed", "error",
+                        "user tried to delete member but made an invalid request")
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(server_error)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
    
     def get(self, request, member_id):
         try:
@@ -2860,18 +2931,18 @@ class DeletedMemberListView(APIView):
             
 
 
-class MemberBulkDeleteView(APIView):
+class MembersBulkDeleteView(APIView):
     permission_classes = [IsAuthenticated, MemberManagementPermission]
 
     def delete(self, request):
         try:
-            members = Member.objects.filter(status=2,is_active=False)
+            members = Member.objects.filter(status=2, is_active=False)
 
             if not members.exists():
                 return Response({
                     "code": 404,
                     "status": "failed",
-                    "message": "No deleted members found to hard delete",
+                    "message": "No deleted members found to permanently delete",
                     "data": {"members": []}
                 }, status=status.HTTP_404_NOT_FOUND)
 
@@ -2882,8 +2953,8 @@ class MemberBulkDeleteView(APIView):
                 "code": result['code'],
                 "status": result['status'],
                 "message": result['message'],
-                "data": result['data']
-            }, status=status.HTTP_204_NO_CONTENT)
+                "data": result.get('data', {})
+            }, status=status.HTTP_204_NO_CONTENT if result['code'] == 204 else status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         except Exception as e:
             logger.exception(str(e))
@@ -2896,7 +2967,7 @@ class MemberBulkDeleteView(APIView):
                 "errors": {"server_error": [str(e)]}
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
-
+            
 class MemberHardSingleDeleteView(APIView):
     permission_classes = [IsAuthenticated, MemberManagementPermission]
 
