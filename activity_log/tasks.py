@@ -10,6 +10,8 @@ import json
 from django_redis import get_redis_connection
 from django.utils.dateparse import parse_datetime
 from django.utils.timezone import make_aware, is_naive
+from django.utils import timezone
+from datetime import timedelta
 import logging
 logger = logging.getLogger("myapp")
 
@@ -100,3 +102,23 @@ def flush_activity_logs():
             ActivityLog.objects.bulk_create(logs_to_create[i:i+100])
         return f"{len(logs_to_create)} logs flushed"
     return "No logs to flush"
+
+
+@shared_task
+def delete_expired_activity_logs():
+    try:
+        # today (timezone aware)
+        today = timezone.now().date()
+
+        # one month ago (same day last month)
+        one_month_ago = today - timedelta(days=30)
+
+        # filter records that are exactly that date (ignoring time)
+        records = ActivityLog.objects.filter(
+            timestamp__date__lte=one_month_ago
+        )
+        count, _ = records.delete()
+        return f"{count} logs deleted"
+    except Exception as e:
+        print(e)
+        return f"Error: {str(e)}"
