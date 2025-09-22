@@ -33,23 +33,23 @@ from django.utils.http import urlencode
 from .tasks import delete_members_cache, delete_members_specific_cache
 from django.http import Http404
 logger = logging.getLogger("myapp")
-from .services.member_delete_services import MemberDeleteActionService,MemberBulkDeleteActionService
+from .services.member_delete_services import MemberBulkDeleteActionService,MemberSingleDeleteActionService
 
 
 class MemberView(APIView):
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
-    # def get_permissions(self):
-    #     if self.request.method == "POST":
-    #         return [MemberManagementPermission()]
-    #     elif self.request.method == "PATCH":
-    #         return [MemberManagementPermission()]
-    #     elif self.request.method == "DELETE":
-    #         return [MemberManagementPermission()]
-    #     elif self.request.method == "GET":
-    #         return [MemberManagementPermission()]
-    #     else:
-    #         return [IsAuthenticated()]
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [MemberManagementPermission()]
+        elif self.request.method == "PATCH":
+            return [MemberManagementPermission()]
+        elif self.request.method == "DELETE":
+            return [MemberManagementPermission()]
+        elif self.request.method == "GET":
+            return [MemberManagementPermission()]
+        else:
+            return [IsAuthenticated()]
 
     def post(self, request):
         try:
@@ -163,278 +163,8 @@ class MemberView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    # def delete(self, request, member_id):
-
-    #     try:
-    #         soft_delete = request.query_params.get("soft_delete").lower() == "True" or False
-    #         hard_delete = request.query_params.get("hard_delete").lower() == "True" or False
-    #         restore = request.query_params.get("restore").lower() == "True" or False
-    #         if soft_delete and hard_delete:
-    #             return Response({
-    #                 "code": 400,
-    #                 "status": "failed",
-    #                 "message": "Invalid request",
-    #                 "errors": {
-    #                     "request": ["Cannot perform both soft delete and hard delete simultaneously."]
-    #                 }
-    #             }, status=status.HTTP_400_BAD_REQUEST)
-    #         if restore and hard_delete:
-    #             return Response({
-    #                 "code": 400,
-    #                 "status": "failed",
-    #                 "message": "Invalid request",
-    #                 "errors": {
-    #                     "request": ["Cannot perform both restore and hard delete simultaneously."]
-    #                 }
-    #             }, status=status.HTTP_400_BAD_REQUEST)
-    #         if restore and soft_delete:
-    #             return Response({
-    #                 "code": 400,
-    #                 "status": "failed",
-    #                 "message": "Invalid request",
-    #                 "errors": {
-    #                     "request": ["Cannot perform both restore and soft delete simultaneously."]
-    #                 }
-    #             }, status=status.HTTP_400_BAD_REQUEST)
-
-    #         if soft_delete and hard_delete and restore:
-    #             return Response({
-    #                 "code": 400,
-    #                 "status": "failed",
-    #                 "message": "Invalid request",
-    #                 "errors": {
-    #                     "request": ["Cannot perform soft delete, hard delete, and restore simultaneously."]
-    #                 }
-    #             }, status=status.HTTP_400_BAD_REQUEST)
-
-    #         if not soft_delete and not hard_delete and not restore:
-    #             return Response({
-    #                 "code": 400,
-    #                 "status": "failed",
-    #                 "message": "Invalid request",
-    #                 "errors": {
-    #                     "request": ["Please specify an action: soft_delete, hard_delete, or restore."]
-    #                 }
-    #             }, status=status.HTTP_400_BAD_REQUEST)
-            
-    #         member = Member.objects.only(
-    #             "id", "member_ID", "status").get(member_ID=member_id)
-    #         if member.status == 2:
-    #             # activity log
-    #             log_request(request, "Member delete failed", "info",
-    #                         "user tried to delete member but made an invalid request")
-    #             return Response({
-    #                 "code": 400,
-    #                 "status": "failed",
-    #                 "message": "Member is already deleted",
-    #             }, status=status.HTTP_400_BAD_REQUEST)
-    #         member_ID = member.member_ID
-    #         if hard_delete:
-    #             with transaction.atomic():
-    #                 member.delete()
-    #                 # activity log
-    #                 log_request(request, "Member hard delete success", "info",
-    #                             "user tried to hard delete a member and succeeded")
-    #                 # cache delete
-    #                 delete_members_cache.delay()
-    #                 return Response({
-    #                     "code": 204,
-    #                     'message': "member hard deleted",
-    #                     'status': "success",
-    #                     'data': {
-    #                         'member_ID': member_ID,
-    #                     }
-    #                 }, status=status.HTTP_204_NO_CONTENT)
-    #         if restore:
-    #             with transaction.atomic():
-    #                 MemberHistory.objects.filter(
-    #                     member=member).update(end_date=None, transferred=False, transferred_reason="")
-    #                 Member.objects.filter(member_ID=member.member_ID).update(
-    #                     status=0,
-    #                     is_active=True,
-    #                     member_ID=member.member_ID
-    #                 )
-    #                 # activity log
-    #                 log_request(request, "Member restore success", "info",
-    #                             "user tried to restore a member and succeeded")
-    #                 # cache delete
-    #                 delete_members_cache.delay()
-    #                 return Response({
-    #                     "code": 200,
-    #                     'message': "member restored",
-    #                     'status': "success",
-    #                     'data': {
-    #                         'member_ID': member_ID,
-    #                     }
-    #                 }, status=status.HTTP_200_OK)
-            
-    #         with transaction.atomic():
-    #             MemberHistory.objects.filter(member=member).update(
-    #                 end_date=timezone.now(),
-    #                 transferred_reason="deleted",
-    #                 transferred=True    
-    #             )
-
-    #             Member.objects.filter(member_ID=member.member_ID).update(
-    #                 member_ID=None,
-    #                 status=2,
-    #                 is_active=False
-    #             )
-
-    #             delete_member_model_dependencies.delay_on_commit(member.id)
-
-    #             # activity log
-    #             log_request(request, "Member delete success", "info",
-    #                         "user tried to delete a member and succeeded")
-    #             # cache delete
-    #             delete_members_cache.delay()
-    #             return Response({
-    #                 "code": 204,
-    #                 'message': "member deleted",
-    #                 'status': "success",
-    #                 'data': {
-    #                     'member_ID': member_ID,
-    #                 }
-    #             }, status=status.HTTP_204_NO_CONTENT)
-
-    #     except Member.DoesNotExist:
-    #         # activity log
-    #         log_request(request, "Member delete failed", "error",
-    #                     "user tried to delete member but made an invalid request")
-    #         return Response({
-    #             "code": 404,
-    #             "status": "failed",
-    #             "message": "Member not found",
-    #             "errors": {
-    #                 "member": ["Member not found by this member_ID"]
-    #             }
-    #         }, status=status.HTTP_404_NOT_FOUND)
-
-    #     except Exception as server_error:
-    #         logger.exception(str(server_error))
-    #         # activity log
-    #         log_request(request, "Member delete failed", "error",
-    #                     "user tried to delete member but made an invalid request")
-    #         return Response({
-    #             "code": 500,
-    #             "status": "failed",
-    #             "message": "Something went wrong",
-    #             "errors": {
-    #                 "server_error": [str(server_error)]
-    #             }
-    #         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    # ----------------------------------
-    # Refactored delete method using MemberActionService
-    def delete(self, request, member_id):
-        try:
-            # Query params parse
-            soft_delete = request.query_params.get('soft_delete', 'False').lower() == 'true'
-            hard_delete = request.query_params.get('hard_delete', 'False').lower() == 'true'
-            restore = request.query_params.get('restore', 'False').lower() == 'true'
-            actions = [soft_delete, hard_delete, restore]
-
-            # Validate multiple actions
-            if sum(actions) > 1:
-                return Response({
-                    "code": 400,
-                    "status": "failed",
-                    "message": "Invalid request",
-                    "errors": {"request": ["Cannot perform multiple actions simultaneously."]}
-                }, status=status.HTTP_400_BAD_REQUEST)
-
-            if not any(actions):
-                return Response({
-                    "code": 400,
-                    "status": "failed",
-                    "message": "Invalid request",
-                    "errors": {"request": ["Please specify an action: soft_delete, hard_delete, or restore."]}
-                }, status=status.HTTP_400_BAD_REQUEST)
-
-            # Soft delete and hard delete: filter by member_ID
-            if soft_delete:
-                member = Member.objects.only("id", "member_ID", "status").get(member_ID=member_id)
-            elif hard_delete:
-                member = Member.objects.select_related(
-                "gender",
-                "membership_type",
-                "institute_name",
-                "membership_status",
-                "marital_status"
-                ).prefetch_related(
-                    "members_financial_basics",
-                    "contact_numbers",
-                    "emails",
-                    "addresses",
-                    "spouse",
-                    "descendants",
-                    "professions",
-                    "emergency_contacts",
-                    "companions",
-                    "credentials",
-                    "certificates",
-                    "special_days",
-                    "history",  
-                ).get(member_ID=member_id)
-                
-
-            elif restore:
-                
-                member_history = get_object_or_404(MemberHistory, stored_member_id=member_id, transferred=True)
-                member = member_history.member
-                
-
-            service = MemberDeleteActionService(request, member)
-
-            # Execute action
-            if hard_delete:
-                result = service.hard_delete()
-            elif restore:
-                # Validate member_ID uniqueness before restore
-                is_exist = service.validate_member_ID(member_id)
-                new_member_ID = request.query_params.get('new_member_ID', None)
-
-                if is_exist and not new_member_ID:
-                    return Response({
-                        "code": 400,
-                        "status": "failed",
-                        "message": "Member restore failed",
-                        "errors": {"member_ID": ["Cannot restore member. member_ID already exists."]}
-                    }, status=status.HTTP_400_BAD_REQUEST)
-                if new_member_ID:
-                    member_id = new_member_ID
-                result = service.restore(member_id)
-            else:  # soft_delete
-                result = service.soft_delete()
-
-            return Response({
-                "code": result['status_code'],
-                "status": "success",
-                "message": result['message'],
-                "data": {"member_ID": result['member_ID']}
-            }, status=result['status_code'])
-
-        except Member.DoesNotExist:
-            log_request(request, "Member action failed", "error",
-                        "User tried to perform action on a non-existing member")
-            return Response({
-                "code": 404,
-                "status": "failed",
-                "message": "Member not found",
-                "errors": {"member": ["Member not found"]}
-            }, status=status.HTTP_404_NOT_FOUND)
-
-        except Exception as e:
-            logger.exception(str(e))
-            log_request(request, "Member action failed", "error",
-                        "Unexpected server error during member action")
-            return Response({
-                "code": 500,
-                "status": "failed",
-                "message": "Something went wrong",
-                "errors": {"server_error": [str(e)]}
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+    
+   
     def get(self, request, member_id):
         try:
             cache_key = f"specific_member::{member_id}"
@@ -3079,6 +2809,125 @@ class DeleteMemberListView(APIView):
             logger.exception(str(e))
             log_request(request, "Delete member IDs failed", "error",
                         "A user tried to delete the list of member IDs but an error occurred.")
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {"server_error": [str(e)]}
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+            
+class DeletedMemberListView(APIView):
+    permission_classes = [IsAuthenticated, MemberManagementPermission]
+
+    def get(self, request):
+        try:
+            
+            members = Member.objects.filter(status=2,is_active=False).order_by("-created_at")
+
+            paginator = CustomPageNumberPagination()
+            paginated_queryset = paginator.paginate_queryset(
+                members, request, view=self)
+            serializer = serializers.MemberSerializer(
+                paginated_queryset, many=True)
+
+            # activity log
+            log_request(request, "Viewing all deleted members", "info",
+                        "A user has successfully viewing all deleted members.")
+
+            final_response = paginator.get_paginated_response({
+                "code": 200,
+                "status": "success",
+                "message": "Viewing all deleted members",
+                "data": serializer.data
+            }, 200)
+
+            # Cache the response
+            return final_response
+        except Exception as e:
+            logger.exception(str(e))
+            # activity log
+            log_request(request, "Viewing all deleted members failed", "error",
+                        "A user tried to view all deleted members but made an invalid request")
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {
+                    "server_error": [str(e)]
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+
+
+class MemberBulkDeleteView(APIView):
+    permission_classes = [IsAuthenticated, MemberManagementPermission]
+
+    def delete(self, request):
+        try:
+            members = Member.objects.filter(status=2,is_active=False)
+
+            if not members.exists():
+                return Response({
+                    "code": 404,
+                    "status": "failed",
+                    "message": "No deleted members found to hard delete",
+                    "data": {"members": []}
+                }, status=status.HTTP_404_NOT_FOUND)
+
+            service = MemberBulkDeleteActionService(request, members)
+            result = service.hard_delete()
+
+            return Response({
+                "code": result['code'],
+                "status": result['status'],
+                "message": result['message'],
+                "data": result['data']
+            }, status=status.HTTP_204_NO_CONTENT)
+
+        except Exception as e:
+            logger.exception(str(e))
+            log_request(request, "Permanently delete all members failed", "error",
+                        "A user tried to permanently delete all members but an error occurred.")
+            return Response({
+                "code": 500,
+                "status": "failed",
+                "message": "Something went wrong",
+                "errors": {"server_error": [str(e)]}
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+
+class MemberHardSingleDeleteView(APIView):
+    permission_classes = [IsAuthenticated, MemberManagementPermission]
+
+    def delete(self, request, pk):
+        try:
+            member = Member.objects.filter(id=pk, status=2, is_active=False).first()
+
+            if not member:
+                return Response({
+                    "code": 404,
+                    "status": "failed",
+                    "message": "Member not found or not in deleted status",
+                    "errors": {
+                        "member": ["Member not found by this primary key or not in deleted status"]
+                    }
+                }, status=status.HTTP_404_NOT_FOUND)
+
+            # Service class call
+            service = MemberSingleDeleteActionService(request, member)
+            result = service.hard_delete()
+
+            return Response(result, status=result["code"])
+
+        except Exception as e:
+            logger.exception(str(e))
+            log_request(
+                request,
+                "Permanently delete a member failed",
+                "error",
+                "A user tried to permanently delete a member but an error occurred."
+            )
             return Response({
                 "code": 500,
                 "status": "failed",

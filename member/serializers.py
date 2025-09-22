@@ -9,6 +9,7 @@ from django.utils import timezone
 
 
 class MemberSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True, required=False)
     member_ID = serializers.CharField()
     first_name = serializers.CharField()
     last_name = serializers.CharField(required=False)
