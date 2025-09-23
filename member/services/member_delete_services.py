@@ -1,6 +1,6 @@
 from django.db import transaction
 from django.utils import timezone
-from event.models import Event, EventFee
+from event.models import Event, EventFee, EventMedia
 from member.tasks import delete_members_cache, delete_member_model_dependencies
 from ..utils.utility_functions import log_request
 from django.db import transaction
@@ -45,7 +45,22 @@ class MemberBulkDeleteActionService:
         MemberHistory.objects.filter(member=member).delete()
 
     def _delete_events(self, member):
-        Event.objects.filter(organizer=member).delete()
+        events = Event.objects.filter(organizer=member)
+
+        for event in events:
+            # Delete related EventMedia
+            EventMedia.objects.filter(event=event).delete()
+            # Delete related EventTicket
+            EventTicket.objects.filter(event=event).delete()
+            # Delete related EventFee
+            EventFee.objects.filter(event=event).delete()
+            invoices = Invoice.objects.filter(event=event)
+            for invoice in invoices:
+                InvoiceItem.objects.filter(invoice=invoice).delete()
+            invoices.delete()
+
+        # Finally delete the events
+        events.delete()
 
     def _delete_promo_codes(self, member):
         AppliedPromoCode.objects.filter(used_by=member).delete()
@@ -118,7 +133,24 @@ class MemberSingleDeleteActionService:
         MemberHistory.objects.filter(member=self.member).delete()
 
     def _delete_events(self):
-        Event.objects.filter(organizer=self.member).delete()
+        events = Event.objects.filter(organizer=self.member)
+
+        for event in events:
+            # Delete related EventMedia
+            EventMedia.objects.filter(event=event).delete()
+            # Delete related EventTicket
+            EventTicket.objects.filter(event=event).delete()
+            # Delete related EventFee
+            EventFee.objects.filter(event=event).delete()
+            invoices = Invoice.objects.filter(event=event)
+            for invoice in invoices:
+                InvoiceItem.objects.filter(invoice=invoice).delete()
+            invoices.delete()
+
+        # Finally delete the events
+        events.delete()
+
+
 
     def _delete_promo_codes(self):
         AppliedPromoCode.objects.filter(used_by=self.member).delete()
@@ -154,7 +186,6 @@ class MemberSingleDeleteActionService:
                 "code": 204,
                 "status": "success",
                 "message": "Member permanently deleted",
-                "data": {"obj_id": self.member.id}
             }
 
         except Exception as e:
