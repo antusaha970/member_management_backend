@@ -44,8 +44,23 @@ class MemberBulkDeleteActionService:
         SpecialDay.objects.filter(member=member).delete()
         MemberHistory.objects.filter(member=member).delete()
 
-    def _delete_events(self, member):
-        Event.objects.filter(organizer=member).delete()
+    def _delete_events(self):
+        events = Event.objects.filter(organizer=self.member)
+
+        for event in events:
+            # Delete related EventMedia
+            EventMedia.objects.filter(event=event).delete()
+            # Delete related EventTicket
+            EventTicket.objects.filter(event=event).delete()
+            # Delete related EventFee
+            EventFee.objects.filter(event=event).delete()
+            invoices = Invoice.objects.filter(event=event)
+            for invoice in invoices:
+                InvoiceItem.objects.filter(invoice=invoice).delete()
+            invoices.delete()
+
+        # Finally delete the events
+        events.delete()
 
     def _delete_promo_codes(self, member):
         AppliedPromoCode.objects.filter(used_by=member).delete()
