@@ -44,8 +44,8 @@ class MemberBulkDeleteActionService:
         SpecialDay.objects.filter(member=member).delete()
         MemberHistory.objects.filter(member=member).delete()
 
-    def _delete_events(self):
-        events = Event.objects.filter(organizer=self.member)
+    def _delete_events(self, member):
+        events = Event.objects.filter(organizer=member)
 
         for event in events:
             # Delete related EventMedia
